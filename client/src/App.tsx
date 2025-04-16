@@ -16,8 +16,10 @@ import AttendanceList from "@/pages/attendance/index";
 import RecordAttendance from "@/pages/attendance/record";
 import ExpenditureList from "@/pages/expenditures/index";
 import AddExpenditure from "@/pages/expenditures/add";
+import EditExpenditure from "@/pages/expenditures/edit/[id]";
 import IncomeList from "@/pages/incomes/index";
 import AddIncome from "@/pages/incomes/add";
+import EditIncome from "@/pages/incomes/edit/[id]";
 import PayrollList from "@/pages/payroll/index";
 import ProcessPayroll from "@/pages/payroll/process";
 import Reports from "@/pages/reports/index";
@@ -35,8 +37,10 @@ function Router() {
       <Route path="/attendance/record" component={RecordAttendance} />
       <Route path="/expenditures" component={ExpenditureList} />
       <Route path="/expenditures/add" component={AddExpenditure} />
+      <Route path="/expenditures/edit/:id" component={EditExpenditure} />
       <Route path="/incomes" component={IncomeList} />
       <Route path="/incomes/add" component={AddIncome} />
+      <Route path="/incomes/edit/:id" component={EditIncome} />
       <Route path="/payroll" component={PayrollList} />
       <Route path="/payroll/process" component={ProcessPayroll} />
       <Route path="/reports" component={Reports} />

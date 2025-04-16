@@ -7,7 +7,10 @@ import {
   Payroll, InsertPayroll,
   Payment, InsertPayment,
   DashboardStats, InsertDashboardStats,
+  employees, projects, attendance, dailyExpenditure, dailyIncome, payroll, payments, dashboardStats
 } from "@shared/schema";
+import { db } from "./db";
+import { and, eq, sql, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
   // Employee operations
@@ -601,4 +604,281 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  // Employee operations
+  async getAllEmployees(): Promise<Employee[]> {
+    return await db.select().from(employees);
+  }
+  
+  async getEmployee(id: number): Promise<Employee | undefined> {
+    const [employee] = await db.select().from(employees).where(eq(employees.id, id));
+    return employee;
+  }
+  
+  async getEmployeeByEmployeeId(employeeId: string): Promise<Employee | undefined> {
+    const [employee] = await db.select().from(employees).where(eq(employees.employeeId, employeeId));
+    return employee;
+  }
+  
+  async createEmployee(employee: InsertEmployee): Promise<Employee> {
+    const [newEmployee] = await db.insert(employees).values(employee).returning();
+    return newEmployee;
+  }
+  
+  async updateEmployee(id: number, employee: Partial<InsertEmployee>): Promise<Employee | undefined> {
+    const [updatedEmployee] = await db.update(employees)
+      .set(employee)
+      .where(eq(employees.id, id))
+      .returning();
+    return updatedEmployee;
+  }
+  
+  async deleteEmployee(id: number): Promise<boolean> {
+    const result = await db.delete(employees).where(eq(employees.id, id));
+    return result !== undefined;
+  }
+  
+  // Project operations
+  async getAllProjects(): Promise<Project[]> {
+    return await db.select().from(projects);
+  }
+  
+  async getProject(id: number): Promise<Project | undefined> {
+    const [project] = await db.select().from(projects).where(eq(projects.id, id));
+    return project;
+  }
+  
+  async createProject(project: InsertProject): Promise<Project> {
+    const [newProject] = await db.insert(projects).values(project).returning();
+    return newProject;
+  }
+  
+  async updateProject(id: number, project: Partial<InsertProject>): Promise<Project | undefined> {
+    const [updatedProject] = await db.update(projects)
+      .set(project)
+      .where(eq(projects.id, id))
+      .returning();
+    return updatedProject;
+  }
+  
+  async deleteProject(id: number): Promise<boolean> {
+    const result = await db.delete(projects).where(eq(projects.id, id));
+    return result !== undefined;
+  }
+  
+  // Attendance operations
+  async getAllAttendance(): Promise<Attendance[]> {
+    return await db.select().from(attendance);
+  }
+  
+  async getAttendance(id: number): Promise<Attendance | undefined> {
+    const [record] = await db.select().from(attendance).where(eq(attendance.id, id));
+    return record;
+  }
+  
+  async getAttendanceByDate(date: Date): Promise<Attendance[]> {
+    const formattedDate = date.toISOString().split('T')[0];
+    return await db.select().from(attendance).where(eq(attendance.date, formattedDate));
+  }
+  
+  async getAttendanceByEmployeeId(employeeId: number): Promise<Attendance[]> {
+    return await db.select().from(attendance).where(eq(attendance.employeeId, employeeId));
+  }
+  
+  async getAttendanceByProjectId(projectId: number): Promise<Attendance[]> {
+    return await db.select().from(attendance).where(eq(attendance.projectId, projectId));
+  }
+  
+  async createAttendance(attendance: InsertAttendance): Promise<Attendance> {
+    const [newAttendance] = await db.insert(attendance).values(attendance).returning();
+    return newAttendance;
+  }
+  
+  async updateAttendance(id: number, attendance: Partial<InsertAttendance>): Promise<Attendance | undefined> {
+    const [updatedAttendance] = await db.update(attendance)
+      .set(attendance)
+      .where(eq(attendance.id, id))
+      .returning();
+    return updatedAttendance;
+  }
+  
+  async deleteAttendance(id: number): Promise<boolean> {
+    const result = await db.delete(attendance).where(eq(attendance.id, id));
+    return result !== undefined;
+  }
+  
+  // Daily Expenditure operations
+  async getAllDailyExpenditures(): Promise<DailyExpenditure[]> {
+    return await db.select().from(dailyExpenditure);
+  }
+  
+  async getDailyExpenditure(id: number): Promise<DailyExpenditure | undefined> {
+    const [expenditure] = await db.select().from(dailyExpenditure).where(eq(dailyExpenditure.id, id));
+    return expenditure;
+  }
+  
+  async getDailyExpendituresByDate(date: Date): Promise<DailyExpenditure[]> {
+    const formattedDate = date.toISOString().split('T')[0];
+    return await db.select().from(dailyExpenditure).where(eq(dailyExpenditure.date, formattedDate));
+  }
+  
+  async getDailyExpendituresByEmployeeId(employeeId: number): Promise<DailyExpenditure[]> {
+    return await db.select().from(dailyExpenditure).where(eq(dailyExpenditure.employeeId, employeeId));
+  }
+  
+  async getLoanAdvancesByEmployeeId(employeeId: number): Promise<number> {
+    const result = await db.select({
+      total: sql`SUM(${dailyExpenditure.loanAdvance})`
+    }).from(dailyExpenditure).where(eq(dailyExpenditure.employeeId, employeeId));
+    
+    if (result.length > 0 && result[0].total) {
+      return parseFloat(result[0].total.toString());
+    }
+    
+    return 0;
+  }
+  
+  async createDailyExpenditure(expenditure: InsertDailyExpenditure): Promise<DailyExpenditure> {
+    const [newExpenditure] = await db.insert(dailyExpenditure).values(expenditure).returning();
+    return newExpenditure;
+  }
+  
+  async updateDailyExpenditure(id: number, expenditure: Partial<InsertDailyExpenditure>): Promise<DailyExpenditure | undefined> {
+    const [updatedExpenditure] = await db.update(dailyExpenditure)
+      .set(expenditure)
+      .where(eq(dailyExpenditure.id, id))
+      .returning();
+    return updatedExpenditure;
+  }
+  
+  async deleteDailyExpenditure(id: number): Promise<boolean> {
+    const result = await db.delete(dailyExpenditure).where(eq(dailyExpenditure.id, id));
+    return result !== undefined;
+  }
+  
+  // Daily Income operations
+  async getAllDailyIncomes(): Promise<DailyIncome[]> {
+    return await db.select().from(dailyIncome);
+  }
+  
+  async getDailyIncome(id: number): Promise<DailyIncome | undefined> {
+    const [income] = await db.select().from(dailyIncome).where(eq(dailyIncome.id, id));
+    return income;
+  }
+  
+  async getDailyIncomesByDate(date: Date): Promise<DailyIncome[]> {
+    const formattedDate = date.toISOString().split('T')[0];
+    return await db.select().from(dailyIncome).where(eq(dailyIncome.date, formattedDate));
+  }
+  
+  async createDailyIncome(income: InsertDailyIncome): Promise<DailyIncome> {
+    const [newIncome] = await db.insert(dailyIncome).values(income).returning();
+    return newIncome;
+  }
+  
+  async updateDailyIncome(id: number, income: Partial<InsertDailyIncome>): Promise<DailyIncome | undefined> {
+    const [updatedIncome] = await db.update(dailyIncome)
+      .set(income)
+      .where(eq(dailyIncome.id, id))
+      .returning();
+    return updatedIncome;
+  }
+  
+  async deleteDailyIncome(id: number): Promise<boolean> {
+    const result = await db.delete(dailyIncome).where(eq(dailyIncome.id, id));
+    return result !== undefined;
+  }
+  
+  // Payroll operations
+  async getAllPayrolls(): Promise<Payroll[]> {
+    return await db.select().from(payroll);
+  }
+  
+  async getPayroll(id: number): Promise<Payroll | undefined> {
+    const [payrollRecord] = await db.select().from(payroll).where(eq(payroll.id, id));
+    return payrollRecord;
+  }
+  
+  async getPayrollByEmployeeId(employeeId: number): Promise<Payroll[]> {
+    return await db.select().from(payroll).where(eq(payroll.employeeId, employeeId));
+  }
+  
+  async createPayroll(payrollData: InsertPayroll): Promise<Payroll> {
+    const [newPayroll] = await db.insert(payroll).values(payrollData).returning();
+    return newPayroll;
+  }
+  
+  async updatePayroll(id: number, payrollData: Partial<InsertPayroll>): Promise<Payroll | undefined> {
+    const [updatedPayroll] = await db.update(payroll)
+      .set(payrollData)
+      .where(eq(payroll.id, id))
+      .returning();
+    return updatedPayroll;
+  }
+  
+  async deletePayroll(id: number): Promise<boolean> {
+    const result = await db.delete(payroll).where(eq(payroll.id, id));
+    return result !== undefined;
+  }
+  
+  // Payment operations
+  async getAllPayments(): Promise<Payment[]> {
+    return await db.select().from(payments);
+  }
+  
+  async getPayment(id: number): Promise<Payment | undefined> {
+    const [payment] = await db.select().from(payments).where(eq(payments.id, id));
+    return payment;
+  }
+  
+  async getPaymentsByPayrollId(payrollId: number): Promise<Payment[]> {
+    return await db.select().from(payments).where(eq(payments.payrollId, payrollId));
+  }
+  
+  async createPayment(payment: InsertPayment): Promise<Payment> {
+    const [newPayment] = await db.insert(payments).values(payment).returning();
+    return newPayment;
+  }
+  
+  async updatePayment(id: number, payment: Partial<InsertPayment>): Promise<Payment | undefined> {
+    const [updatedPayment] = await db.update(payments)
+      .set(payment)
+      .where(eq(payments.id, id))
+      .returning();
+    return updatedPayment;
+  }
+  
+  async deletePayment(id: number): Promise<boolean> {
+    const result = await db.delete(payments).where(eq(payments.id, id));
+    return result !== undefined;
+  }
+  
+  // Dashboard stats operations
+  async getDashboardStats(): Promise<DashboardStats | undefined> {
+    const today = new Date().toISOString().split('T')[0];
+    const [stats] = await db.select().from(dashboardStats).where(eq(dashboardStats.date, today));
+    return stats;
+  }
+  
+  async createOrUpdateDashboardStats(stats: InsertDashboardStats): Promise<DashboardStats> {
+    // Try to find existing stats for today
+    const today = new Date().toISOString().split('T')[0];
+    const [existingStats] = await db.select().from(dashboardStats).where(eq(dashboardStats.date, today));
+    
+    if (existingStats) {
+      // Update existing stats
+      const [updatedStats] = await db.update(dashboardStats)
+        .set(stats)
+        .where(eq(dashboardStats.id, existingStats.id))
+        .returning();
+      return updatedStats;
+    } else {
+      // Create new stats
+      const [newStats] = await db.insert(dashboardStats).values(stats).returning();
+      return newStats;
+    }
+  }
+}
+
+// Export the database storage implementation
+export const storage = new DatabaseStorage();
