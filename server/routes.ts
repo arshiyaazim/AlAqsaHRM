@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { 
@@ -13,7 +13,9 @@ import { z } from "zod";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import { readEmployeeExcel } from "./utils/excelImport";
+import { upload, handleFileUploadErrors } from "./utils/fileUpload";
 import path from "path";
+import fs from "fs";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Error handler middleware
@@ -472,6 +474,112 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.status(204).send();
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  // Excel import routes
+  app.post("/api/import/employees", async (req: Request, res: Response) => {
+    try {
+      const filePath = req.body.filePath;
+      
+      if (!filePath) {
+        return res.status(400).json({ message: "File path is required" });
+      }
+      
+      const result = await readEmployeeExcel(filePath);
+      
+      if (!result.success) {
+        return res.status(400).json({ 
+          message: result.message,
+          errors: result.errors 
+        });
+      }
+      
+      // Process the imported data
+      const importedEmployees = [];
+      const errors = [];
+      
+      if (result.data && result.data.length > 0) {
+        for (const employeeData of result.data) {
+          try {
+            // Validate each employee against our schema
+            const validatedData = insertEmployeeSchema.parse(employeeData);
+            const employee = await storage.createEmployee(validatedData);
+            importedEmployees.push(employee);
+          } catch (err) {
+            if (err instanceof ZodError) {
+              const formattedError = fromZodError(err);
+              errors.push({
+                data: employeeData,
+                errors: formattedError.details
+              });
+            } else {
+              errors.push({
+                data: employeeData,
+                errors: [err.message || "Unknown error"]
+              });
+            }
+          }
+        }
+      }
+      
+      res.status(200).json({
+        message: `Imported ${importedEmployees.length} employees with ${errors.length} errors`,
+        imported: importedEmployees,
+        errors: errors.length > 0 ? errors : undefined
+      });
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.post("/api/schema/customField", async (req: Request, res: Response) => {
+    try {
+      const { entity, operation, field } = req.body;
+      
+      if (!entity || !operation || !field) {
+        return res.status(400).json({ 
+          message: "Missing required fields: entity, operation, field" 
+        });
+      }
+      
+      if (!['employees', 'projects', 'attendance', 'payroll', 'payments'].includes(entity)) {
+        return res.status(400).json({ message: "Invalid entity" });
+      }
+      
+      if (!['add', 'remove', 'rename'].includes(operation)) {
+        return res.status(400).json({ message: "Invalid operation" });
+      }
+      
+      // This is a placeholder for actual schema modification
+      // In a real implementation, this would modify the database schema
+      // For now, we'll just return a success message
+      res.status(200).json({ 
+        message: `${operation} field ${field.name || field} for ${entity} successful`,
+        success: true 
+      });
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  // File upload route
+  app.post("/api/upload", upload.single("file"), handleFileUploadErrors, (req: Request, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      const filePath = req.file.path;
+      const fileName = req.file.originalname;
+      
+      res.status(200).json({
+        message: "File uploaded successfully",
+        filePath: filePath,
+        fileName: fileName
+      });
     } catch (err) {
       handleError(err, res);
     }
