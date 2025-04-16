@@ -17,6 +17,7 @@ import RecordAttendance from "@/pages/attendance/record";
 import PayrollList from "@/pages/payroll/index";
 import ProcessPayroll from "@/pages/payroll/process";
 import Reports from "@/pages/reports/index";
+import Settings from "@/pages/settings";
 
 function Router() {
   return (
@@ -31,6 +32,7 @@ function Router() {
       <Route path="/payroll" component={PayrollList} />
       <Route path="/payroll/process" component={ProcessPayroll} />
       <Route path="/reports" component={Reports} />
+      <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -4,14 +4,48 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, Upload, FileSpreadsheet, CheckCircle, XCircle } from "lucide-react";
+import { AlertCircle, Upload, FileSpreadsheet, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { importEmployeesFromExcel, hasAllowedExtension, formatFileSize } from "@/lib/fileUtils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+
+// Local version of uploadFile with proper types
+async function uploadFile(file: File, endpoint: string): Promise<any> {
+  const formData = new FormData();
+  formData.append("file", file);
+  
+  const response = await fetch(endpoint, {
+    method: "POST",
+    body: formData,
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || "Error uploading file");
+  }
+  
+  return await response.json();
+}
 
 interface EmployeeImportProps {
   onComplete?: () => void;
+}
+
+interface UploadResponse {
+  message: string;
+  filePath: string;
+  fileName: string;
+}
+
+interface ImportError {
+  data: any;
+  errors: string[];
+}
+
+interface ImportResults {
+  message: string;
+  imported: any[];
+  errors?: ImportError[];
 }
 
 export default function EmployeeImport({ onComplete }: EmployeeImportProps) {
@@ -19,7 +53,7 @@ export default function EmployeeImport({ onComplete }: EmployeeImportProps) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [importResults, setImportResults] = useState<any>(null);
+  const [importResults, setImportResults] = useState<ImportResults | null>(null);
   const [uploading, setUploading] = useState(false);
   const [excelFilePath, setExcelFilePath] = useState<string>("");
 
@@ -28,27 +62,19 @@ export default function EmployeeImport({ onComplete }: EmployeeImportProps) {
     mutationFn: async (file: File) => {
       setUploading(true);
       try {
-        const formData = new FormData();
-        formData.append("file", file);
-        
-        const response = await apiRequest("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
-        
-        return response;
+        return await uploadFile(file, "/api/upload");
       } finally {
         setUploading(false);
       }
     },
-    onSuccess: (data) => {
+    onSuccess: (data: UploadResponse) => {
       toast({
         title: "File Uploaded",
         description: "The file was uploaded successfully.",
       });
       setExcelFilePath(data.filePath);
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "Upload Failed",
         description: error.message || "There was an error uploading the file.",
@@ -62,7 +88,7 @@ export default function EmployeeImport({ onComplete }: EmployeeImportProps) {
     mutationFn: async (filePath: string) => {
       return await importEmployeesFromExcel(filePath);
     },
-    onSuccess: (data) => {
+    onSuccess: (data: ImportResults) => {
       toast({
         title: "Import Successful",
         description: data.message || "Employees were imported successfully.",
@@ -73,7 +99,7 @@ export default function EmployeeImport({ onComplete }: EmployeeImportProps) {
         onComplete();
       }
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "Import Failed",
         description: error.message || "There was an error importing employees.",
@@ -188,14 +214,16 @@ export default function EmployeeImport({ onComplete }: EmployeeImportProps) {
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Error</AlertTitle>
               <AlertDescription>
-                {uploadMutation.error?.message || importMutation.error?.message || "An error occurred"}
+                {(uploadMutation.error as Error)?.message || 
+                 (importMutation.error as Error)?.message || 
+                 "An error occurred"}
               </AlertDescription>
             </Alert>
           )}
 
           {importResults && (
             <div className="space-y-4">
-              <Alert variant={importResults.errors && importResults.errors.length > 0 ? "warning" : "default"}>
+              <Alert variant={importResults.errors && importResults.errors.length > 0 ? "destructive" : "default"}>
                 <CheckCircle className="h-4 w-4" />
                 <AlertTitle>Import Results</AlertTitle>
                 <AlertDescription>
@@ -207,7 +235,7 @@ export default function EmployeeImport({ onComplete }: EmployeeImportProps) {
                 <div className="space-y-2">
                   <h4 className="font-medium">Errors:</h4>
                   <div className="max-h-40 overflow-y-auto p-2 border rounded-md">
-                    {importResults.errors.map((error: any, index: number) => (
+                    {importResults.errors.map((error, index) => (
                       <div key={index} className="text-sm text-red-600">
                         <pre className="whitespace-pre-wrap">{JSON.stringify(error, null, 2)}</pre>
                       </div>
