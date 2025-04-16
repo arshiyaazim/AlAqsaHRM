@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
+import { useState, useEffect } from "react";
+import { useLocation, useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -10,7 +10,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -34,9 +33,8 @@ import { CalendarIcon, ChevronLeft } from "lucide-react";
 import { cn, formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import { insertDailyExpenditureSchema } from "@shared/schema";
+import { insertDailyExpenditureSchema, DailyExpenditure, Employee } from "@shared/schema";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Employee } from "@shared/schema";
 import { format } from "date-fns";
 
 // Extend the schema with UI-specific validation
@@ -56,7 +54,8 @@ const formSchema = insertDailyExpenditureSchema.extend({
   path: ["payment"],
 });
 
-export default function AddExpenditure() {
+export default function EditExpenditure() {
+  const { id } = useParams();
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -66,10 +65,23 @@ export default function AddExpenditure() {
     queryKey: ["/api/employees"],
   });
 
+  // Fetch the expenditure to edit
+  const { data: expenditure, isLoading: expenditureLoading } = useQuery<DailyExpenditure>({
+    queryKey: ["/api/expenditures", id],
+    queryFn: async () => {
+      const response = await fetch(`/api/expenditures/${id}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch expenditure");
+      }
+      return response.json();
+    },
+    enabled: !!id,
+  });
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      date: format(new Date(), "yyyy-MM-dd"),
+      date: "",
       employeeId: undefined,
       payment: "",
       loanAdvance: "",
@@ -77,11 +89,24 @@ export default function AddExpenditure() {
     },
   });
 
+  // Update form values when expenditure data is loaded
+  useEffect(() => {
+    if (expenditure) {
+      form.reset({
+        date: expenditure.date,
+        employeeId: expenditure.employeeId,
+        payment: expenditure.payment || "",
+        loanAdvance: expenditure.loanAdvance || "",
+        remarks: expenditure.remarks || "",
+      });
+    }
+  }, [expenditure, form]);
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/expenditures", {
-        method: "POST",
+      const response = await fetch(`/api/expenditures/${id}`, {
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
@@ -90,12 +115,12 @@ export default function AddExpenditure() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to create expenditure record");
+        throw new Error(errorData.message || "Failed to update expenditure");
       }
 
       toast({
-        title: "Expenditure recorded",
-        description: "The expenditure record has been created successfully.",
+        title: "Expenditure updated",
+        description: "The expenditure record has been updated successfully.",
       });
 
       // Invalidate the expenditures query to refresh the list
@@ -106,13 +131,23 @@ export default function AddExpenditure() {
     } catch (error) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "An error occurred while saving the expenditure",
+        description: error instanceof Error ? error.message : "An error occurred while updating the expenditure",
         variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  if (expenditureLoading) {
+    return (
+      <div className="container mx-auto py-6">
+        <div className="flex justify-center items-center h-64">
+          <p className="text-lg">Loading expenditure data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto py-6">
@@ -127,9 +162,9 @@ export default function AddExpenditure() {
 
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
-          <CardTitle>Add Daily Expenditure</CardTitle>
+          <CardTitle>Edit Daily Expenditure</CardTitle>
           <CardDescription>
-            Record a new expenditure or loan/advance payment.
+            Update the expenditure or loan/advance payment.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -271,7 +306,7 @@ export default function AddExpenditure() {
               />
 
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Saving..." : "Save Expenditure"}
+                {isSubmitting ? "Saving..." : "Update Expenditure"}
               </Button>
             </form>
           </Form>

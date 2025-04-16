@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
+import { useState, useEffect } from "react";
+import { useLocation, useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -10,7 +10,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -34,54 +33,66 @@ import { CalendarIcon, ChevronLeft } from "lucide-react";
 import { cn, formatDate } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
-import { insertDailyExpenditureSchema } from "@shared/schema";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Employee } from "@shared/schema";
+import { insertDailyIncomeSchema, DailyIncome } from "@shared/schema";
 import { format } from "date-fns";
 
 // Extend the schema with UI-specific validation
-const formSchema = insertDailyExpenditureSchema.extend({
+const formSchema = insertDailyIncomeSchema.extend({
   date: z.string(),
-  employeeId: z.coerce.number({
-    required_error: "Employee is required",
-  }),
-  payment: z.string().optional(),
-  loanAdvance: z.string().optional(),
+  receivedFrom: z.string().min(1, "Received from is required"),
+  amount: z.string().min(1, "Amount is required"),
+  description: z.string().optional().nullable(),
   remarks: z.string().optional().nullable(),
-}).refine(data => {
-  // Ensure at least one of payment or loanAdvance is provided
-  return !!data.payment || !!data.loanAdvance;
-}, {
-  message: "Either payment or loan/advance must be provided",
-  path: ["payment"],
 });
 
-export default function AddExpenditure() {
+export default function EditIncome() {
+  const { id } = useParams();
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch employees for the dropdown
-  const { data: employees, isLoading: employeesLoading } = useQuery<Employee[]>({
-    queryKey: ["/api/employees"],
+  // Fetch the income to edit
+  const { data: income, isLoading: incomeLoading } = useQuery<DailyIncome>({
+    queryKey: ["/api/incomes", id],
+    queryFn: async () => {
+      const response = await fetch(`/api/incomes/${id}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch income");
+      }
+      return response.json();
+    },
+    enabled: !!id,
   });
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      date: format(new Date(), "yyyy-MM-dd"),
-      employeeId: undefined,
-      payment: "",
-      loanAdvance: "",
+      date: "",
+      receivedFrom: "",
+      amount: "",
+      description: "",
       remarks: "",
     },
   });
 
+  // Update form values when income data is loaded
+  useEffect(() => {
+    if (income) {
+      form.reset({
+        date: income.date,
+        receivedFrom: income.receivedFrom,
+        amount: income.amount,
+        description: income.description || "",
+        remarks: income.remarks || "",
+      });
+    }
+  }, [income, form]);
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/expenditures", {
-        method: "POST",
+      const response = await fetch(`/api/incomes/${id}`, {
+        method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
@@ -90,23 +101,23 @@ export default function AddExpenditure() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to create expenditure record");
+        throw new Error(errorData.message || "Failed to update income");
       }
 
       toast({
-        title: "Expenditure recorded",
-        description: "The expenditure record has been created successfully.",
+        title: "Income updated",
+        description: "The income record has been updated successfully.",
       });
 
-      // Invalidate the expenditures query to refresh the list
-      queryClient.invalidateQueries({ queryKey: ["/api/expenditures"] });
+      // Invalidate the incomes query to refresh the list
+      queryClient.invalidateQueries({ queryKey: ["/api/incomes"] });
       
-      // Navigate back to the expenditures list
-      navigate("/expenditures");
+      // Navigate back to the incomes list
+      navigate("/incomes");
     } catch (error) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "An error occurred while saving the expenditure",
+        description: error instanceof Error ? error.message : "An error occurred while updating the income",
         variant: "destructive",
       });
     } finally {
@@ -114,22 +125,32 @@ export default function AddExpenditure() {
     }
   };
 
+  if (incomeLoading) {
+    return (
+      <div className="container mx-auto py-6">
+        <div className="flex justify-center items-center h-64">
+          <p className="text-lg">Loading income data...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto py-6">
       <Button
         variant="ghost"
         className="mb-6"
-        onClick={() => navigate("/expenditures")}
+        onClick={() => navigate("/incomes")}
       >
         <ChevronLeft className="mr-2 h-4 w-4" />
-        Back to Expenditures
+        Back to Incomes
       </Button>
 
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
-          <CardTitle>Add Daily Expenditure</CardTitle>
+          <CardTitle>Edit Daily Income</CardTitle>
           <CardDescription>
-            Record a new expenditure or loan/advance payment.
+            Update the income transaction.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -179,31 +200,16 @@ export default function AddExpenditure() {
 
                 <FormField
                   control={form.control}
-                  name="employeeId"
+                  name="receivedFrom"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Employee</FormLabel>
-                      <Select
-                        disabled={employeesLoading}
-                        onValueChange={field.onChange}
-                        value={field.value?.toString()}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select employee" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {employees?.map((employee) => (
-                            <SelectItem 
-                              key={employee.id}
-                              value={employee.id.toString()}
-                            >
-                              {employee.firstName} {employee.lastName} ({employee.employeeId})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormLabel>Received From</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter source of income"
+                          {...field}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -211,10 +217,10 @@ export default function AddExpenditure() {
 
                 <FormField
                   control={form.control}
-                  name="payment"
+                  name="amount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Payment</FormLabel>
+                      <FormLabel>Amount</FormLabel>
                       <FormControl>
                         <Input
                           type="text"
@@ -223,7 +229,7 @@ export default function AddExpenditure() {
                         />
                       </FormControl>
                       <FormDescription>
-                        Daily payment amount
+                        Income amount
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -232,20 +238,17 @@ export default function AddExpenditure() {
 
                 <FormField
                   control={form.control}
-                  name="loanAdvance"
+                  name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Loan/Advance</FormLabel>
+                      <FormLabel>Description</FormLabel>
                       <FormControl>
                         <Input
-                          type="text"
-                          placeholder="0.00"
+                          placeholder="Brief description"
                           {...field}
+                          value={field.value || ''}
                         />
                       </FormControl>
-                      <FormDescription>
-                        Loan or advance payment
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -271,7 +274,7 @@ export default function AddExpenditure() {
               />
 
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Saving..." : "Save Expenditure"}
+                {isSubmitting ? "Saving..." : "Update Income"}
               </Button>
             </form>
           </Form>
