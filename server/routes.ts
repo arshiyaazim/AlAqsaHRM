@@ -1,0 +1,481 @@
+import type { Express, Request, Response } from "express";
+import { createServer, type Server } from "http";
+import { storage } from "./storage";
+import { 
+  insertEmployeeSchema, 
+  insertProjectSchema, 
+  insertAttendanceSchema, 
+  insertPayrollSchema, 
+  insertPaymentSchema,
+  insertDashboardStatsSchema
+} from "@shared/schema";
+import { z } from "zod";
+import { ZodError } from "zod";
+import { fromZodError } from "zod-validation-error";
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  // Error handler middleware
+  const handleError = (err: any, res: Response) => {
+    console.error(err);
+    if (err instanceof ZodError) {
+      const formattedError = fromZodError(err);
+      return res.status(400).json({ 
+        message: "Validation error", 
+        errors: formattedError.details 
+      });
+    }
+    return res.status(500).json({ message: err.message || "Internal server error" });
+  };
+
+  // Dashboard stats routes
+  app.get("/api/dashboard", async (req: Request, res: Response) => {
+    try {
+      const stats = await storage.getDashboardStats();
+      if (!stats) {
+        return res.status(404).json({ message: "Dashboard stats not found" });
+      }
+      res.json(stats);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  // Employee routes
+  app.get("/api/employees", async (req: Request, res: Response) => {
+    try {
+      const employees = await storage.getAllEmployees();
+      res.json(employees);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.get("/api/employees/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid employee ID" });
+      }
+      
+      const employee = await storage.getEmployee(id);
+      if (!employee) {
+        return res.status(404).json({ message: "Employee not found" });
+      }
+      
+      res.json(employee);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.post("/api/employees", async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertEmployeeSchema.parse(req.body);
+      const employee = await storage.createEmployee(validatedData);
+      res.status(201).json(employee);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.patch("/api/employees/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid employee ID" });
+      }
+      
+      const validatedData = insertEmployeeSchema.partial().parse(req.body);
+      const updatedEmployee = await storage.updateEmployee(id, validatedData);
+      
+      if (!updatedEmployee) {
+        return res.status(404).json({ message: "Employee not found" });
+      }
+      
+      res.json(updatedEmployee);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.delete("/api/employees/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid employee ID" });
+      }
+      
+      const success = await storage.deleteEmployee(id);
+      if (!success) {
+        return res.status(404).json({ message: "Employee not found" });
+      }
+      
+      res.status(204).send();
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  // Project routes
+  app.get("/api/projects", async (req: Request, res: Response) => {
+    try {
+      const projects = await storage.getAllProjects();
+      res.json(projects);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.get("/api/projects/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid project ID" });
+      }
+      
+      const project = await storage.getProject(id);
+      if (!project) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      res.json(project);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.post("/api/projects", async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertProjectSchema.parse(req.body);
+      const project = await storage.createProject(validatedData);
+      res.status(201).json(project);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.patch("/api/projects/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid project ID" });
+      }
+      
+      const validatedData = insertProjectSchema.partial().parse(req.body);
+      const updatedProject = await storage.updateProject(id, validatedData);
+      
+      if (!updatedProject) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      res.json(updatedProject);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.delete("/api/projects/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid project ID" });
+      }
+      
+      const success = await storage.deleteProject(id);
+      if (!success) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      
+      res.status(204).send();
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  // Attendance routes
+  app.get("/api/attendance", async (req: Request, res: Response) => {
+    try {
+      const attendance = await storage.getAllAttendance();
+      res.json(attendance);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.get("/api/attendance/date/:date", async (req: Request, res: Response) => {
+    try {
+      const dateParam = req.params.date;
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      
+      if (!dateRegex.test(dateParam)) {
+        return res.status(400).json({ message: "Invalid date format. Use YYYY-MM-DD." });
+      }
+      
+      const date = new Date(dateParam);
+      const attendance = await storage.getAttendanceByDate(date);
+      res.json(attendance);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.get("/api/attendance/employee/:employeeId", async (req: Request, res: Response) => {
+    try {
+      const employeeId = parseInt(req.params.employeeId);
+      if (isNaN(employeeId)) {
+        return res.status(400).json({ message: "Invalid employee ID" });
+      }
+      
+      const attendance = await storage.getAttendanceByEmployeeId(employeeId);
+      res.json(attendance);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.get("/api/attendance/project/:projectId", async (req: Request, res: Response) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      if (isNaN(projectId)) {
+        return res.status(400).json({ message: "Invalid project ID" });
+      }
+      
+      const attendance = await storage.getAttendanceByProjectId(projectId);
+      res.json(attendance);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.post("/api/attendance", async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertAttendanceSchema.parse(req.body);
+      const attendance = await storage.createAttendance(validatedData);
+      res.status(201).json(attendance);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.patch("/api/attendance/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid attendance ID" });
+      }
+      
+      const validatedData = insertAttendanceSchema.partial().parse(req.body);
+      const updatedAttendance = await storage.updateAttendance(id, validatedData);
+      
+      if (!updatedAttendance) {
+        return res.status(404).json({ message: "Attendance record not found" });
+      }
+      
+      res.json(updatedAttendance);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.delete("/api/attendance/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid attendance ID" });
+      }
+      
+      const success = await storage.deleteAttendance(id);
+      if (!success) {
+        return res.status(404).json({ message: "Attendance record not found" });
+      }
+      
+      res.status(204).send();
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  // Payroll routes
+  app.get("/api/payroll", async (req: Request, res: Response) => {
+    try {
+      const payroll = await storage.getAllPayrolls();
+      res.json(payroll);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.get("/api/payroll/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid payroll ID" });
+      }
+      
+      const payroll = await storage.getPayroll(id);
+      if (!payroll) {
+        return res.status(404).json({ message: "Payroll record not found" });
+      }
+      
+      res.json(payroll);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.get("/api/payroll/employee/:employeeId", async (req: Request, res: Response) => {
+    try {
+      const employeeId = parseInt(req.params.employeeId);
+      if (isNaN(employeeId)) {
+        return res.status(400).json({ message: "Invalid employee ID" });
+      }
+      
+      const payroll = await storage.getPayrollByEmployeeId(employeeId);
+      res.json(payroll);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.post("/api/payroll", async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertPayrollSchema.parse(req.body);
+      const payroll = await storage.createPayroll(validatedData);
+      res.status(201).json(payroll);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.patch("/api/payroll/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid payroll ID" });
+      }
+      
+      const validatedData = insertPayrollSchema.partial().parse(req.body);
+      const updatedPayroll = await storage.updatePayroll(id, validatedData);
+      
+      if (!updatedPayroll) {
+        return res.status(404).json({ message: "Payroll record not found" });
+      }
+      
+      res.json(updatedPayroll);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.delete("/api/payroll/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid payroll ID" });
+      }
+      
+      const success = await storage.deletePayroll(id);
+      if (!success) {
+        return res.status(404).json({ message: "Payroll record not found" });
+      }
+      
+      res.status(204).send();
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  // Payment routes
+  app.get("/api/payments", async (req: Request, res: Response) => {
+    try {
+      const payments = await storage.getAllPayments();
+      res.json(payments);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.get("/api/payments/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid payment ID" });
+      }
+      
+      const payment = await storage.getPayment(id);
+      if (!payment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+      
+      res.json(payment);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.get("/api/payments/payroll/:payrollId", async (req: Request, res: Response) => {
+    try {
+      const payrollId = parseInt(req.params.payrollId);
+      if (isNaN(payrollId)) {
+        return res.status(400).json({ message: "Invalid payroll ID" });
+      }
+      
+      const payments = await storage.getPaymentsByPayrollId(payrollId);
+      res.json(payments);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.post("/api/payments", async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertPaymentSchema.parse(req.body);
+      const payment = await storage.createPayment(validatedData);
+      res.status(201).json(payment);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.patch("/api/payments/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid payment ID" });
+      }
+      
+      const validatedData = insertPaymentSchema.partial().parse(req.body);
+      const updatedPayment = await storage.updatePayment(id, validatedData);
+      
+      if (!updatedPayment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+      
+      res.json(updatedPayment);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.delete("/api/payments/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid payment ID" });
+      }
+      
+      const success = await storage.deletePayment(id);
+      if (!success) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+      
+      res.status(204).send();
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  // Create a server instance
+  const httpServer = createServer(app);
+  return httpServer;
+}
