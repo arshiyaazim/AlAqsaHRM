@@ -8,13 +8,17 @@ import {
   FileText,
   Settings,
   UserPlus,
-  X
+  X,
+  ArrowDownCircle,
+  ArrowUpCircle
 } from "lucide-react";
 
 const navigationItems = [
   { name: "Dashboard", href: "/", icon: Home },
   { name: "Employees", href: "/employees", icon: Users },
   { name: "Attendance", href: "/attendance", icon: Calendar },
+  { name: "Daily Expenditure", href: "/expenditures", icon: ArrowUpCircle },
+  { name: "Daily Income", href: "/incomes", icon: ArrowDownCircle },
   { name: "Payroll", href: "/payroll", icon: DollarSign },
   { name: "Reports", href: "/reports", icon: FileText },
   { name: "Settings", href: "/settings", icon: Settings },

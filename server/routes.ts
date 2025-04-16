@@ -537,6 +537,220 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Daily Expenditure routes
+  app.get("/api/expenditures", async (req: Request, res: Response) => {
+    try {
+      const expenditures = await storage.getAllDailyExpenditures();
+      res.json(expenditures);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.get("/api/expenditures/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid expenditure ID" });
+      }
+      
+      const expenditure = await storage.getDailyExpenditure(id);
+      if (!expenditure) {
+        return res.status(404).json({ message: "Expenditure record not found" });
+      }
+      
+      res.json(expenditure);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.get("/api/expenditures/date/:date", async (req: Request, res: Response) => {
+    try {
+      const dateParam = req.params.date;
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      
+      if (!dateRegex.test(dateParam)) {
+        return res.status(400).json({ message: "Invalid date format. Use YYYY-MM-DD." });
+      }
+      
+      const date = new Date(dateParam);
+      const expenditures = await storage.getDailyExpendituresByDate(date);
+      res.json(expenditures);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.get("/api/expenditures/employee/:employeeId", async (req: Request, res: Response) => {
+    try {
+      const employeeId = parseInt(req.params.employeeId);
+      if (isNaN(employeeId)) {
+        return res.status(400).json({ message: "Invalid employee ID" });
+      }
+      
+      const expenditures = await storage.getDailyExpendituresByEmployeeId(employeeId);
+      res.json(expenditures);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.get("/api/expenditures/loan-advances/:employeeId", async (req: Request, res: Response) => {
+    try {
+      const employeeId = parseInt(req.params.employeeId);
+      if (isNaN(employeeId)) {
+        return res.status(400).json({ message: "Invalid employee ID" });
+      }
+      
+      const loanAdvances = await storage.getLoanAdvancesByEmployeeId(employeeId);
+      res.json({ employeeId, loanAdvances });
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.post("/api/expenditures", async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertDailyExpenditureSchema.parse(req.body);
+      const expenditure = await storage.createDailyExpenditure(validatedData);
+      res.status(201).json(expenditure);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.patch("/api/expenditures/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid expenditure ID" });
+      }
+      
+      const validatedData = insertDailyExpenditureSchema.partial().parse(req.body);
+      const updatedExpenditure = await storage.updateDailyExpenditure(id, validatedData);
+      
+      if (!updatedExpenditure) {
+        return res.status(404).json({ message: "Expenditure record not found" });
+      }
+      
+      res.json(updatedExpenditure);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.delete("/api/expenditures/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid expenditure ID" });
+      }
+      
+      const success = await storage.deleteDailyExpenditure(id);
+      if (!success) {
+        return res.status(404).json({ message: "Expenditure record not found" });
+      }
+      
+      res.status(204).send();
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  // Daily Income routes
+  app.get("/api/incomes", async (req: Request, res: Response) => {
+    try {
+      const incomes = await storage.getAllDailyIncomes();
+      res.json(incomes);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.get("/api/incomes/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid income ID" });
+      }
+      
+      const income = await storage.getDailyIncome(id);
+      if (!income) {
+        return res.status(404).json({ message: "Income record not found" });
+      }
+      
+      res.json(income);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.get("/api/incomes/date/:date", async (req: Request, res: Response) => {
+    try {
+      const dateParam = req.params.date;
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      
+      if (!dateRegex.test(dateParam)) {
+        return res.status(400).json({ message: "Invalid date format. Use YYYY-MM-DD." });
+      }
+      
+      const date = new Date(dateParam);
+      const incomes = await storage.getDailyIncomesByDate(date);
+      res.json(incomes);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.post("/api/incomes", async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertDailyIncomeSchema.parse(req.body);
+      const income = await storage.createDailyIncome(validatedData);
+      res.status(201).json(income);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.patch("/api/incomes/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid income ID" });
+      }
+      
+      const validatedData = insertDailyIncomeSchema.partial().parse(req.body);
+      const updatedIncome = await storage.updateDailyIncome(id, validatedData);
+      
+      if (!updatedIncome) {
+        return res.status(404).json({ message: "Income record not found" });
+      }
+      
+      res.json(updatedIncome);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.delete("/api/incomes/:id", async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid income ID" });
+      }
+      
+      const success = await storage.deleteDailyIncome(id);
+      if (!success) {
+        return res.status(404).json({ message: "Income record not found" });
+      }
+      
+      res.status(204).send();
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
   app.post("/api/schema/customField", async (req: Request, res: Response) => {
     try {
       const { entity, operation, field } = req.body;
