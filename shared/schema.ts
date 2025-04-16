@@ -52,6 +52,38 @@ export const insertAttendanceSchema = createInsertSchema(attendance).omit({
   id: true,
 });
 
+// Daily Expenditure schema
+export const dailyExpenditure = pgTable("daily_expenditure", {
+  id: serial("id").primaryKey(),
+  date: date("date").notNull().defaultNow(),
+  employeeId: integer("employee_id").notNull(),
+  payment: numeric("payment").default("0"),
+  loanAdvance: numeric("loan_advance").default("0"),
+  remarks: text("remarks"),
+  timestamp: timestamp("timestamp").defaultNow(),
+});
+
+export const insertDailyExpenditureSchema = createInsertSchema(dailyExpenditure).omit({
+  id: true,
+  timestamp: true,
+});
+
+// Daily Income schema
+export const dailyIncome = pgTable("daily_income", {
+  id: serial("id").primaryKey(),
+  date: date("date").notNull().defaultNow(),
+  receivedFrom: text("received_from").notNull(),
+  amount: numeric("amount").notNull(),
+  description: text("description"),
+  remarks: text("remarks"),
+  timestamp: timestamp("timestamp").defaultNow(),
+});
+
+export const insertDailyIncomeSchema = createInsertSchema(dailyIncome).omit({
+  id: true,
+  timestamp: true,
+});
+
 // Payroll schema
 export const payroll = pgTable("payroll", {
   id: serial("id").primaryKey(),
@@ -61,9 +93,10 @@ export const payroll = pgTable("payroll", {
   daysWorked: integer("days_worked").notNull(),
   basicAmount: numeric("basic_amount").notNull(),
   conveyanceAllowance: numeric("conveyance_allowance").default("0"),
-  advancePayment: numeric("advance_payment").default("0"),
+  advancePayment: numeric("advance_payment").default("0"), // Cumulative from daily expenditure
   fines: numeric("fines").default("0"),
-  totalAmount: numeric("total_amount").notNull(),
+  totalAmount: numeric("total_amount").notNull(), // Basic + Allowances
+  payableSalary: numeric("payable_salary").notNull(), // Total - Advance - Fines
   paymentDate: date("payment_date"),
   status: text("status").notNull(), // Pending, Completed
   remarks: text("remarks"),
@@ -116,6 +149,12 @@ export type InsertProject = z.infer<typeof insertProjectSchema>;
 
 export type Attendance = typeof attendance.$inferSelect;
 export type InsertAttendance = z.infer<typeof insertAttendanceSchema>;
+
+export type DailyExpenditure = typeof dailyExpenditure.$inferSelect;
+export type InsertDailyExpenditure = z.infer<typeof insertDailyExpenditureSchema>;
+
+export type DailyIncome = typeof dailyIncome.$inferSelect;
+export type InsertDailyIncome = z.infer<typeof insertDailyIncomeSchema>;
 
 export type Payroll = typeof payroll.$inferSelect;
 export type InsertPayroll = z.infer<typeof insertPayrollSchema>;

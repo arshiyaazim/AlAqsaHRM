@@ -5,6 +5,8 @@ import {
   insertEmployeeSchema, 
   insertProjectSchema, 
   insertAttendanceSchema, 
+  insertDailyExpenditureSchema,
+  insertDailyIncomeSchema,
   insertPayrollSchema, 
   insertPaymentSchema,
   insertDashboardStatsSchema

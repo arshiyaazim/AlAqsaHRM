@@ -2,6 +2,8 @@ import {
   Employee, InsertEmployee, 
   Project, InsertProject,
   Attendance, InsertAttendance,
+  DailyExpenditure, InsertDailyExpenditure,
+  DailyIncome, InsertDailyIncome,
   Payroll, InsertPayroll,
   Payment, InsertPayment,
   DashboardStats, InsertDashboardStats,
@@ -33,6 +35,24 @@ export interface IStorage {
   updateAttendance(id: number, attendance: Partial<InsertAttendance>): Promise<Attendance | undefined>;
   deleteAttendance(id: number): Promise<boolean>;
   
+  // Daily Expenditure operations
+  getAllDailyExpenditures(): Promise<DailyExpenditure[]>;
+  getDailyExpenditure(id: number): Promise<DailyExpenditure | undefined>;
+  getDailyExpendituresByDate(date: Date): Promise<DailyExpenditure[]>;
+  getDailyExpendituresByEmployeeId(employeeId: number): Promise<DailyExpenditure[]>;
+  getLoanAdvancesByEmployeeId(employeeId: number): Promise<number>;
+  createDailyExpenditure(expenditure: InsertDailyExpenditure): Promise<DailyExpenditure>;
+  updateDailyExpenditure(id: number, expenditure: Partial<InsertDailyExpenditure>): Promise<DailyExpenditure | undefined>;
+  deleteDailyExpenditure(id: number): Promise<boolean>;
+  
+  // Daily Income operations
+  getAllDailyIncomes(): Promise<DailyIncome[]>;
+  getDailyIncome(id: number): Promise<DailyIncome | undefined>;
+  getDailyIncomesByDate(date: Date): Promise<DailyIncome[]>;
+  createDailyIncome(income: InsertDailyIncome): Promise<DailyIncome>;
+  updateDailyIncome(id: number, income: Partial<InsertDailyIncome>): Promise<DailyIncome | undefined>;
+  deleteDailyIncome(id: number): Promise<boolean>;
+  
   // Payroll operations
   getAllPayrolls(): Promise<Payroll[]>;
   getPayroll(id: number): Promise<Payroll | undefined>;
@@ -58,6 +78,8 @@ export class MemStorage implements IStorage {
   private employees: Map<number, Employee>;
   private projects: Map<number, Project>;
   private attendance: Map<number, Attendance>;
+  private dailyExpenditures: Map<number, DailyExpenditure>;
+  private dailyIncomes: Map<number, DailyIncome>;
   private payrolls: Map<number, Payroll>;
   private payments: Map<number, Payment>;
   private dashboardStats: DashboardStats | undefined;
@@ -65,6 +87,8 @@ export class MemStorage implements IStorage {
   private employeeIdCounter: number;
   private projectIdCounter: number;
   private attendanceIdCounter: number;
+  private dailyExpenditureIdCounter: number;
+  private dailyIncomeIdCounter: number;
   private payrollIdCounter: number;
   private paymentIdCounter: number;
   
@@ -72,12 +96,16 @@ export class MemStorage implements IStorage {
     this.employees = new Map();
     this.projects = new Map();
     this.attendance = new Map();
+    this.dailyExpenditures = new Map();
+    this.dailyIncomes = new Map();
     this.payrolls = new Map();
     this.payments = new Map();
     
     this.employeeIdCounter = 1;
     this.projectIdCounter = 1;
     this.attendanceIdCounter = 1;
+    this.dailyExpenditureIdCounter = 1;
+    this.dailyIncomeIdCounter = 1;
     this.payrollIdCounter = 1;
     this.paymentIdCounter = 1;
     
@@ -227,6 +255,46 @@ export class MemStorage implements IStorage {
     
     paymentRecords.forEach(record => this.createPayment(record));
     
+    // Create sample daily expenditure records
+    const dailyExpenditureRecords: InsertDailyExpenditure[] = [
+      {
+        date: today,
+        employeeId: 1,
+        payment: "500.00",
+        loanAdvance: "200.00",
+        remarks: "Advance payment for tools"
+      },
+      {
+        date: today,
+        employeeId: 2,
+        payment: "450.00",
+        loanAdvance: "100.00",
+        remarks: "Weekly payment"
+      }
+    ];
+    
+    dailyExpenditureRecords.forEach(record => this.createDailyExpenditure(record));
+    
+    // Create sample daily income records
+    const dailyIncomeRecords: InsertDailyIncome[] = [
+      {
+        date: today,
+        receivedFrom: "Client A",
+        amount: "5000.00",
+        description: "Project advance payment",
+        remarks: "First installment"
+      },
+      {
+        date: today,
+        receivedFrom: "Client B",
+        amount: "2500.00",
+        description: "Material reimbursement",
+        remarks: "For Project B"
+      }
+    ];
+    
+    dailyIncomeRecords.forEach(record => this.createDailyIncome(record));
+    
     // Initialize dashboard stats
     const stats: InsertDashboardStats = {
       date: today,
@@ -351,6 +419,104 @@ export class MemStorage implements IStorage {
   
   async deleteAttendance(id: number): Promise<boolean> {
     return this.attendance.delete(id);
+  }
+  
+  // Daily Expenditure operations
+  async getAllDailyExpenditures(): Promise<DailyExpenditure[]> {
+    return Array.from(this.dailyExpenditures.values());
+  }
+  
+  async getDailyExpenditure(id: number): Promise<DailyExpenditure | undefined> {
+    return this.dailyExpenditures.get(id);
+  }
+  
+  async getDailyExpendituresByDate(date: Date): Promise<DailyExpenditure[]> {
+    const dateString = date.toISOString().split('T')[0];
+    return Array.from(this.dailyExpenditures.values()).filter(
+      (record) => {
+        if (typeof record.date === 'string') {
+          return record.date.split('T')[0] === dateString;
+        } else {
+          return record.date.toISOString().split('T')[0] === dateString;
+        }
+      }
+    );
+  }
+  
+  async getDailyExpendituresByEmployeeId(employeeId: number): Promise<DailyExpenditure[]> {
+    return Array.from(this.dailyExpenditures.values()).filter(
+      (record) => record.employeeId === employeeId
+    );
+  }
+  
+  async getLoanAdvancesByEmployeeId(employeeId: number): Promise<number> {
+    const records = await this.getDailyExpendituresByEmployeeId(employeeId);
+    return records.reduce(
+      (total, record) => total + parseFloat(record.loanAdvance.toString() || "0"), 
+      0
+    );
+  }
+  
+  async createDailyExpenditure(expenditure: InsertDailyExpenditure): Promise<DailyExpenditure> {
+    const id = this.dailyExpenditureIdCounter++;
+    const newExpenditure = { ...expenditure, id, timestamp: new Date() };
+    this.dailyExpenditures.set(id, newExpenditure);
+    return newExpenditure;
+  }
+  
+  async updateDailyExpenditure(id: number, expenditure: Partial<InsertDailyExpenditure>): Promise<DailyExpenditure | undefined> {
+    const existingExpenditure = this.dailyExpenditures.get(id);
+    if (!existingExpenditure) return undefined;
+    
+    const updatedExpenditure = { ...existingExpenditure, ...expenditure };
+    this.dailyExpenditures.set(id, updatedExpenditure);
+    return updatedExpenditure;
+  }
+  
+  async deleteDailyExpenditure(id: number): Promise<boolean> {
+    return this.dailyExpenditures.delete(id);
+  }
+  
+  // Daily Income operations
+  async getAllDailyIncomes(): Promise<DailyIncome[]> {
+    return Array.from(this.dailyIncomes.values());
+  }
+  
+  async getDailyIncome(id: number): Promise<DailyIncome | undefined> {
+    return this.dailyIncomes.get(id);
+  }
+  
+  async getDailyIncomesByDate(date: Date): Promise<DailyIncome[]> {
+    const dateString = date.toISOString().split('T')[0];
+    return Array.from(this.dailyIncomes.values()).filter(
+      (record) => {
+        if (typeof record.date === 'string') {
+          return record.date.split('T')[0] === dateString;
+        } else {
+          return record.date.toISOString().split('T')[0] === dateString;
+        }
+      }
+    );
+  }
+  
+  async createDailyIncome(income: InsertDailyIncome): Promise<DailyIncome> {
+    const id = this.dailyIncomeIdCounter++;
+    const newIncome = { ...income, id, timestamp: new Date() };
+    this.dailyIncomes.set(id, newIncome);
+    return newIncome;
+  }
+  
+  async updateDailyIncome(id: number, income: Partial<InsertDailyIncome>): Promise<DailyIncome | undefined> {
+    const existingIncome = this.dailyIncomes.get(id);
+    if (!existingIncome) return undefined;
+    
+    const updatedIncome = { ...existingIncome, ...income };
+    this.dailyIncomes.set(id, updatedIncome);
+    return updatedIncome;
+  }
+  
+  async deleteDailyIncome(id: number): Promise<boolean> {
+    return this.dailyIncomes.delete(id);
   }
   
   // Payroll operations
