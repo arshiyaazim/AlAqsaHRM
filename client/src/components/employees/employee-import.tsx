@@ -12,7 +12,9 @@ import {
   Download, 
   Trash2, 
   ExternalLink,
-  Eye
+  Eye,
+  UserPlus,
+  Database
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { importEmployeesFromExcel, hasAllowedExtension, formatFileSize } from "@/lib/fileUtils";

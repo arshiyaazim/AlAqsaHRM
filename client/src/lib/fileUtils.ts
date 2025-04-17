@@ -62,6 +62,45 @@ export async function importEmployeesFromExcel(filePath: string): Promise<any> {
 }
 
 /**
+ * Directly imports employees from Excel file to the database
+ * This is a one-click solution that both parses the Excel and creates/updates employees
+ * @param filePath The path to the Excel file to import
+ * @returns A promise that resolves to the server response
+ */
+export async function directImportEmployeesFromExcel(filePath: string): Promise<any> {
+  console.log('DirectImportEmployeesFromExcel called with path:', filePath);
+  
+  try {
+    const response = await fetch("/api/import/employees/direct", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ filePath }),
+    });
+    
+    if (!response.ok) {
+      let errorMsg = "Error directly importing employees";
+      try {
+        const errorData = await response.json();
+        errorMsg = errorData.message || errorMsg;
+        console.error('Direct import error response:', errorData);
+      } catch (err) {
+        console.error('Failed to parse error response', err);
+      }
+      throw new Error(errorMsg);
+    }
+    
+    const responseData = await response.json();
+    console.log('Direct import successful, received response:', responseData);
+    return responseData;
+  } catch (error) {
+    console.error('Error during direct employee import:', error);
+    throw error;
+  }
+}
+
+/**
  * Checks if a file has an allowed extension
  * @param file The file to check
  * @param allowedExtensions Array of allowed extensions
