@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { useState, useEffect } from "react";
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -20,6 +21,7 @@ interface HeaderProps {
 export default function Header({ onMenuClick }: HeaderProps) {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const [userInfo, setUserInfo] = useState({ name: 'Admin User' });
   
   const handleLogout = async () => {
     try {
@@ -41,7 +43,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
         });
         
         // Redirect to login page
-        navigate('/auth');
+        setLocation('/auth');
       } else {
         throw new Error('Logout failed');
       }
@@ -53,6 +55,24 @@ export default function Header({ onMenuClick }: HeaderProps) {
       });
     }
   };
+  
+  // Get user info from API or localStorage
+  useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      try {
+        // Decode JWT token to get user info
+        const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+        if (tokenPayload) {
+          setUserInfo({
+            name: tokenPayload.fullName || tokenPayload.email || 'User'
+          });
+        }
+      } catch (error) {
+        console.error('Error decoding JWT token:', error);
+      }
+    }
+  }, []);
   
   // Company name from localStorage (will be implemented in settings)
   const companyName = localStorage.getItem('companyName') || 'HR & Payroll';
@@ -92,13 +112,13 @@ export default function Header({ onMenuClick }: HeaderProps) {
                   <AvatarImage src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt="User profile" />
                   <AvatarFallback>AU</AvatarFallback>
                 </Avatar>
-                <span className="ml-2 text-sm font-medium text-gray-700 hidden md:block">Admin User</span>
+                <span className="ml-2 text-sm font-medium text-gray-700 hidden md:block">{userInfo.name}</span>
               </div>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate('/settings')}>
+              <DropdownMenuItem onClick={() => setLocation('/settings')}>
                 Settings
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleLogout} className="text-red-600">

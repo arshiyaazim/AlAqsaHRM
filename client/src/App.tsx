@@ -23,6 +23,7 @@ import ProcessPayroll from "@/pages/payroll/process";
 import Reports from "@/pages/reports/index";
 import Settings from "@/pages/settings";
 import AuthPage from "@/pages/auth-page";
+import UsersPage from "@/pages/users";
 
 function Router() {
   const [location] = useLocation();
@@ -58,6 +59,7 @@ function Router() {
       <Route path="/payroll/process" component={ProcessPayroll} />
       <Route path="/reports" component={Reports} />
       <Route path="/settings" component={Settings} />
+      <Route path="/users" component={UsersPage} />
       <Route component={NotFound} />
     </Switch>
   );
