@@ -1,0 +1,64 @@
+Create a complete login, logout, and sign-up system with role-based access. Use SQLite for the backend database. Include the following features:
+
+1. **Predefined Admin User (manually inserted)**:
+   - First Name: Md. Muradul
+   - Last Name: Alam
+   - Full Name: Md. Muradul Alam
+   - Email: asls.guards@gmail.com
+   - Password (hashed): Arshiya$2011
+   - Role: Admin
+   - Employee ID: 01958122300
+
+2. **Sign-Up Page**:
+   - Fields: First Name, Last Name, Email, Password, Employee ID
+   - Default role: "Viewer"
+   - Passwords must be hashed securely using bcrypt
+
+3. **Login Page**:
+   - Email and password login
+   - Store user session with ID and role
+
+4. **Logout**:
+   - Destroys session and redirects to login
+
+5. **User Roles**:
+   - Admin: full access to dashboard and user management
+   - HR: access to payroll, attendance, employee info
+   - Viewer: view-only access to public pages
+
+6. **Admin User Management Dashboard** (`/admin/users`):
+   - View list of users with name, email, role
+   - Admin can:
+     - Change any user’s role (Viewer, HR, Admin)
+     - Delete any user from the system
+   - Display messages on success/failure actions
+
+7. **Access Protection**:
+   - Viewer: can only view basic info
+   - HR: can access/edit only assigned forms
+   - Admin: can view/edit all, and manage users
+   - Block unauthorized access to admin routes
+
+8. **Database (SQLite)**:
+   - `users` table fields:
+     - id (int, primary key)
+     - first_name
+     - last_name
+     - full_name
+     - email (unique)
+     - password_hash
+     - role
+     - employee_id
+     - created_at
+
+9. **Frontend (HTML + Bootstrap)**:
+   - Templates: `signup.html`, `login.html`, `dashboard.html`, `admin_users.html`
+   - Use Bootstrap or clean HTML layout
+
+10. **Extras**:
+   - Automatically create the Admin user in the database when the app starts (if not already exists)
+   - Include comments in code
+   - Show role-specific dashboards after login
+   - Provide instructions for deployment on Replit
+
+Please generate all necessary code: Flask routes, templates, static files, DB creation, and logic to pre-insert the Admin user.

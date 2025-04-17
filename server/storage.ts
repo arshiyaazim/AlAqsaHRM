@@ -7,12 +7,23 @@ import {
   Payroll, InsertPayroll,
   Payment, InsertPayment,
   DashboardStats, InsertDashboardStats,
-  employees, projects, attendance, dailyExpenditure, dailyIncome, payroll, payments, dashboardStats
+  User, InsertUser,
+  employees, projects, attendance, dailyExpenditure, dailyIncome, payroll, payments, dashboardStats, users
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, sql, gte, lte } from "drizzle-orm";
 
 export interface IStorage {
+  // User operations
+  getAllUsers(): Promise<User[]>;
+  getUser(id: number): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByCredentials(email: string, password: string): Promise<User | undefined>;
+  createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, user: Partial<InsertUser>): Promise<User | undefined>;
+  updateUserRole(id: number, role: string): Promise<User | undefined>;
+  deleteUser(id: number): Promise<boolean>;
+  
   // Employee operations
   getAllEmployees(): Promise<Employee[]>;
   getEmployee(id: number): Promise<Employee | undefined>;
@@ -78,6 +89,7 @@ export interface IStorage {
 }
 
 export class MemStorage implements IStorage {
+  private users: Map<number, User>;
   private employees: Map<number, Employee>;
   private projects: Map<number, Project>;
   private attendance: Map<number, Attendance>;
@@ -87,6 +99,7 @@ export class MemStorage implements IStorage {
   private payments: Map<number, Payment>;
   private dashboardStats: DashboardStats | undefined;
   
+  private userIdCounter: number;
   private employeeIdCounter: number;
   private projectIdCounter: number;
   private attendanceIdCounter: number;
@@ -96,6 +109,7 @@ export class MemStorage implements IStorage {
   private paymentIdCounter: number;
   
   constructor() {
+    this.users = new Map();
     this.employees = new Map();
     this.projects = new Map();
     this.attendance = new Map();
@@ -104,6 +118,7 @@ export class MemStorage implements IStorage {
     this.payrolls = new Map();
     this.payments = new Map();
     
+    this.userIdCounter = 1;
     this.employeeIdCounter = 1;
     this.projectIdCounter = 1;
     this.attendanceIdCounter = 1;
@@ -117,6 +132,20 @@ export class MemStorage implements IStorage {
   }
   
   private initializeData() {
+    // Add admin user
+    const adminUser: InsertUser = {
+      firstName: "Md.",
+      lastName: "Muradul Alam",
+      email: "asls.guards@gmail.com",
+      password: "Arshiya$2011", // Will be hashed before storing
+      role: "admin",
+      employeeId: "01958122300",
+      fullName: "Md. Muradul Alam",
+      isActive: true
+    };
+    
+    this.createUser(adminUser);
+    
     // Add a few sample projects
     const projects: InsertProject[] = [
       {
