@@ -103,9 +103,11 @@ export default function AuthPage() {
       
       toast({
         title: "Registration successful",
-        description: "Your account has been created. Welcome!",
+        description: "Your request is pending. We will send a confirmation email after your request is approved.",
       });
-      setLocation("/");
+      
+      // Show success dialog instead of redirecting
+      setActiveTab("registration-pending");
     } catch (error) {
       toast({
         title: "Registration failed",
@@ -286,13 +288,52 @@ export default function AuthPage() {
                   </form>
                 </Form>
               </TabsContent>
+              
+              {/* Registration Pending Screen */}
+              <TabsContent value="registration-pending" className="text-center">
+                <div className="flex flex-col items-center justify-center space-y-4 py-6">
+                  <div className="rounded-full bg-primary/10 p-3 text-primary">
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      width="24" 
+                      height="24" 
+                      viewBox="0 0 24 24" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      strokeWidth="2" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      className="w-10 h-10"
+                    >
+                      <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path>
+                      <path d="m9 12 2 2 4-4"></path>
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-semibold">Registration Pending</h3>
+                  <p className="text-muted-foreground max-w-md">
+                    Your account registration has been submitted successfully. An administrator will review your request.
+                  </p>
+                  <p className="text-muted-foreground">
+                    You will receive an email notification once your account is approved.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    className="mt-4"
+                    onClick={() => setActiveTab("login")}
+                  >
+                    Return to Login
+                  </Button>
+                </div>
+              </TabsContent>
             </Tabs>
           </CardContent>
           <CardFooter className="flex justify-center text-sm text-muted-foreground">
             {activeTab === "login" ? (
               <p>Don't have an account? <Button variant="link" className="p-0" onClick={() => setActiveTab("register")}>Sign up</Button></p>
-            ) : (
+            ) : activeTab === "register" ? (
               <p>Already have an account? <Button variant="link" className="p-0" onClick={() => setActiveTab("login")}>Log in</Button></p>
+            ) : (
+              <p></p> /* Empty for registration-pending tab */
             )}
           </CardFooter>
         </Card>
