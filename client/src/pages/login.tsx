@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { useLocation } from 'wouter';
-import { useAuth } from '@/hooks/useAuth';
+import useAuth from '@/hooks/useAuth';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
