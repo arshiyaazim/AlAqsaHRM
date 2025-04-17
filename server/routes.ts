@@ -18,7 +18,6 @@ import { readEmployeeExcel } from "./utils/excelImport";
 import { upload, handleFileUploadErrors } from "./utils/fileUpload";
 import path from "path";
 
-  export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.post("/api/auth/login", async (req: Request, res: Response) => {
     try {
