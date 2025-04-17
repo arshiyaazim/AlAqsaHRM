@@ -30,6 +30,7 @@ import useAuth from "@/hooks/useAuth";
 function Router() {
   return (
     <Switch>
+      <Route path="/login" component={LoginPage} />
       <Route path="/" component={Dashboard} />
       <Route path="/employees" component={EmployeeList} />
       <Route path="/employees/add" component={AddEmployee} />
@@ -54,23 +55,8 @@ function Router() {
 
 function App() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [location, setLocation] = useLocation();
-  const { token, user } = useAuth();
+  const [location] = useLocation();
   
-  useEffect(() => {
-    if (!token && location !== '/login') {
-      setLocation('/login');
-    }
-  }, [token, location]);
-
-  if (!token && location !== '/login') {
-    return null;
-  }
-
-  if (location === '/login') {
-    return <LoginPage />;
-  }
-
   // Close mobile sidebar when location changes
   useEffect(() => {
     setIsMobileSidebarOpen(false);
@@ -79,15 +65,17 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <div className="flex h-screen overflow-hidden bg-[#F7FAFC]">
-        <Sidebar />
-        <MobileSidebar 
-          isOpen={isMobileSidebarOpen} 
-          onClose={() => setIsMobileSidebarOpen(false)} 
-        />
+        {location !== "/login" && <Sidebar />}
+        {location !== "/login" && (
+          <MobileSidebar 
+            isOpen={isMobileSidebarOpen} 
+            onClose={() => setIsMobileSidebarOpen(false)} 
+          />
+        )}
         
         <div className="flex-1 flex flex-col overflow-hidden">
-          <Header onMenuClick={() => setIsMobileSidebarOpen(true)} />
-          <main className="flex-1 overflow-y-auto bg-[#F7FAFC] p-4 sm:p-6 lg:p-8">
+          {location !== "/login" && <Header onMenuClick={() => setIsMobileSidebarOpen(true)} />}
+          <main className={`flex-1 overflow-y-auto ${location !== "/login" ? "bg-[#F7FAFC] p-4 sm:p-6 lg:p-8" : ""}`}>
             <Router />
           </main>
         </div>

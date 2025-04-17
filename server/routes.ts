@@ -32,6 +32,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     return res.status(500).json({ message: err.message || "Internal server error" });
   };
+  
+  // Auth routes
+  app.post("/api/auth/login", async (req: Request, res: Response) => {
+    try {
+      const { username, password } = req.body;
+      // For testing purposes, allow any login
+      res.json({ 
+        token: "test-token", 
+        user: { 
+          id: 1, 
+          username: username || "admin", 
+          role: "admin" 
+        } 
+      });
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
 
   // Dashboard stats routes
   app.get("/api/dashboard", async (req: Request, res: Response) => {

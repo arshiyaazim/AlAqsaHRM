@@ -8,7 +8,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [, setLocation] = useLocation();
-  const { login } = useAuth();
+  const { setAuth } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,7 +22,7 @@ export default function LoginPage() {
       if (!res.ok) throw new Error('Invalid credentials');
       
       const data = await res.json();
-      login(data.token, data.user);
+      setAuth(data.token, data.user);
       setLocation('/');
     } catch (err) {
       setError('Invalid username or password');
