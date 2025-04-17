@@ -14,6 +14,16 @@ import { db } from "./db";
 import { and, eq, sql, gte, lte } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
+// Interface for uploaded files
+export interface UploadedFile {
+  id: string;
+  name: string;
+  path: string;
+  size: number;
+  mimeType: string;
+  uploadDate: string;
+}
+
 export interface IStorage {
   // User operations
   getAllUsers(): Promise<User[]>;
@@ -24,6 +34,12 @@ export interface IStorage {
   updateUser(id: number, user: Partial<InsertUser>): Promise<User | undefined>;
   updateUserRole(id: number, role: string): Promise<User | undefined>;
   deleteUser(id: number): Promise<boolean>;
+  
+  // File operations
+  getUploadedFiles(): Promise<UploadedFile[]>;
+  getUploadedFile(id: string): Promise<UploadedFile | undefined>;
+  saveUploadedFile(file: UploadedFile): Promise<UploadedFile>;
+  deleteUploadedFile(id: string): Promise<boolean>;
   
   // Employee operations
   getAllEmployees(): Promise<Employee[]>;
@@ -165,6 +181,115 @@ export class DatabaseStorage implements IStorage {
   async deleteUser(id: number): Promise<boolean> {
     const result = await db.delete(users).where(eq(users.id, id));
     return !!result.rowCount;
+  }
+  
+  // File operations
+  async getUploadedFiles(): Promise<UploadedFile[]> {
+    // Since we don't have a formal table for files, we'll read from the uploads directory
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const { promisify } = require('util');
+      const readdir = promisify(fs.readdir);
+      const stat = promisify(fs.stat);
+      
+      const uploadsDir = path.join(process.cwd(), 'uploads');
+      
+      // Check if uploads directory exists
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+        return [];
+      }
+      
+      // Get all files in the uploads directory
+      const files = await readdir(uploadsDir);
+      
+      // Get details for each file
+      const fileDetailsPromises = files.map(async (filename: string) => {
+        const filePath = path.join(uploadsDir, filename);
+        const stats = await stat(filePath);
+        
+        // Skip directories
+        if (stats.isDirectory()) return null;
+        
+        // Get file extension to determine mime type
+        const ext = path.extname(filename).toLowerCase();
+        let mimeType = 'application/octet-stream'; // Default mime type
+        
+        // Map common extensions to mime types
+        const mimeTypes: Record<string, string> = {
+          '.jpg': 'image/jpeg',
+          '.jpeg': 'image/jpeg',
+          '.png': 'image/png',
+          '.gif': 'image/gif',
+          '.pdf': 'application/pdf',
+          '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          '.xls': 'application/vnd.ms-excel',
+          '.csv': 'text/csv',
+        };
+        
+        if (mimeTypes[ext]) {
+          mimeType = mimeTypes[ext];
+        }
+        
+        return {
+          id: Buffer.from(filePath).toString('base64'),
+          name: filename,
+          path: path.relative(process.cwd(), filePath).replace(/\\/g, '/'),
+          size: stats.size,
+          mimeType,
+          uploadDate: stats.mtime.toISOString(),
+        };
+      });
+      
+      // Filter out directories (null values) and sort by upload date (newest first)
+      const fileDetails = (await Promise.all(fileDetailsPromises))
+        .filter(Boolean)
+        .sort((a, b) => new Date(b!.uploadDate).getTime() - new Date(a!.uploadDate).getTime());
+      
+      return fileDetails as UploadedFile[];
+    } catch (error) {
+      console.error('Error getting uploaded files:', error);
+      return [];
+    }
+  }
+  
+  async getUploadedFile(id: string): Promise<UploadedFile | undefined> {
+    try {
+      // Get all files and find the one with matching ID
+      const files = await this.getUploadedFiles();
+      return files.find(file => file.id === id);
+    } catch (error) {
+      console.error('Error getting uploaded file:', error);
+      return undefined;
+    }
+  }
+  
+  async saveUploadedFile(file: UploadedFile): Promise<UploadedFile> {
+    // This is mostly handled by the multer middleware
+    // This method is a placeholder for any additional processing or database tracking
+    return file;
+  }
+  
+  async deleteUploadedFile(id: string): Promise<boolean> {
+    try {
+      const fs = require('fs');
+      const { promisify } = require('util');
+      const unlink = promisify(fs.unlink);
+      
+      // Get the file
+      const file = await this.getUploadedFile(id);
+      if (!file) return false;
+      
+      // Delete the file from the filesystem
+      const filePath = file.path;
+      await unlink(filePath);
+      
+      return true;
+    } catch (error) {
+      console.error('Error deleting uploaded file:', error);
+      return false;
+    }
   }
   
   // Employee operations

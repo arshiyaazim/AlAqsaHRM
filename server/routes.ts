@@ -997,11 +997,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const filePath = req.file.path;
       const fileName = req.file.originalname;
       
-      res.status(200).json({
-        message: "File uploaded successfully",
-        filePath: filePath,
-        fileName: fileName
-      });
+      // Create file metadata
+      const fileData = {
+        id: Buffer.from(filePath).toString('base64'),
+        name: fileName,
+        path: filePath.replace(/\\/g, "/"),
+        size: req.file.size,
+        mimeType: req.file.mimetype,
+        uploadDate: new Date().toISOString()
+      };
+      
+      // Save file metadata
+      storage.saveUploadedFile(fileData)
+        .then(() => {
+          res.status(200).json({
+            message: "File uploaded successfully",
+            filePath: filePath.replace(/\\/g, "/"),
+            fileName
+          });
+        })
+        .catch(error => {
+          console.error("Error saving file metadata:", error);
+          res.status(200).json({
+            message: "File uploaded successfully but metadata not saved",
+            filePath: filePath.replace(/\\/g, "/"),
+            fileName
+          });
+        });
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  // Get all uploaded files
+  app.get("/api/files", async (req: Request, res: Response) => {
+    try {
+      const files = await storage.getUploadedFiles();
+      res.json(files);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  // Get a specific file by ID
+  app.get("/api/files/:id", async (req: Request, res: Response) => {
+    try {
+      const file = await storage.getUploadedFile(req.params.id);
+      if (!file) {
+        return res.status(404).json({ message: "File not found" });
+      }
+      res.json(file);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  // Delete a file
+  app.delete("/api/files/:id", async (req: Request, res: Response) => {
+    try {
+      const deleted = await storage.deleteUploadedFile(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "File not found or could not be deleted" });
+      }
+      res.json({ message: "File deleted successfully" });
     } catch (err) {
       handleError(err, res);
     }

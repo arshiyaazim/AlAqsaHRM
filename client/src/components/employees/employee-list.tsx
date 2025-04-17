@@ -30,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import PredictiveSearch from "@/components/common/predictive-search";
 import {
   Dialog,
   DialogContent,
@@ -45,11 +46,13 @@ import { queryClient } from "@/lib/queryClient";
 
 export default function EmployeeList() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [filteredEmployees, setFilteredEmployees] = useState<Employee[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [projectFilter, setProjectFilter] = useState<string>("all");
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [useAdvancedSearch, setUseAdvancedSearch] = useState(false);
   const { toast } = useToast();
 
   const { data: employees, isLoading: isLoadingEmployees } = useQuery({
@@ -66,29 +69,63 @@ export default function EmployeeList() {
     const project = projects.find((p: Project) => p.id === projectId);
     return project ? project.name : "Not Assigned";
   };
+  
+  // Handle predictive search filter results
+  const handlePredictiveSearchFilter = (filtered: Employee[]) => {
+    // Apply additional filters (status and project)
+    const withAdditionalFilters = filtered.filter((employee: Employee) => {
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "active" && employee.isActive) ||
+        (statusFilter === "inactive" && !employee.isActive);
 
-  // Filter employees based on search term and filters
-  const filteredEmployees = employees
-    ? employees.filter((employee: Employee) => {
-        const matchesSearch =
-          searchTerm === "" ||
-          `${employee.firstName} ${employee.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          employee.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          employee.designation.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesProject =
+        projectFilter === "all" ||
+        (projectFilter === "none" && !employee.projectId) ||
+        String(employee.projectId) === projectFilter;
 
-        const matchesStatus =
-          statusFilter === "all" ||
-          (statusFilter === "active" && employee.isActive) ||
-          (statusFilter === "inactive" && !employee.isActive);
+      return matchesStatus && matchesProject;
+    });
+    
+    setFilteredEmployees(withAdditionalFilters);
+  };
 
-        const matchesProject =
-          projectFilter === "all" ||
-          (projectFilter === "none" && !employee.projectId) ||
-          String(employee.projectId) === projectFilter;
+  // Filter employees using basic search and filters
+  const handleBasicSearch = () => {
+    if (!employees) {
+      setFilteredEmployees([]);
+      return;
+    }
+    
+    const filtered = employees.filter((employee: Employee) => {
+      const matchesSearch =
+        searchTerm === "" ||
+        `${employee.firstName} ${employee.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        employee.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        employee.designation.toLowerCase().includes(searchTerm.toLowerCase());
 
-        return matchesSearch && matchesStatus && matchesProject;
-      })
-    : [];
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "active" && employee.isActive) ||
+        (statusFilter === "inactive" && !employee.isActive);
+
+      const matchesProject =
+        projectFilter === "all" ||
+        (projectFilter === "none" && !employee.projectId) ||
+        String(employee.projectId) === projectFilter;
+
+      return matchesSearch && matchesStatus && matchesProject;
+    });
+    
+    setFilteredEmployees(filtered);
+  };
+  
+  // Update filtered employees whenever basic search criteria change
+  useEffect(() => {
+    if (!useAdvancedSearch) {
+      handleBasicSearch();
+    }
+  }, [searchTerm, statusFilter, projectFilter, employees, useAdvancedSearch]);
 
   // Handle delete employee
   const handleDeleteEmployee = async () => {
