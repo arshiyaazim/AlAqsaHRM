@@ -5,15 +5,15 @@ import { z } from "zod";
 // User schema
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  firstName: text("first_name").notNull(),
-  lastName: text("last_name").notNull(),
-  fullName: text("full_name").notNull(),
+  firstName: text("firstname").notNull(),
+  lastName: text("lastname").notNull(),
+  fullName: text("fullname").notNull(),
   email: text("email").notNull().unique(),
   password: text("password").notNull(), // Will store hashed password
   role: text("role").notNull().default("viewer"), // 'admin', 'hr', or 'viewer'
-  employeeId: text("employee_id").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-  isActive: boolean("is_active").default(true),
+  employeeId: text("employeeid").notNull(),
+  createdAt: timestamp("createdat").defaultNow(),
+  isActive: boolean("isactive").default(true),
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({
