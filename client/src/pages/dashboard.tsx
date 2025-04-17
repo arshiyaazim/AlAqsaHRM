@@ -5,12 +5,18 @@ import {
   Clock, 
   DollarSign
 } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
 import StatCard from "@/components/dashboard/stat-card";
 import AttendanceChart from "@/components/dashboard/attendance-chart";
 import RecentPayments from "@/components/dashboard/recent-payments";
 import QuickActions from "@/components/dashboard/quick-actions";
 import { formatCurrency } from "@/lib/utils";
+import { 
+  DashboardSkeleton, 
+  DashboardStatsSkeleton,
+  AttendanceChartSkeleton,
+  RecentPaymentsSkeleton,
+  QuickActionsSkeleton
+} from "@/components/skeletons";
 
 export default function Dashboard() {
   const { data: dashboardStats, isLoading } = useQuery({
@@ -33,6 +39,11 @@ export default function Dashboard() {
     ],
   };
 
+  // If loading, show the full dashboard skeleton
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -42,51 +53,38 @@ export default function Dashboard() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {isLoading ? (
-          // Loading state
-          Array(4).fill(0).map((_, index) => (
-            <div key={index} className="bg-white overflow-hidden shadow rounded-lg">
-              <div className="px-4 py-5 sm:p-6">
-                <Skeleton className="h-32 w-full" />
-              </div>
-            </div>
-          ))
-        ) : (
-          <>
-            <StatCard
-              title="Total Employees"
-              value={dashboardStats?.totalEmployees.toString() || "0"}
-              percentageChange={7}
-              icon={Users}
-              iconBgColor="bg-[#2C5282] bg-opacity-10"
-              iconColor="text-[#2C5282]"
-            />
-            <StatCard
-              title="Today's Attendance"
-              value={dashboardStats?.presentEmployees.toString() || "0"}
-              percentageChange={12}
-              icon={Calendar}
-              iconBgColor="bg-[#48BB78] bg-opacity-10"
-              iconColor="text-[#48BB78]"
-            />
-            <StatCard
-              title="Active Projects"
-              value={dashboardStats?.activeProjects.toString() || "0"}
-              percentageChange={-2}
-              icon={Clock}
-              iconBgColor="bg-[#ED8936] bg-opacity-10"
-              iconColor="text-[#ED8936]"
-            />
-            <StatCard
-              title="Total Payroll (Today)"
-              value={formatCurrency(dashboardStats?.totalPayroll || 0)}
-              percentageChange={4}
-              icon={DollarSign}
-              iconBgColor="bg-[#2C5282] bg-opacity-10"
-              iconColor="text-[#2C5282]"
-            />
-          </>
-        )}
+        <StatCard
+          title="Total Employees"
+          value={dashboardStats?.totalEmployees?.toString() || "0"}
+          percentageChange={7}
+          icon={Users}
+          iconBgColor="bg-[#2C5282] bg-opacity-10"
+          iconColor="text-[#2C5282]"
+        />
+        <StatCard
+          title="Today's Attendance"
+          value={dashboardStats?.presentEmployees?.toString() || "0"}
+          percentageChange={12}
+          icon={Calendar}
+          iconBgColor="bg-[#48BB78] bg-opacity-10"
+          iconColor="text-[#48BB78]"
+        />
+        <StatCard
+          title="Active Projects"
+          value={dashboardStats?.activeProjects?.toString() || "0"}
+          percentageChange={-2}
+          icon={Clock}
+          iconBgColor="bg-[#ED8936] bg-opacity-10"
+          iconColor="text-[#ED8936]"
+        />
+        <StatCard
+          title="Total Payroll (Today)"
+          value={formatCurrency(dashboardStats?.totalPayroll || 0)}
+          percentageChange={4}
+          icon={DollarSign}
+          iconBgColor="bg-[#2C5282] bg-opacity-10"
+          iconColor="text-[#2C5282]"
+        />
       </div>
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">

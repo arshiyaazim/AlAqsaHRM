@@ -17,7 +17,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Skeleton } from "@/components/ui/skeleton";
+import { 
+  EmployeeListSkeleton,
+  EmployeeCardSkeleton,
+  TableWithPaginationSkeleton
+} from "@/components/skeletons";
 import { Search, UserPlus, Edit, Eye, Trash2 } from "lucide-react";
 import {
   Select,
@@ -183,27 +187,8 @@ export default function EmployeeList() {
               </TableHeader>
               <TableBody>
                 {isLoadingEmployees ? (
-                  // Loading state
-                  Array(5).fill(0).map((_, index) => (
-                    <TableRow key={index}>
-                      <TableCell><Skeleton className="h-4 w-6" /></TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Skeleton className="h-8 w-8 rounded-full" />
-                          <div>
-                            <Skeleton className="h-4 w-24" />
-                            <Skeleton className="h-3 w-16 mt-1" />
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-16" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
-                      <TableCell><Skeleton className="h-8 w-24" /></TableCell>
-                    </TableRow>
-                  ))
+                  // Loading state with improved skeleton
+                  <EmployeeListSkeleton count={5} />
                 ) : filteredEmployees.length > 0 ? (
                   filteredEmployees.map((employee: Employee, index: number) => (
                     <TableRow key={employee.id}>
@@ -274,46 +259,8 @@ export default function EmployeeList() {
           {/* Mobile Card View */}
           <div className="grid grid-cols-1 gap-4 md:hidden">
             {isLoadingEmployees ? (
-              // Loading state
-              Array(3).fill(0).map((_, index) => (
-                <Card key={index}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <Skeleton className="h-10 w-10 rounded-full" />
-                        <div>
-                          <Skeleton className="h-5 w-28" />
-                          <Skeleton className="h-4 w-20 mt-1" />
-                        </div>
-                      </div>
-                      <Skeleton className="h-6 w-16 rounded-full" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-                      <div>
-                        <div className="text-gray-500">Designation</div>
-                        <Skeleton className="h-4 w-20 mt-1" />
-                      </div>
-                      <div>
-                        <div className="text-gray-500">Project</div>
-                        <Skeleton className="h-4 w-24 mt-1" />
-                      </div>
-                      <div>
-                        <div className="text-gray-500">Join Date</div>
-                        <Skeleton className="h-4 w-24 mt-1" />
-                      </div>
-                      <div>
-                        <div className="text-gray-500">Daily Wage</div>
-                        <Skeleton className="h-4 w-16 mt-1" />
-                      </div>
-                    </div>
-                    <div className="flex justify-end gap-2 mt-4">
-                      <Skeleton className="h-9 w-9 rounded" />
-                      <Skeleton className="h-9 w-9 rounded" />
-                      <Skeleton className="h-9 w-9 rounded" />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
+              // Loading state with improved skeleton
+              <EmployeeCardSkeleton count={3} />
             ) : filteredEmployees.length > 0 ? (
               filteredEmployees.map((employee: Employee) => (
                 <Card key={employee.id}>
