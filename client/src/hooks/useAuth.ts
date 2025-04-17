@@ -1,45 +1,31 @@
-
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 
-interface AuthState {
-  token: string | null;
-  user: {
-    id: number;
-    username: string;
-    role: string;
-  } | null;
-  login: (token: string, user: any) => void;
-  logout: () => void;
+interface User {
+  id: number;
+  username: string;
+  role: 'admin' | 'user';
 }
 
-export const useAuth = create<AuthState>()(
-  persist(
-    (set) => ({
-      token: null,
-      user: null,
-      login: (token, user) => set({ token, user }),
-      logout: () => set({ token: null, user: null }),
-    }),
-    {
-      name: 'auth-storage',
-    }
-  )
-);
-import create from 'zustand';
-
 interface AuthState {
   token: string | null;
-  user: any | null;
-  setAuth: (token: string, user: any) => void;
+  user: User | null;
+  setAuth: (token: string, user: User) => void;
   clearAuth: () => void;
 }
 
 const useAuth = create<AuthState>((set) => ({
-  token: null,
-  user: null,
-  setAuth: (token, user) => set({ token, user }),
-  clearAuth: () => set({ token: null, user: null }),
+  token: localStorage.getItem('token'),
+  user: JSON.parse(localStorage.getItem('user') || 'null'),
+  setAuth: (token, user) => {
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
+    set({ token, user });
+  },
+  clearAuth: () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    set({ token: null, user: null });
+  },
 }));
 
 export default useAuth;

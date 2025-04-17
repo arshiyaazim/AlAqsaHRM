@@ -66,7 +66,10 @@ import path from "path";
     "/api/payroll/employee/:employeeId"
   ], isUserOrAdmin);
 
-import fs from "fs";
+import { promises as fs } from "fs";
+import jwt from "jsonwebtoken";
+
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Error handler middleware
