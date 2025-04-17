@@ -52,7 +52,22 @@ function Router() {
 
 function App() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
+  const { token, user } = useAuth();
+
+  useEffect(() => {
+    if (!token && location !== '/login') {
+      setLocation('/login');
+    }
+  }, [token, location]);
+
+  if (!token && location !== '/login') {
+    return null;
+  }
+
+  if (location === '/login') {
+    return <LoginPage />;
+  }
 
   // Close mobile sidebar when location changes
   useEffect(() => {
