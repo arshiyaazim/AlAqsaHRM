@@ -47,7 +47,7 @@ export default function QuickActions() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
         {quickActions.map((action, index) => (
           <Link key={index} href={action.href}>
-            <a className="bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow duration-300">
+            <div className="bg-white shadow rounded-lg p-6 hover:shadow-md transition-shadow duration-300 cursor-pointer">
               <div className="flex items-center">
                 <div className={`rounded-md p-3 ${action.bgColor}`}>
                   {action.icon}
@@ -55,7 +55,7 @@ export default function QuickActions() {
                 <h3 className="ml-3 text-lg text-[#2D3748] font-medium">{action.title}</h3>
               </div>
               <p className="mt-2 text-sm text-gray-500">{action.description}</p>
-            </a>
+            </div>
           </Link>
         ))}
       </div>
