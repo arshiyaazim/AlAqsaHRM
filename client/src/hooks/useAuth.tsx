@@ -98,7 +98,7 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const { toast } = useToast();
+  const { toast } = useToast?.() ?? { toast: () => {} };
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Fetch current user data

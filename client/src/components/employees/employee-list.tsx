@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { formatDate, formatCurrency } from "@/lib/utils";
@@ -168,44 +168,105 @@ export default function EmployeeList() {
           </Link>
         </CardHeader>
         <CardContent>
-          <div className="mb-6 flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-              <Input
-                placeholder="Search employees..."
-                className="pl-8"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <div className="flex gap-2">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[130px]">
-                  <SelectValue placeholder="Filter Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
+          {useAdvancedSearch ? (
+            <div className="mb-6">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-lg font-medium">Advanced Search</h3>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setUseAdvancedSearch(false)}
+                >
+                  Switch to Basic Search
+                </Button>
+              </div>
               
-              <Select value={projectFilter} onValueChange={setProjectFilter}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Filter Project" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Projects</SelectItem>
-                  <SelectItem value="none">Not Assigned</SelectItem>
-                  {!isLoadingProjects && projects && projects.map((project: Project) => (
-                    <SelectItem key={project.id} value={project.id.toString()}>
-                      {project.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {/* Predictive search component */}
+              {!isLoadingEmployees && employees && (
+                <PredictiveSearch
+                  data={employees}
+                  onFilter={handlePredictiveSearchFilter}
+                  loading={isLoadingEmployees}
+                />
+              )}
+              
+              <div className="flex gap-2 mt-4">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-[130px]">
+                    <SelectValue placeholder="Filter Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                <Select value={projectFilter} onValueChange={setProjectFilter}>
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="Filter Project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Projects</SelectItem>
+                    <SelectItem value="none">Not Assigned</SelectItem>
+                    {!isLoadingProjects && projects && projects.map((project: Project) => (
+                      <SelectItem key={project.id} value={project.id.toString()}>
+                        {project.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="mb-6 flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                <Input
+                  placeholder="Search employees..."
+                  className="pl-8"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-2 items-center">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-[130px]">
+                    <SelectValue placeholder="Filter Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                <Select value={projectFilter} onValueChange={setProjectFilter}>
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="Filter Project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Projects</SelectItem>
+                    <SelectItem value="none">Not Assigned</SelectItem>
+                    {!isLoadingProjects && projects && projects.map((project: Project) => (
+                      <SelectItem key={project.id} value={project.id.toString()}>
+                        {project.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="whitespace-nowrap"
+                  onClick={() => setUseAdvancedSearch(true)}
+                >
+                  Advanced Search
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Desktop Table */}
           <div className="rounded-md border hidden md:block">
@@ -250,7 +311,7 @@ export default function EmployeeList() {
                       <TableCell>{formatDate(employee.joinDate)}</TableCell>
                       <TableCell>{formatCurrency(employee.dailyWage)}</TableCell>
                       <TableCell>
-                        <Badge variant={employee.isActive ? "success" : "secondary"}>
+                        <Badge className={employee.isActive ? "bg-green-500 hover:bg-green-600" : ""} variant={employee.isActive ? "outline" : "secondary"}>
                           {employee.isActive ? "Active" : "Inactive"}
                         </Badge>
                       </TableCell>
@@ -316,7 +377,7 @@ export default function EmployeeList() {
                           <div className="text-xs text-gray-500">{employee.employeeId}</div>
                         </div>
                       </div>
-                      <Badge variant={employee.isActive ? "success" : "secondary"}>
+                      <Badge className={employee.isActive ? "bg-green-500 hover:bg-green-600" : ""} variant={employee.isActive ? "outline" : "secondary"}>
                         {employee.isActive ? "Active" : "Inactive"}
                       </Badge>
                     </div>
