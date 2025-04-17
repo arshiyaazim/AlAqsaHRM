@@ -54,6 +54,9 @@ function App() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [location, setLocation] = useLocation();
   const { token, user } = useAuth();
+  if (!token && location !== '/login') {
+    return <Navigate to="/login" />;
+  }
 
   useEffect(() => {
     if (!token && location !== '/login') {
