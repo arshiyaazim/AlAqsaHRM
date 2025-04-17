@@ -55,11 +55,11 @@ export default function EmployeeList() {
   const [useAdvancedSearch, setUseAdvancedSearch] = useState(false);
   const { toast } = useToast();
 
-  const { data: employees, isLoading: isLoadingEmployees } = useQuery({
+  const { data: employees = [], isLoading: isLoadingEmployees } = useQuery<Employee[]>({
     queryKey: ["/api/employees"],
   });
 
-  const { data: projects, isLoading: isLoadingProjects } = useQuery({
+  const { data: projects = [], isLoading: isLoadingProjects } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
   });
 
@@ -182,13 +182,11 @@ export default function EmployeeList() {
               </div>
               
               {/* Predictive search component */}
-              {!isLoadingEmployees && employees && (
-                <PredictiveSearch
-                  data={employees}
-                  onFilter={handlePredictiveSearchFilter}
-                  loading={isLoadingEmployees}
-                />
-              )}
+              <PredictiveSearch
+                data={employees}
+                onFilter={handlePredictiveSearchFilter}
+                loading={isLoadingEmployees}
+              />
               
               <div className="flex gap-2 mt-4">
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
