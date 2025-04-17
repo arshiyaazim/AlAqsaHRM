@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
-import { Switch, Route, useLocation, Redirect } from "wouter";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { Switch, Route, useLocation } from "wouter";
 import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/layout/sidebar";
@@ -24,13 +22,25 @@ import PayrollList from "@/pages/payroll/index";
 import ProcessPayroll from "@/pages/payroll/process";
 import Reports from "@/pages/reports/index";
 import Settings from "@/pages/settings";
-import LoginPage from "@/pages/login";
-import useAuth from "@/hooks/useAuth";
+import AuthPage from "@/pages/auth-page";
 
 function Router() {
+  const [location] = useLocation();
+  const isAuthPage = location === "/auth";
+
+  if (isAuthPage) {
+    return (
+      <Switch>
+        <Route path="/auth" component={AuthPage} />
+        <Route path="*">
+          <div>Page not found</div>
+        </Route>
+      </Switch>
+    );
+  }
+
   return (
     <Switch>
-      <Route path="/login" component={LoginPage} />
       <Route path="/" component={Dashboard} />
       <Route path="/employees" component={EmployeeList} />
       <Route path="/employees/add" component={AddEmployee} />
@@ -53,7 +63,7 @@ function Router() {
   );
 }
 
-function App() {
+function MainLayout({ children }: { children: React.ReactNode }) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [location] = useLocation();
   
@@ -63,25 +73,40 @@ function App() {
   }, [location]);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <div className="flex h-screen overflow-hidden bg-[#F7FAFC]">
-        {location !== "/login" && <Sidebar />}
-        {location !== "/login" && (
-          <MobileSidebar 
-            isOpen={isMobileSidebarOpen} 
-            onClose={() => setIsMobileSidebarOpen(false)} 
-          />
-        )}
-        
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {location !== "/login" && <Header onMenuClick={() => setIsMobileSidebarOpen(true)} />}
-          <main className={`flex-1 overflow-y-auto ${location !== "/login" ? "bg-[#F7FAFC] p-4 sm:p-6 lg:p-8" : ""}`}>
-            <Router />
-          </main>
-        </div>
+    <div className="flex h-screen overflow-hidden bg-[#F7FAFC]">
+      <Sidebar />
+      <MobileSidebar 
+        isOpen={isMobileSidebarOpen} 
+        onClose={() => setIsMobileSidebarOpen(false)} 
+      />
+      
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header onMenuClick={() => setIsMobileSidebarOpen(true)} />
+        <main className="flex-1 overflow-y-auto bg-[#F7FAFC] p-4 sm:p-6 lg:p-8">
+          {children}
+        </main>
       </div>
+    </div>
+  );
+}
+
+function App() {
+  const [location] = useLocation();
+  const isAuthPage = location === "/auth";
+
+  return (
+    <>
+      {isAuthPage ? (
+        <main className="min-h-screen">
+          <Router />
+        </main>
+      ) : (
+        <MainLayout>
+          <Router />
+        </MainLayout>
+      )}
       <Toaster />
-    </QueryClientProvider>
+    </>
   );
 }
 

@@ -1,16 +1,18 @@
-import { create } from 'zustand';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { apiRequest, queryClient } from '@/lib/queryClient';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { useMutation, useQuery, UseMutationResult } from "@tanstack/react-query";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
+// Define User and Authentication Types
 export interface User {
   id: number;
   firstName: string;
   lastName: string;
   fullName: string;
   email: string;
-  role: 'admin' | 'hr' | 'viewer';
   employeeId: string;
-  isActive: boolean;
+  role: string;
+  isActive: boolean | null;
 }
 
 interface LoginCredentials {
@@ -18,140 +20,156 @@ interface LoginCredentials {
   password: string;
 }
 
-interface RegisterData {
+interface RegisterCredentials {
   firstName: string;
   lastName: string;
   email: string;
   password: string;
   employeeId: string;
-  role?: string;
 }
 
-interface AuthResponse {
-  token: string;
-  user: User;
-}
-
-interface AuthState {
-  token: string | null;
+interface AuthContextType {
   user: User | null;
-  setAuth: (token: string, user: User) => void;
-  clearAuth: () => void;
   isAuthenticated: boolean;
+  isLoading: boolean;
+  loginMutation: UseMutationResult<any, Error, LoginCredentials>;
+  registerMutation: UseMutationResult<any, Error, RegisterCredentials>;
+  logoutMutation: UseMutationResult<any, Error, void>;
 }
 
-const useAuthStore = create<AuthState>((set) => ({
-  token: localStorage.getItem('token'),
-  user: JSON.parse(localStorage.getItem('user') || 'null'),
-  isAuthenticated: !!localStorage.getItem('token'),
-  setAuth: (token, user) => {
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
-    set({ token, user, isAuthenticated: true });
-  },
-  clearAuth: () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    set({ token: null, user: null, isAuthenticated: false });
-    // Clear all queries when logging out
-    queryClient.clear();
-  },
-}));
+// Create Authentication Context
+const AuthContext = createContext<AuthContextType | null>(null);
 
-// Custom hook that combines zustand store with react-query
-const useAuth = () => {
-  const { token, user, setAuth, clearAuth, isAuthenticated } = useAuthStore();
-
-  // Login mutation
-  const loginMutation = useMutation({
-    mutationFn: async (credentials: LoginCredentials): Promise<AuthResponse> => {
-      const res = await apiRequest('POST', '/api/auth/login', credentials);
-      return await res.json();
+// Login Mutation Hook
+const useLoginMutation = () => {
+  return useMutation({
+    mutationFn: async (credentials: LoginCredentials) => {
+      const response = await apiRequest("POST", "/api/auth/login", credentials);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Login failed");
+      }
+      return response.json();
     },
-    onSuccess: (data) => {
-      setAuth(data.token, data.user);
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
     },
   });
+};
 
-  // Register mutation
-  const registerMutation = useMutation({
-    mutationFn: async (userData: RegisterData): Promise<AuthResponse> => {
-      const res = await apiRequest('POST', '/api/auth/register', userData);
-      return await res.json();
+// Register Mutation Hook
+const useRegisterMutation = () => {
+  return useMutation({
+    mutationFn: async (credentials: RegisterCredentials) => {
+      const response = await apiRequest("POST", "/api/auth/register", credentials);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Registration failed");
+      }
+      return response.json();
     },
-    onSuccess: (data) => {
-      setAuth(data.token, data.user);
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
     },
   });
+};
 
-  // Logout mutation
-  const logoutMutation = useMutation({
+// Logout Mutation Hook
+const useLogoutMutation = () => {
+  return useMutation({
     mutationFn: async () => {
-      await apiRequest('POST', '/api/auth/logout');
-      clearAuth();
+      const response = await apiRequest("POST", "/api/auth/logout");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Logout failed");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      queryClient.setQueryData(["/api/auth/me"], null);
     },
   });
+};
 
-  // Current user query
+// AuthProvider Component
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export const AuthProvider = ({ children }: AuthProviderProps) => {
+  const { toast } = useToast();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Fetch current user data
   const {
-    data: currentUser,
+    data: user,
     isLoading,
-    isError,
-    refetch,
+    error,
   } = useQuery({
-    queryKey: ['/api/auth/me'],
+    queryKey: ["/api/auth/me"],
     queryFn: async () => {
-      if (!token) return null;
       try {
-        const res = await fetch('/api/auth/me', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (!res.ok) {
-          if (res.status === 401) {
-            clearAuth();
-            return null;
-          }
-          throw new Error('Failed to fetch user data');
+        const response = await apiRequest("GET", "/api/auth/me");
+        if (response.status === 401) {
+          setIsAuthenticated(false);
+          return null;
         }
-        return await res.json();
+        if (!response.ok) {
+          throw new Error("Failed to fetch user data");
+        }
+        const userData = await response.json();
+        setIsAuthenticated(true);
+        return userData;
       } catch (error) {
-        console.error('Error fetching current user:', error);
+        setIsAuthenticated(false);
         return null;
       }
     },
-    enabled: !!token,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: false,
   });
 
-  // Add authorization header to all requests when token exists
-  if (typeof window !== 'undefined') {
-    const originalFetch = window.fetch;
-    window.fetch = async function (input, init) {
-      const token = localStorage.getItem('token');
-      if (token) {
-        init = init || {};
-        init.headers = {
-          ...init.headers,
-          Authorization: `Bearer ${token}`,
-        };
-      }
-      return originalFetch(input, init);
-    };
-  }
+  // Hook instances
+  const loginMutation = useLoginMutation();
+  const registerMutation = useRegisterMutation();
+  const logoutMutation = useLogoutMutation();
 
-  return {
-    user: currentUser || user,
-    token,
+  // Update authentication state on data change
+  useEffect(() => {
+    setIsAuthenticated(!!user);
+  }, [user]);
+
+  // Handle auth errors
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Authentication Error",
+        description: "There was a problem with your authentication. Please log in again.",
+        variant: "destructive",
+      });
+    }
+  }, [error, toast]);
+
+  const value = {
+    user: user || null,
     isAuthenticated,
     isLoading,
-    isError,
     loginMutation,
     registerMutation,
     logoutMutation,
-    logout: clearAuth,
-    refetchUser: refetch,
   };
+
+  return React.createElement(AuthContext.Provider, { value }, children);
+};
+
+// Custom Hook to use Auth Context
+const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
 };
 
 export default useAuth;
