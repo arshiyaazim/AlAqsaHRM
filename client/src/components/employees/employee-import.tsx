@@ -89,7 +89,7 @@ export default function EmployeeImport({ onComplete }: EmployeeImportProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importResults, setImportResults] = useState<ImportResults | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [excelFilePath, setExcelFilePath] = useState<string>("");
+  const [excelFilePath, setExcelFilePath] = useState<string>("attached_assets/EmployeeDetails.xlsx");
   const [activeTab, setActiveTab] = useState<'import' | 'files'>('import');
 
   // Mutation for uploading a file
@@ -341,7 +341,8 @@ export default function EmployeeImport({ onComplete }: EmployeeImportProps) {
                 onChange={handleManualPath}
               />
               <p className="text-xs text-gray-500">
-                Enter the path to an Excel file on the server
+                Sample file pre-loaded: <span className="font-medium">attached_assets/EmployeeDetails.xlsx</span>. 
+                This file has the correct column format (A→Mobile, B→Name, C→Salary, etc.)
               </p>
             </div>
 
@@ -494,7 +495,7 @@ export default function EmployeeImport({ onComplete }: EmployeeImportProps) {
               onClick={() => {
                 setSelectedFile(null);
                 setImportResults(null);
-                setExcelFilePath("");
+                setExcelFilePath("attached_assets/EmployeeDetails.xlsx");
                 if (fileInputRef.current) {
                   fileInputRef.current.value = "";
                 }

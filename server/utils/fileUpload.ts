@@ -23,15 +23,31 @@ const storage = multer.diskStorage({
 
 // File filter
 const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  // Accept excel and csv files
-  if (
-    file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
-    file.mimetype === 'application/vnd.ms-excel' ||
-    file.mimetype === 'text/csv'
-  ) {
+  // Accept excel, csv, image files, and pdfs
+  const allowedMimeTypes = [
+    // Excel and CSV
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-excel',
+    'text/csv',
+    // Images
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    // Documents
+    'application/pdf',
+  ];
+  
+  console.log('File upload attempt:', {
+    originalname: file.originalname,
+    mimetype: file.mimetype,
+    size: file.size
+  });
+  
+  if (allowedMimeTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Only Excel and CSV files are allowed'));
+    cb(new Error(`File type not allowed. Supported types: Excel, CSV, images (JPEG, PNG, GIF, WebP), and PDF.`));
   }
 };
 
