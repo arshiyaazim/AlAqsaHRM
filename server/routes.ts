@@ -23,6 +23,31 @@ import { upload, handleFileUploadErrors } from "./utils/fileUpload";
 import path from "path";
 import { promises as fs } from "fs";
 
+// Helper to generate the next employee ID in format EMP-1001, EMP-1002, etc.
+async function getNextEmployeeId(storage: any): Promise<number> {
+  try {
+    const employees = await storage.getAllEmployees();
+    let maxId = 1000; // Start from 1000 by default
+    
+    if (employees && employees.length > 0) {
+      // Find the highest employeeId
+      for (const employee of employees) {
+        if (employee.employeeId && employee.employeeId.startsWith('EMP-')) {
+          const idNum = parseInt(employee.employeeId.substring(4));
+          if (!isNaN(idNum) && idNum > maxId) {
+            maxId = idNum;
+          }
+        }
+      }
+    }
+    
+    return maxId + 1;
+  } catch (error) {
+    console.error('Error getting next employee ID:', error);
+    return 1001; // Fallback to 1001 if there's an error
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Error handler middleware
   const handleError = (err: any, res: Response) => {
@@ -765,18 +790,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      res.status(200).json(result);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  // Direct import - Parse Excel file and import directly to database in one go
+  app.post("/api/import/employees/direct", async (req: Request, res: Response) => {
+    try {
+      const filePath = req.body.filePath;
+      
+      if (!filePath) {
+        return res.status(400).json({ message: "File path is required" });
+      }
+      
+      // Check if file exists
+      const fs = require('fs');
+      const path = require('path');
+      const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(process.cwd(), filePath);
+      
+      if (!fs.existsSync(absolutePath)) {
+        return res.status(400).json({ 
+          message: `File not found: ${filePath}`,
+          errors: [`File not found at path: ${absolutePath}`]
+        });
+      }
+      
+      console.log(`Processing direct Excel import from: ${absolutePath}`);
+      const result = await readEmployeeExcel(absolutePath);
+      
+      if (!result.success) {
+        console.error('Excel import failed:', result.message);
+        return res.status(400).json({ 
+          message: result.message,
+          errors: result.errors 
+        });
+      }
+      
       // Process the imported data
       const importedEmployees = [];
       const errors = [];
       
       if (result.data && result.data.length > 0) {
-        console.log(`Found ${result.data.length} employees in Excel file`);
+        console.log(`Found ${result.data.length} employees in Excel file for direct import`);
         
         for (const employeeData of result.data) {
           try {
             // Validate each employee against our schema
             const validatedData = insertEmployeeSchema.parse(employeeData);
-            const employee = await storage.createEmployee(validatedData);
+            
+            // Add default employeeId if not provided - using auto-incremented EMP-#### format
+            if (!validatedData.employeeId) {
+              const nextId = await getNextEmployeeId(storage);
+              validatedData.employeeId = `EMP-${nextId}`;
+            }
+            
+            // Check if employee with this employeeId already exists - update if it does
+            let employee;
+            if (validatedData.employeeId) {
+              const existingEmployee = await storage.getEmployeeByEmployeeId(validatedData.employeeId);
+              if (existingEmployee) {
+                // Update existing employee
+                employee = await storage.updateEmployee(existingEmployee.id, validatedData);
+                console.log(`Updated existing employee with ID: ${existingEmployee.employeeId}`);
+              } else {
+                // Create new employee
+                employee = await storage.createEmployee(validatedData);
+                console.log(`Created new employee with ID: ${employee.employeeId}`);
+              }
+            } else {
+              // Create new employee without specific ID
+              employee = await storage.createEmployee(validatedData);
+              console.log(`Created new employee with auto-generated ID: ${employee.employeeId}`);
+            }
+            
             importedEmployees.push(employee);
           } catch (err: any) {
             console.error('Error importing employee:', err?.message || err);
@@ -798,9 +886,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.warn('No data found in Excel file or data is empty');
       }
       
-      console.log(`Import completed: ${importedEmployees.length} imported, ${errors.length} errors`);
+      console.log(`Direct import completed: ${importedEmployees.length} imported, ${errors.length} errors`);
       res.status(200).json({
-        message: `Imported ${importedEmployees.length} employees with ${errors.length} errors`,
+        message: `Directly imported ${importedEmployees.length} employees with ${errors.length} errors`,
         imported: importedEmployees,
         errors: errors.length > 0 ? errors : undefined,
         success: importedEmployees.length > 0
