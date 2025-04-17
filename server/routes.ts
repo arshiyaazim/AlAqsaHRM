@@ -17,59 +17,7 @@ import { fromZodError } from "zod-validation-error";
 import { readEmployeeExcel } from "./utils/excelImport";
 import { upload, handleFileUploadErrors } from "./utils/fileUpload";
 import path from "path";
-
-  export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth routes
-  app.post("/api/auth/login", async (req: Request, res: Response) => {
-    try {
-      const { username, password } = req.body;
-      const user = await storage.getUserByCredentials(username, password);
-      
-      if (!user) {
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-
-      const token = jwt.sign(
-        { id: user.id, username: user.username, role: user.role, employeeId: user.employeeId },
-        JWT_SECRET
-      );
-
-      res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
-    } catch (err) {
-      handleError(err, res);
-    }
-  });
-
-  // Protect routes that require authentication
-  app.use([
-    "/api/reports",
-    "/api/dashboard",
-    "/api/employees",
-    "/api/projects",
-    "/api/attendance",
-    "/api/payroll",
-    "/api/payments",
-    "/api/expenditures",
-    "/api/incomes"
-  ], authenticateToken);
-
-  // Admin-only routes
-  app.use([
-    "/api/reports",
-    "/api/dashboard"
-  ], isAdmin);
-
-  // User or Admin routes with employee-specific access
-  app.use([
-    "/api/employees/:id",
-    "/api/attendance/employee/:employeeId",
-    "/api/payroll/employee/:employeeId"
-  ], isUserOrAdmin);
-
 import { promises as fs } from "fs";
-import jwt from "jsonwebtoken";
-
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Error handler middleware
