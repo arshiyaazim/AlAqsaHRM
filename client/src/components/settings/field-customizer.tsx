@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AlertCircle, PlusCircle, Minus, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
@@ -48,6 +49,8 @@ export default function FieldCustomizer({ onComplete }: FieldCustomizerProps) {
   const { toast } = useToast();
   const [entity, setEntity] = useState<string>("employees");
   const [operation, setOperation] = useState<"add" | "remove" | "rename" | "edit">("add");
+  const [showNewEntityDialog, setShowNewEntityDialog] = useState<boolean>(false);
+  const [newEntityName, setNewEntityName] = useState<string>("");
   const [field, setField] = useState<string>("");
   const [newField, setNewField] = useState<CustomField>({
     name: "",
@@ -191,8 +194,12 @@ export default function FieldCustomizer({ onComplete }: FieldCustomizerProps) {
             <Select 
               value={entity} 
               onValueChange={(value) => {
-                setEntity(value);
-                setField("");
+                if (value === "add-new") {
+                  setShowNewEntityDialog(true);
+                } else {
+                  setEntity(value);
+                  setField("");
+                }
               }}
             >
               <SelectTrigger>
@@ -204,6 +211,12 @@ export default function FieldCustomizer({ onComplete }: FieldCustomizerProps) {
                 <SelectItem value="attendance">Attendance</SelectItem>
                 <SelectItem value="payroll">Payroll</SelectItem>
                 <SelectItem value="payments">Payments</SelectItem>
+                <SelectItem value="add-new" className="text-primary font-medium border-t mt-1 pt-1">
+                  <div className="flex items-center">
+                    <PlusCircle className="h-4 w-4 mr-2" />
+                    Add New Entity
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -216,6 +216,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Approve a user registration (make the user active)
+  app.patch("/api/users/:id/approve", authenticateJWT, authorize(["admin"]), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+      
+      // Update isActive status to true
+      const updatedUser = await storage.updateUser(id, { isActive: true });
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Remove password from response
+      const { password: _, ...userData } = updatedUser;
+      res.json(userData);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
   app.delete("/api/users/:id", authenticateJWT, authorize(["admin"]), async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
