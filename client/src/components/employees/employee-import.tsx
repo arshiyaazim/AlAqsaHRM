@@ -17,7 +17,7 @@ import {
   Database
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { importEmployeesFromExcel, hasAllowedExtension, formatFileSize } from "@/lib/fileUtils";
+import { importEmployeesFromExcel, directImportEmployeesFromExcel, hasAllowedExtension, formatFileSize } from "@/lib/fileUtils";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { 
   Table, 
@@ -147,6 +147,33 @@ export default function EmployeeImport({ onComplete }: EmployeeImportProps) {
     },
   });
   
+  // Mutation for directly importing employees from Excel to database
+  const directImportMutation = useMutation({
+    mutationFn: async (filePath: string) => {
+      return await directImportEmployeesFromExcel(filePath);
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Import to Employees Successful",
+        description: data.message || "Employees were directly imported to database successfully.",
+      });
+      setImportResults(data);
+      queryClient.invalidateQueries({ queryKey: ['/api/employees'] });
+      // Refresh the uploaded files list after a successful import
+      queryClient.invalidateQueries({ queryKey: ['/api/files'] });
+      if (onComplete) {
+        onComplete();
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Direct Import Failed",
+        description: error.message || "There was an error directly importing employees to database.",
+        variant: "destructive",
+      });
+    },
+  });
+  
   // Query to fetch uploaded files
   const filesQuery = useQuery({
     queryKey: ['/api/files'],
@@ -246,6 +273,31 @@ export default function EmployeeImport({ onComplete }: EmployeeImportProps) {
     
     console.log('Importing from file path:', pathToUse);
     importMutation.mutate(pathToUse);
+  };
+  
+  const handleDirectImport = () => {
+    if (!excelFilePath) {
+      toast({
+        title: "No File Path",
+        description: "Please enter a file path or upload a file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Clean up the file path if needed
+    let pathToUse = excelFilePath;
+    
+    // If the path starts with a slash, make it relative
+    if (pathToUse.startsWith('/')) {
+      pathToUse = pathToUse.substring(1);
+    }
+    
+    console.log('Directly importing from file path:', pathToUse);
+    
+    if (confirm('Are you sure you want to directly import employees from this Excel file to the database? This will add or update employee records.')) {
+      directImportMutation.mutate(pathToUse);
+    }
   };
 
   // Handler for viewing file in new tab
@@ -505,13 +557,24 @@ export default function EmployeeImport({ onComplete }: EmployeeImportProps) {
             >
               Clear
             </Button>
-            <Button 
-              onClick={handleImport}
-              disabled={!excelFilePath || importMutation.isPending}
-            >
-              <FileSpreadsheet className="h-4 w-4 mr-2" />
-              Import Employees
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                onClick={handleImport}
+                disabled={!excelFilePath || importMutation.isPending}
+                variant="outline"
+              >
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                {importMutation.isPending ? "Parsing..." : "Parse Excel"}
+              </Button>
+              <Button 
+                onClick={handleDirectImport}
+                disabled={!excelFilePath || directImportMutation.isPending}
+                variant="default"
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                {directImportMutation.isPending ? "Importing..." : "Import data to Employees"}
+              </Button>
+            </div>
           </>
         ) : (
           <Button 
