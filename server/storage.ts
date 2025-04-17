@@ -185,7 +185,6 @@ export class DatabaseStorage implements IStorage {
   
   // File operations
   async getUploadedFiles(): Promise<UploadedFile[]> {
-    // Since we don't have a formal table for files, we'll read from the uploads directory
     try {
       const fs = require('fs');
       const path = require('path');
@@ -201,11 +200,41 @@ export class DatabaseStorage implements IStorage {
         return [];
       }
       
-      // Get all files in the uploads directory
+      // Check if metadata file exists
+      const metadataFilePath = path.join(uploadsDir, '.metadata.json');
+      let metadata: UploadedFile[] = [];
+      
+      if (fs.existsSync(metadataFilePath)) {
+        try {
+          const data = fs.readFileSync(metadataFilePath, 'utf8');
+          metadata = JSON.parse(data);
+          
+          // Verify that the files still exist
+          const verifiedMetadata = [];
+          for (const file of metadata) {
+            if (fs.existsSync(file.path)) {
+              verifiedMetadata.push(file);
+            }
+          }
+          
+          // Sort by upload date (newest first)
+          return verifiedMetadata.sort(
+            (a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime()
+          );
+        } catch (err) {
+          console.error('Error reading metadata file:', err);
+          // Fall back to scanning directory if metadata file is corrupted
+        }
+      }
+      
+      // If no metadata file or it's corrupted, fallback to scanning directory
       const files = await readdir(uploadsDir);
       
+      // Filter out the metadata file and other hidden files
+      const visibleFiles = files.filter(f => !f.startsWith('.'));
+      
       // Get details for each file
-      const fileDetailsPromises = files.map(async (filename: string) => {
+      const fileDetailsPromises = visibleFiles.map(async (filename: string) => {
         const filePath = path.join(uploadsDir, filename);
         const stats = await stat(filePath);
         
@@ -232,10 +261,12 @@ export class DatabaseStorage implements IStorage {
           mimeType = mimeTypes[ext];
         }
         
+        const relativePath = path.relative(process.cwd(), filePath).replace(/\\/g, '/');
+        
         return {
-          id: Buffer.from(filePath).toString('base64'),
+          id: Buffer.from(relativePath).toString('base64'),
           name: filename,
-          path: path.relative(process.cwd(), filePath).replace(/\\/g, '/'),
+          path: relativePath,
           size: stats.size,
           mimeType,
           uploadDate: stats.mtime.toISOString(),
@@ -246,6 +277,11 @@ export class DatabaseStorage implements IStorage {
       const fileDetails = (await Promise.all(fileDetailsPromises))
         .filter(Boolean)
         .sort((a, b) => new Date(b!.uploadDate).getTime() - new Date(a!.uploadDate).getTime());
+      
+      // Save the generated metadata for future use
+      if (fileDetails.length > 0) {
+        fs.writeFileSync(metadataFilePath, JSON.stringify(fileDetails, null, 2));
+      }
       
       return fileDetails as UploadedFile[];
     } catch (error) {
@@ -266,14 +302,55 @@ export class DatabaseStorage implements IStorage {
   }
   
   async saveUploadedFile(file: UploadedFile): Promise<UploadedFile> {
-    // This is mostly handled by the multer middleware
-    // This method is a placeholder for any additional processing or database tracking
-    return file;
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      
+      // Ensure uploads directory exists
+      const uploadsDir = path.join(process.cwd(), 'uploads');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      
+      // Create a JSON file with the file metadata
+      const metadataFilePath = path.join(uploadsDir, '.metadata.json');
+      let metadata: UploadedFile[] = [];
+      
+      // Try to read existing metadata
+      if (fs.existsSync(metadataFilePath)) {
+        try {
+          const data = fs.readFileSync(metadataFilePath, 'utf8');
+          metadata = JSON.parse(data);
+        } catch (err) {
+          console.error('Error reading metadata file:', err);
+          // Continue with empty metadata if file is corrupted
+        }
+      }
+      
+      // Check if file already exists in metadata
+      const existingIndex = metadata.findIndex(f => f.id === file.id);
+      if (existingIndex >= 0) {
+        // Update existing metadata
+        metadata[existingIndex] = file;
+      } else {
+        // Add new file metadata
+        metadata.push(file);
+      }
+      
+      // Save updated metadata
+      fs.writeFileSync(metadataFilePath, JSON.stringify(metadata, null, 2));
+      
+      return file;
+    } catch (error) {
+      console.error('Error saving file metadata:', error);
+      return file; // Return file even if metadata saving fails
+    }
   }
   
   async deleteUploadedFile(id: string): Promise<boolean> {
     try {
       const fs = require('fs');
+      const path = require('path');
       const { promisify } = require('util');
       const unlink = promisify(fs.unlink);
       
@@ -284,6 +361,26 @@ export class DatabaseStorage implements IStorage {
       // Delete the file from the filesystem
       const filePath = file.path;
       await unlink(filePath);
+      
+      // Update the metadata file
+      const uploadsDir = path.join(process.cwd(), 'uploads');
+      const metadataFilePath = path.join(uploadsDir, '.metadata.json');
+      
+      if (fs.existsSync(metadataFilePath)) {
+        try {
+          const data = fs.readFileSync(metadataFilePath, 'utf8');
+          let metadata = JSON.parse(data);
+          
+          // Remove the deleted file from metadata
+          metadata = metadata.filter((f: UploadedFile) => f.id !== id);
+          
+          // Save updated metadata
+          fs.writeFileSync(metadataFilePath, JSON.stringify(metadata, null, 2));
+        } catch (err) {
+          console.error('Error updating metadata after file deletion:', err);
+          // Continue even if metadata update fails
+        }
+      }
       
       return true;
     } catch (error) {

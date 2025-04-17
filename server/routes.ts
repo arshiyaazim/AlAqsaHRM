@@ -742,9 +742,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "File path is required" });
       }
       
-      const result = await readEmployeeExcel(filePath);
+      // Check if file exists
+      const fs = require('fs');
+      const path = require('path');
+      const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(process.cwd(), filePath);
+      
+      if (!fs.existsSync(absolutePath)) {
+        return res.status(400).json({ 
+          message: `File not found: ${filePath}`,
+          errors: [`File not found at path: ${absolutePath}`]
+        });
+      }
+      
+      console.log(`Processing Excel import from: ${absolutePath}`);
+      const result = await readEmployeeExcel(absolutePath);
       
       if (!result.success) {
+        console.error('Excel import failed:', result.message);
         return res.status(400).json({ 
           message: result.message,
           errors: result.errors 
@@ -756,13 +770,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const errors = [];
       
       if (result.data && result.data.length > 0) {
+        console.log(`Found ${result.data.length} employees in Excel file`);
+        
         for (const employeeData of result.data) {
           try {
             // Validate each employee against our schema
             const validatedData = insertEmployeeSchema.parse(employeeData);
             const employee = await storage.createEmployee(validatedData);
             importedEmployees.push(employee);
-          } catch (err) {
+          } catch (err: any) {
+            console.error('Error importing employee:', err?.message || err);
             if (err instanceof ZodError) {
               const formattedError = fromZodError(err);
               errors.push({
@@ -772,17 +789,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             } else {
               errors.push({
                 data: employeeData,
-                errors: [err.message || "Unknown error"]
+                errors: [err?.message || "Unknown error"]
               });
             }
           }
         }
+      } else {
+        console.warn('No data found in Excel file or data is empty');
       }
       
+      console.log(`Import completed: ${importedEmployees.length} imported, ${errors.length} errors`);
       res.status(200).json({
         message: `Imported ${importedEmployees.length} employees with ${errors.length} errors`,
         imported: importedEmployees,
-        errors: errors.length > 0 ? errors : undefined
+        errors: errors.length > 0 ? errors : undefined,
+        success: importedEmployees.length > 0
       });
     } catch (err) {
       handleError(err, res);
