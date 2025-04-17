@@ -109,9 +109,16 @@ export class DatabaseStorage implements IStorage {
     const user = await this.getUserByEmail(email);
     if (!user) return undefined;
     
-    const isMatch = await bcrypt.compare(password, user.password);
-    
-    return isMatch ? user : undefined;
+    console.log("User found:", user.email, "Comparing password...");
+    console.log("Hash in DB:", user.password);
+    try {
+      const isMatch = await bcrypt.compare(password, user.password);
+      console.log("Password match result:", isMatch);
+      return isMatch ? user : undefined;
+    } catch (error) {
+      console.error("bcrypt.compare error:", error);
+      return undefined;
+    }
   }
   
   async createUser(user: InsertUser): Promise<User> {
