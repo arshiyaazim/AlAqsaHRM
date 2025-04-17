@@ -25,7 +25,7 @@ interface CustomField {
 // Function to modify entity fields
 async function modifyEntityField(
   entity: string, 
-  operation: "add" | "remove" | "rename", 
+  operation: "add" | "remove" | "rename" | "edit", 
   field: string | CustomField
 ): Promise<any> {
   const response = await fetch("/api/schema/customField", {
@@ -47,7 +47,7 @@ async function modifyEntityField(
 export default function FieldCustomizer({ onComplete }: FieldCustomizerProps) {
   const { toast } = useToast();
   const [entity, setEntity] = useState<string>("employees");
-  const [operation, setOperation] = useState<"add" | "remove" | "rename">("add");
+  const [operation, setOperation] = useState<"add" | "remove" | "rename" | "edit">("add");
   const [field, setField] = useState<string>("");
   const [newField, setNewField] = useState<CustomField>({
     name: "",
@@ -65,6 +65,12 @@ export default function FieldCustomizer({ onComplete }: FieldCustomizerProps) {
         return await modifyEntityField(entity, operation, {
           name: field,
           newName: newField.newName
+        });
+      } else if (operation === "edit") {
+        return await modifyEntityField(entity, operation, {
+          name: field,
+          type: newField.type,
+          required: newField.required
         });
       } else {
         return await modifyEntityField(entity, operation, field);
@@ -138,7 +144,7 @@ export default function FieldCustomizer({ onComplete }: FieldCustomizerProps) {
         });
         return;
       }
-    } else if (operation === "remove" || operation === "rename") {
+    } else if (operation === "remove" || operation === "rename" || operation === "edit") {
       if (!field) {
         toast({
           title: "Validation Error",
@@ -152,6 +158,15 @@ export default function FieldCustomizer({ onComplete }: FieldCustomizerProps) {
         toast({
           title: "Validation Error",
           description: "New field name is required for rename operation.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (operation === "edit" && !newField.type) {
+        toast({
+          title: "Validation Error",
+          description: "Field type is required for edit operation.",
           variant: "destructive",
         });
         return;
@@ -197,7 +212,7 @@ export default function FieldCustomizer({ onComplete }: FieldCustomizerProps) {
             <Label htmlFor="operation">Operation</Label>
             <Select 
               value={operation} 
-              onValueChange={(value: "add" | "remove" | "rename") => {
+              onValueChange={(value: "add" | "remove" | "rename" | "edit") => {
                 setOperation(value);
                 setField("");
                 setNewField({
@@ -218,10 +233,10 @@ export default function FieldCustomizer({ onComplete }: FieldCustomizerProps) {
                     Add Field
                   </div>
                 </SelectItem>
-                <SelectItem value="remove">
+                <SelectItem value="edit">
                   <div className="flex items-center">
-                    <Minus className="h-4 w-4 mr-2" />
-                    Remove Field
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Field
                   </div>
                 </SelectItem>
                 <SelectItem value="rename">
@@ -230,12 +245,18 @@ export default function FieldCustomizer({ onComplete }: FieldCustomizerProps) {
                     Rename Field
                   </div>
                 </SelectItem>
+                <SelectItem value="remove">
+                  <div className="flex items-center">
+                    <Minus className="h-4 w-4 mr-2" />
+                    Remove Field
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
         
-        {(operation === "remove" || operation === "rename") && (
+        {(operation === "remove" || operation === "rename" || operation === "edit") && (
           <div className="space-y-2">
             <Label htmlFor="field">Select Field</Label>
             <Select 
@@ -276,7 +297,7 @@ export default function FieldCustomizer({ onComplete }: FieldCustomizerProps) {
               <RadioGroup
                 value={newField.type || "text"}
                 onValueChange={(value) => setNewField({...newField, type: value})}
-                className="flex space-x-4"
+                className="grid grid-cols-2 md:grid-cols-3 gap-2"
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="text" id="r1" />
@@ -293,6 +314,18 @@ export default function FieldCustomizer({ onComplete }: FieldCustomizerProps) {
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="boolean" id="r4" />
                   <Label htmlFor="r4">Boolean</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="currency" id="r5" />
+                  <Label htmlFor="r5">Currency</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="mobile" id="r6" />
+                  <Label htmlFor="r6">Mobile Number</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="file" id="r7" />
+                  <Label htmlFor="r7">Picture/File Upload</Label>
                 </div>
               </RadioGroup>
             </div>
@@ -317,6 +350,57 @@ export default function FieldCustomizer({ onComplete }: FieldCustomizerProps) {
               value={newField.newName || ""}
               onChange={(e) => setNewField({...newField, newName: e.target.value})}
             />
+          </div>
+        )}
+
+        {operation === "edit" && (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="field-type">Field Type</Label>
+              <RadioGroup
+                value={newField.type || "text"}
+                onValueChange={(value) => setNewField({...newField, type: value})}
+                className="grid grid-cols-2 md:grid-cols-3 gap-2"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="text" id="e1" />
+                  <Label htmlFor="e1">Text</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="number" id="e2" />
+                  <Label htmlFor="e2">Number</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="date" id="e3" />
+                  <Label htmlFor="e3">Date</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="boolean" id="e4" />
+                  <Label htmlFor="e4">Boolean</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="currency" id="e5" />
+                  <Label htmlFor="e5">Currency</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="mobile" id="e6" />
+                  <Label htmlFor="e6">Mobile Number</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="file" id="e7" />
+                  <Label htmlFor="e7">Picture/File Upload</Label>
+                </div>
+              </RadioGroup>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="required-edit"
+                checked={newField.required || false}
+                onCheckedChange={(checked) => setNewField({...newField, required: checked})}
+              />
+              <Label htmlFor="required-edit">Required Field</Label>
+            </div>
           </div>
         )}
         
