@@ -238,6 +238,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Decline/reject a user registration (delete the user)
+  app.delete("/api/users/:id/decline", authenticateJWT, authorize(["admin"]), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+      
+      // Check if the user is trying to delete their own account
+      if (id === (req as any).user.id) {
+        return res.status(400).json({ message: "You cannot delete your own account" });
+      }
+      
+      const success = await storage.deleteUser(id);
+      if (!success) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.status(200).json({ message: "User registration declined successfully" });
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
   app.delete("/api/users/:id", authenticateJWT, authorize(["admin"]), async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
