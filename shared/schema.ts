@@ -40,6 +40,7 @@ export const employees = pgTable("employees", {
   joinDate: date("join_date").notNull(),
   projectId: integer("project_id"),
   isActive: boolean("is_active").default(true),
+  loanAdvance: numeric("loan_advance").default("0"), // Loan/Advance amount
 });
 
 export const insertEmployeeSchema = createInsertSchema(employees).omit({

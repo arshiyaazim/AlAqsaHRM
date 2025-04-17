@@ -42,38 +42,88 @@ export async function readEmployeeExcel(filePath: string): Promise<ImportResult>
       };
     }
 
-    // Map Excel columns to our employee schema
+    // Map Excel columns to our employee schema based on specific requirements
     const employees: Partial<InsertEmployee>[] = [];
     const errors: string[] = [];
+    let startEmployeeId = 1001; // Start employee IDs from 1001
     
-    rawData.forEach((row: any, index: number) => {
+    // Process each row in the Excel sheet
+    for (let index = 0; index < rawData.length; index++) {
+      const row: any = rawData[index];
+      
       try {
-        // Basic validation
-        if (!row.employeeId && !row.firstName && !row.lastName) {
-          errors.push(`Row ${index + 2}: Missing required fields`);
-          return;
+        // Get the mobile number from column A
+        const mobileValue = row['__EMPTY'] || row.A || ''; // Excel sometimes uses __EMPTY for the first column
+        
+        // Stop processing if column A is empty (no more employees)
+        if (!mobileValue || mobileValue.toString().trim() === '') {
+          console.log(`Stopping import at row ${index + 2} due to empty mobile number (column A)`);
+          break;
         }
         
-        // Map Excel columns to our schema (based on our actual schema)
+        // Extract data from specific columns according to requirements
+        // Column B - Employee name (split into first and last name)
+        const fullName = (row['__EMPTY_1'] || row.B || '').toString().trim();
+        let firstName = fullName;
+        let lastName = '';
+        
+        // Attempt to split name into first and last name
+        if (fullName.includes(' ')) {
+          const nameParts = fullName.split(' ');
+          firstName = nameParts[0];
+          lastName = nameParts.slice(1).join(' ');
+        }
+        
+        // Column C - Salary/Daily Wage
+        const dailyWage = (row['__EMPTY_2'] || row.C || 0).toString();
+        
+        // Column E - NID/BRC No.
+        const idNumber = (row['__EMPTY_4'] || row.E || '').toString();
+        
+        // Column F - Designation
+        const designation = (row['__EMPTY_5'] || row.F || '').toString();
+        
+        // Column H - Date of Join
+        let joinDate = row['__EMPTY_7'] || row.H || new Date().toISOString();
+        if (joinDate instanceof Date) {
+          joinDate = joinDate.toISOString();
+        } else if (typeof joinDate === 'number') {
+          // If it's an Excel date number
+          const excelDate = XLSX.SSF.parse_date_code(joinDate);
+          const jsDate = new Date(excelDate.y, excelDate.m - 1, excelDate.d);
+          joinDate = jsDate.toISOString();
+        }
+        
+        // Column I - Address
+        const address = (row['__EMPTY_8'] || row.I || '').toString();
+        
+        // Column M - Loan/Advance (if applicable)
+        const loanAdvance = (row['__EMPTY_12'] || row.M || 0).toString();
+        
+        // Auto-generate employee ID (EMP-XXXX)
+        const employeeId = `EMP-${startEmployeeId++}`;
+        
+        // Create employee object
         const employee: Partial<InsertEmployee> = {
-          employeeId: row.employeeId || row.EmployeeID || row['Employee ID'] || `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
-          firstName: row.firstName || row.FirstName || row['First Name'] || '',
-          lastName: row.lastName || row.LastName || row['Last Name'] || '',
-          designation: row.designation || row.Designation || row.Position || row.JobTitle || row['Job Title'] || '',
-          dailyWage: row.dailyWage || row.DailyWage || row['Daily Wage'] || row.Wage || row.Salary || '0',
-          mobile: row.mobile || row.Mobile || row.Phone || row['Phone Number'] || '',
-          address: row.address || row.Address || '',
-          idNumber: row.idNumber || row.IDNumber || row['ID Number'] || null,
-          joinDate: row.joinDate || row.JoinDate || row['Join Date'] || row['Start Date'] || new Date().toISOString(),
-          projectId: row.projectId || row.ProjectID || row['Project ID'] || null,
-          isActive: row.isActive !== undefined ? row.isActive : true
+          employeeId,
+          firstName,
+          lastName,
+          designation,
+          dailyWage,
+          mobile: mobileValue.toString(),
+          address,
+          idNumber,
+          joinDate,
+          projectId: null, // Will need to be assigned later
+          isActive: true,
+          loanAdvance: loanAdvance // Added to schema
         };
         
         employees.push(employee);
       } catch (err: any) {
         errors.push(`Error processing row ${index + 2}: ${err.message || err}`);
       }
-    });
+    }
 
     return {
       success: true,
