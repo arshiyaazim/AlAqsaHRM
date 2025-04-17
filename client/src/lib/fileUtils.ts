@@ -25,24 +25,40 @@ export async function uploadFile(file: File, endpoint: string): Promise<any> {
 
 /**
  * Processes an Excel file for employee import
- * @param file The Excel file to process
+ * @param filePath The path to the Excel file to process
  * @returns A promise that resolves to the server response
  */
 export async function importEmployeesFromExcel(filePath: string): Promise<any> {
-  const response = await fetch("/api/import/employees", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ filePath }),
-  });
+  console.log('ImportEmployeesFromExcel called with path:', filePath);
   
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.message || "Error importing employees");
+  try {
+    const response = await fetch("/api/import/employees", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ filePath }),
+    });
+    
+    if (!response.ok) {
+      let errorMsg = "Error importing employees";
+      try {
+        const errorData = await response.json();
+        errorMsg = errorData.message || errorMsg;
+        console.error('Import error response:', errorData);
+      } catch (err) {
+        console.error('Failed to parse error response', err);
+      }
+      throw new Error(errorMsg);
+    }
+    
+    const responseData = await response.json();
+    console.log('Import successful, received response:', responseData);
+    return responseData;
+  } catch (error) {
+    console.error('Error during employee import:', error);
+    throw error;
   }
-  
-  return await response.json();
 }
 
 /**

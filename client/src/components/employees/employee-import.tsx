@@ -234,7 +234,16 @@ export default function EmployeeImport({ onComplete }: EmployeeImportProps) {
       return;
     }
 
-    importMutation.mutate(excelFilePath);
+    // Clean up the file path if needed
+    let pathToUse = excelFilePath;
+    
+    // If the path starts with a slash, make it relative
+    if (pathToUse.startsWith('/')) {
+      pathToUse = pathToUse.substring(1);
+    }
+    
+    console.log('Importing from file path:', pathToUse);
+    importMutation.mutate(pathToUse);
   };
 
   // Handler for viewing file in new tab

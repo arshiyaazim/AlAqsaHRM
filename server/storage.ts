@@ -231,7 +231,7 @@ export class DatabaseStorage implements IStorage {
       const files = await readdir(uploadsDir);
       
       // Filter out the metadata file and other hidden files
-      const visibleFiles = files.filter(f => !f.startsWith('.'));
+      const visibleFiles = files.filter((f: string) => !f.startsWith('.'));
       
       // Get details for each file
       const fileDetailsPromises = visibleFiles.map(async (filename: string) => {
