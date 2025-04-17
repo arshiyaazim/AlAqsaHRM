@@ -13,6 +13,9 @@ import {
 import { db } from "./db";
 import { and, eq, sql, gte, lte } from "drizzle-orm";
 import bcrypt from "bcryptjs";
+import * as fs from 'fs';
+import * as path from 'path';
+import { promisify } from 'util';
 
 // Interface for uploaded files
 export interface UploadedFile {
@@ -186,9 +189,6 @@ export class DatabaseStorage implements IStorage {
   // File operations
   async getUploadedFiles(): Promise<UploadedFile[]> {
     try {
-      const fs = require('fs');
-      const path = require('path');
-      const { promisify } = require('util');
       const readdir = promisify(fs.readdir);
       const stat = promisify(fs.stat);
       
@@ -303,9 +303,6 @@ export class DatabaseStorage implements IStorage {
   
   async saveUploadedFile(file: UploadedFile): Promise<UploadedFile> {
     try {
-      const fs = require('fs');
-      const path = require('path');
-      
       // Ensure uploads directory exists
       const uploadsDir = path.join(process.cwd(), 'uploads');
       if (!fs.existsSync(uploadsDir)) {
@@ -349,9 +346,6 @@ export class DatabaseStorage implements IStorage {
   
   async deleteUploadedFile(id: string): Promise<boolean> {
     try {
-      const fs = require('fs');
-      const path = require('path');
-      const { promisify } = require('util');
       const unlink = promisify(fs.unlink);
       
       // Get the file
