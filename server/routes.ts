@@ -9,11 +9,14 @@ import {
   insertDailyIncomeSchema,
   insertPayrollSchema, 
   insertPaymentSchema,
-  insertDashboardStatsSchema
+  insertDashboardStatsSchema,
+  insertUserSchema
 } from "@shared/schema";
 import { z } from "zod";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
+import bcrypt from "bcryptjs";
+import { authenticateJWT, authorize, generateToken } from "./middleware/auth";
 import { readEmployeeExcel } from "./utils/excelImport";
 import { upload, handleFileUploadErrors } from "./utils/fileUpload";
 import path from "path";
@@ -33,19 +36,245 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return res.status(500).json({ message: err.message || "Internal server error" });
   };
   
+  // Helper function to create JWT token
+  const generateToken = (user: any) => {
+    // Use a secret key for JWT signing (in production, use environment variable)
+    const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+    
+    // Create a token that expires in 24 hours
+    return jwt.sign(
+      { 
+        id: user.id,
+        email: user.email,
+        role: user.role 
+      }, 
+      JWT_SECRET, 
+      { expiresIn: '24h' }
+    );
+  };
+  
+  // Middleware to verify the JWT token
+  const authenticateJWT = (req: Request, res: Response, next: NextFunction) => {
+    const authHeader = req.headers.authorization;
+    
+    if (authHeader) {
+      const token = authHeader.split(' ')[1]; // Bearer TOKEN
+      const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
+      
+      jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
+        if (err) {
+          return res.status(403).json({ message: "Invalid or expired token" });
+        }
+        
+        (req as any).user = user;
+        next();
+      });
+    } else {
+      res.status(401).json({ message: "Authentication token is required" });
+    }
+  };
+  
+  // Middleware to check user roles
+  const authorize = (roles: string[]) => {
+    return (req: Request, res: Response, next: NextFunction) => {
+      const user = (req as any).user;
+      
+      if (user && roles.includes(user.role)) {
+        next();
+      } else {
+        res.status(403).json({ message: "Insufficient permissions" });
+      }
+    };
+  };
+  
   // Auth routes
   app.post("/api/auth/login", async (req: Request, res: Response) => {
     try {
-      const { username, password } = req.body;
-      // For testing purposes, allow any login
+      const { email, password } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required" });
+      }
+      
+      const user = await storage.getUserByCredentials(email, password);
+      if (!user) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+      
+      if (!user.isActive) {
+        return res.status(403).json({ message: "Account is inactive. Please contact an administrator." });
+      }
+      
+      // Generate JWT token
+      const token = generateToken(user);
+      
+      // Return user data (excluding password) and token
+      const { password: _, ...userData } = user;
       res.json({ 
-        token: "test-token", 
-        user: { 
-          id: 1, 
-          username: username || "admin", 
-          role: "admin" 
-        } 
+        token, 
+        user: userData
       });
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.post("/api/auth/register", async (req: Request, res: Response) => {
+    try {
+      // Parse and validate input
+      const data = insertUserSchema.parse(req.body);
+      
+      // Check if email already exists
+      const existingUser = await storage.getUserByEmail(data.email);
+      if (existingUser) {
+        return res.status(400).json({ message: "Email already in use" });
+      }
+      
+      // Hash the password
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(data.password, salt);
+      
+      // Create user with hashed password
+      const user = await storage.createUser({
+        ...data,
+        password: hashedPassword,
+        role: data.role || "viewer", // Default role is viewer
+      });
+      
+      // Generate token for the new user
+      const token = generateToken(user);
+      
+      // Return user data (excluding password) and token
+      const { password: _, ...userData } = user;
+      res.status(201).json({
+        token,
+        user: userData
+      });
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.get("/api/auth/me", authenticateJWT, async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).user.id;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Return user data excluding password
+      const { password: _, ...userData } = user;
+      res.json(userData);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  // User management routes (admin only)
+  app.get("/api/users", authenticateJWT, authorize(["admin"]), async (req: Request, res: Response) => {
+    try {
+      const users = await storage.getAllUsers();
+      // Remove passwords from response
+      const sanitizedUsers = users.map(({ password, ...user }) => user);
+      res.json(sanitizedUsers);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.get("/api/users/:id", authenticateJWT, authorize(["admin"]), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+      
+      const user = await storage.getUser(id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Remove password from response
+      const { password: _, ...userData } = user;
+      res.json(userData);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.patch("/api/users/:id", authenticateJWT, authorize(["admin"]), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+      
+      const validatedData = insertUserSchema.partial().parse(req.body);
+      
+      // Hash password if provided
+      if (validatedData.password) {
+        const salt = await bcrypt.genSalt(10);
+        validatedData.password = await bcrypt.hash(validatedData.password, salt);
+      }
+      
+      const updatedUser = await storage.updateUser(id, validatedData);
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Remove password from response
+      const { password: _, ...userData } = updatedUser;
+      res.json(userData);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.patch("/api/users/:id/role", authenticateJWT, authorize(["admin"]), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+      
+      const { role } = req.body;
+      if (!role || !["admin", "hr", "viewer"].includes(role)) {
+        return res.status(400).json({ message: "Invalid role. Must be 'admin', 'hr', or 'viewer'." });
+      }
+      
+      const updatedUser = await storage.updateUserRole(id, role);
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Remove password from response
+      const { password: _, ...userData } = updatedUser;
+      res.json(userData);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.delete("/api/users/:id", authenticateJWT, authorize(["admin"]), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+      
+      // Check if the user is trying to delete their own account
+      if (id === (req as any).user.id) {
+        return res.status(400).json({ message: "You cannot delete your own account" });
+      }
+      
+      const success = await storage.deleteUser(id);
+      if (!success) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.status(204).send();
     } catch (err) {
       handleError(err, res);
     }

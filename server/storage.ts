@@ -131,16 +131,83 @@ export class MemStorage implements IStorage {
     this.initializeData();
   }
   
+  // User operations
+  async getAllUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
+  }
+  
+  async getUser(id: number): Promise<User | undefined> {
+    return this.users.get(id);
+  }
+  
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.email === email
+    );
+  }
+  
+  async getUserByCredentials(email: string, password: string): Promise<User | undefined> {
+    const user = await this.getUserByEmail(email);
+    if (!user) return undefined;
+    
+    const bcrypt = require('bcryptjs');
+    const isMatch = bcrypt.compareSync(password, user.password);
+    
+    return isMatch ? user : undefined;
+  }
+  
+  async createUser(user: InsertUser): Promise<User> {
+    const id = this.userIdCounter++;
+    // Generate fullName from firstName and lastName
+    const fullName = `${user.firstName} ${user.lastName}`;
+    const newUser = { ...user, id, fullName };
+    this.users.set(id, newUser);
+    return newUser;
+  }
+  
+  async updateUser(id: number, user: Partial<InsertUser>): Promise<User | undefined> {
+    const existingUser = this.users.get(id);
+    if (!existingUser) return undefined;
+    
+    // If firstName or lastName is updated, update fullName too
+    let fullNameUpdate = {};
+    if (user.firstName || user.lastName) {
+      const firstName = user.firstName || existingUser.firstName;
+      const lastName = user.lastName || existingUser.lastName;
+      fullNameUpdate = { fullName: `${firstName} ${lastName}` };
+    }
+    
+    const updatedUser = { ...existingUser, ...user, ...fullNameUpdate };
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+  
+  async updateUserRole(id: number, role: string): Promise<User | undefined> {
+    const existingUser = this.users.get(id);
+    if (!existingUser) return undefined;
+    
+    const updatedUser = { ...existingUser, role };
+    this.users.set(id, updatedUser);
+    return updatedUser;
+  }
+  
+  async deleteUser(id: number): Promise<boolean> {
+    return this.users.delete(id);
+  }
+  
   private initializeData() {
     // Add admin user
+    const bcrypt = require('bcryptjs');
+    const salt = bcrypt.genSaltSync(10);
+    const hashedPassword = bcrypt.hashSync("Arshiya$2011", salt);
+    
     const adminUser: InsertUser = {
       firstName: "Md.",
       lastName: "Muradul Alam",
       email: "asls.guards@gmail.com",
-      password: "Arshiya$2011", // Will be hashed before storing
+      password: hashedPassword,
       role: "admin",
       employeeId: "01958122300",
-      fullName: "Md. Muradul Alam",
       isActive: true
     };
     
@@ -634,6 +701,74 @@ export class MemStorage implements IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  // User operations
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
+  }
+  
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+  
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+  
+  async getUserByCredentials(email: string, password: string): Promise<User | undefined> {
+    const user = await this.getUserByEmail(email);
+    if (!user) return undefined;
+    
+    const bcrypt = require('bcryptjs');
+    const isMatch = bcrypt.compareSync(password, user.password);
+    
+    return isMatch ? user : undefined;
+  }
+  
+  async createUser(user: InsertUser): Promise<User> {
+    // Generate fullName from firstName and lastName
+    const fullName = `${user.firstName} ${user.lastName}`;
+    const [newUser] = await db.insert(users).values({...user, fullName}).returning();
+    return newUser;
+  }
+  
+  async updateUser(id: number, user: Partial<InsertUser>): Promise<User | undefined> {
+    const existingUser = await this.getUser(id);
+    if (!existingUser) return undefined;
+    
+    // If firstName or lastName is updated, update fullName too
+    let fullNameUpdate = {};
+    if (user.firstName || user.lastName) {
+      const firstName = user.firstName || existingUser.firstName;
+      const lastName = user.lastName || existingUser.lastName;
+      fullNameUpdate = { fullName: `${firstName} ${lastName}` };
+    }
+    
+    const [updatedUser] = await db
+      .update(users)
+      .set({...user, ...fullNameUpdate})
+      .where(eq(users.id, id))
+      .returning();
+    
+    return updatedUser;
+  }
+  
+  async updateUserRole(id: number, role: string): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ role })
+      .where(eq(users.id, id))
+      .returning();
+    
+    return updatedUser;
+  }
+  
+  async deleteUser(id: number): Promise<boolean> {
+    const result = await db.delete(users).where(eq(users.id, id));
+    return result.rowCount > 0;
+  }
+  
   // Employee operations
   async getAllEmployees(): Promise<Employee[]> {
     return await db.select().from(employees);
