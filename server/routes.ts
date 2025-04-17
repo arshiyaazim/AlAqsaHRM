@@ -17,6 +17,7 @@ import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { authenticateJWT, authorize, generateToken } from "./middleware/auth";
 import { readEmployeeExcel } from "./utils/excelImport";
 import { upload, handleFileUploadErrors } from "./utils/fileUpload";
 import path from "path";
@@ -36,56 +37,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return res.status(500).json({ message: err.message || "Internal server error" });
   };
   
-  // Helper function to create JWT token
-  const generateToken = (user: any) => {
-    // Use a secret key for JWT signing (in production, use environment variable)
-    const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
-    
-    // Create a token that expires in 24 hours
-    return jwt.sign(
-      { 
-        id: user.id,
-        email: user.email,
-        role: user.role 
-      }, 
-      JWT_SECRET, 
-      { expiresIn: '24h' }
-    );
-  };
-  
-  // Middleware to verify the JWT token
-  const authenticateJWT = (req: Request, res: Response, next: NextFunction) => {
-    const authHeader = req.headers.authorization;
-    
-    if (authHeader) {
-      const token = authHeader.split(' ')[1]; // Bearer TOKEN
-      const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
-      
-      jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
-        if (err) {
-          return res.status(403).json({ message: "Invalid or expired token" });
-        }
-        
-        (req as any).user = user;
-        next();
-      });
-    } else {
-      res.status(401).json({ message: "Authentication token is required" });
-    }
-  };
-  
-  // Middleware to check user roles
-  const authorize = (roles: string[]) => {
-    return (req: Request, res: Response, next: NextFunction) => {
-      const user = (req as any).user;
-      
-      if (user && roles.includes(user.role)) {
-        next();
-      } else {
-        res.status(403).json({ message: "Insufficient permissions" });
-      }
-    };
-  };
+    // Auth middleware and token generator are imported from './middleware/auth'
   
   // Auth routes
   app.post("/api/auth/login", async (req: Request, res: Response) => {
