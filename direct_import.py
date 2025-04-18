@@ -13,24 +13,26 @@ Example:
 """
 
 import sys
-import pandas as pd
-import sqlite3
 import os
-import logging
+import sqlite3
+import pandas as pd
+import json
 from datetime import datetime
+import logging
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.StreamHandler(sys.stdout)
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('direct_import.log')
     ]
 )
 logger = logging.getLogger(__name__)
 
-# Database setup
-DB_PATH = 'employees.db'
+# Database path
+DB_PATH = 'employee_data.db'
 
 def init_db():
     """Initialize the SQLite database with required tables."""
@@ -49,6 +51,19 @@ def init_db():
         designation TEXT,
         join_date DATE,
         import_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    ''')
+    
+    # Create import_history table to keep track of imports
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS import_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        file_name TEXT,
+        import_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        records_imported INTEGER,
+        records_skipped INTEGER,
+        has_errors BOOLEAN,
+        error_details TEXT
     )
     ''')
     
@@ -72,35 +87,34 @@ def import_excel_data(filepath):
             logger.error(f"File not found: {filepath}")
             return {
                 "success": False,
-                "message": f"File not found: {filepath}"
+                "message": f"File not found: {filepath}",
+                "imported_count": 0,
+                "skipped_count": 0,
+                "errors": [f"File not found: {filepath}"]
             }
-            
+        
         # Read the Excel file
         logger.info(f"Reading Excel file: {filepath}")
         
         try:
             # First try to read with default settings
             df = pd.read_excel(filepath, sheet_name="EmployeeDetails", engine="openpyxl")
-            logger.info(f"Successfully read Excel file with headers")
+            logger.info("Successfully read Excel file with 'EmployeeDetails' sheet")
         except Exception as e:
-            logger.warning(f"Error reading with headers: {e}. Trying without headers.")
-            # If that fails, try reading without headers
-            df = pd.read_excel(filepath, sheet_name="EmployeeDetails", header=None, engine="openpyxl")
-            # Assign column names based on positions
-            df.columns = [f"Column_{i}" for i in range(len(df.columns))]
-            # Map specific positions to our expected column names
-            column_mapping = {
-                "Column_0": "Employee ID",  # Column A
-                "Column_1": "Name",         # Column B
-                "Column_2": "Daily Wage",   # Column C
-                "Column_3": "Mobile Number", # Column D
-                "Column_4": "NID / Passport Number", # Column E
-                "Column_5": "Designation",  # Column F
-                "Column_7": "Join Date"     # Column H (if there's a Column G)
-            }
-            # Only rename columns that exist in the dataframe
-            valid_columns = {k: v for k, v in column_mapping.items() if k in df.columns}
-            df = df.rename(columns=valid_columns)
+            try:
+                # If that fails, try reading without specifying the sheet
+                logger.warning(f"Error reading specific sheet: {e}. Trying first sheet.")
+                df = pd.read_excel(filepath, engine="openpyxl")
+                logger.info("Successfully read Excel file using first sheet")
+            except Exception as e2:
+                logger.error(f"Failed to read Excel file: {str(e2)}")
+                return {
+                    "success": False,
+                    "message": f"Failed to read Excel file: {str(e2)}",
+                    "imported_count": 0,
+                    "skipped_count": 0,
+                    "errors": [str(e2)]
+                }
         
         # Display information about the Excel file
         logger.info(f"Columns found in Excel file: {df.columns.tolist()}")
@@ -111,16 +125,49 @@ def import_excel_data(filepath):
         for i, row in df.head(3).iterrows():
             logger.info(f"Row {i+1}: {row.to_dict()}")
         
-        # Ensure 'Employee ID' column exists, otherwise use first column
-        if "Employee ID" not in df.columns and len(df.columns) > 0:
-            logger.warning("'Employee ID' column not found. Using first column instead.")
-            first_col = df.columns[0]
-            df = df.rename(columns={first_col: "Employee ID"})
+        # Column mapping from Excel to our fields - try various possible column names
+        column_mappings = {
+            'employee_id': ['Employee ID', 'EmployeeID', 'ID', 'Employee Id', df.columns[0]],
+            'name': ['Name', 'Employee Name', 'Full Name'],
+            'daily_wage': ['Daily Wage', 'Wage', 'Salary', 'Pay', 'SALARY'],
+            'mobile_number': ['Mobile Number', 'Mobile', 'Phone', 'Contact', 'Mobile no.'],
+            'nid_passport': ['NID / Passport Number', 'NID', 'Passport', 'ID Number', 'NID No.'],
+            'designation': ['Designation', 'Position', 'Job Title', 'Role'],
+            'join_date': ['Join Date', 'Joining Date', 'Start Date', 'Date of Join']
+        }
         
-        # Filter rows where Employee ID (column A) is not empty
-        valid_rows = df[df["Employee ID"].notna()]
+        # Create a dictionary to store our standardized column names
+        field_mapping = {}
         
-        logger.info(f"Valid rows with non-empty Employee ID: {len(valid_rows)}")
+        # For each of our desired output fields
+        for db_field, possible_names in column_mappings.items():
+            # Try to find a matching column name in the dataframe
+            for name in possible_names:
+                if name in df.columns:
+                    field_mapping[db_field] = name
+                    break
+        
+        # Print the columns we've identified
+        logger.info("Column mapping:")
+        for db_field, excel_field in field_mapping.items():
+            logger.info(f"  {db_field} <- {excel_field}")
+        
+        # Ensure we have an Employee ID column
+        if 'employee_id' not in field_mapping:
+            logger.error("Could not find Employee ID column in Excel file")
+            return {
+                "success": False,
+                "message": "Could not find Employee ID column in Excel file",
+                "imported_count": 0,
+                "skipped_count": 0,
+                "errors": ["Could not find Employee ID column"]
+            }
+        
+        # Filter rows where Employee ID is not empty
+        emp_id_col = field_mapping['employee_id']
+        valid_df = df[df[emp_id_col].notna()]
+        
+        logger.info(f"Found {len(valid_df)} rows with non-empty Employee ID")
         
         # Initialize database connection
         conn = sqlite3.connect(DB_PATH)
@@ -130,60 +177,56 @@ def import_excel_data(filepath):
         imported_count = 0
         skipped_count = 0
         errors = []
-        import_results = []
         
-        for index, row in valid_rows.iterrows():
+        for index, row in valid_df.iterrows():
             try:
                 # Get Employee ID and validate it's not empty
-                employee_id = str(row["Employee ID"]).strip() if pd.notna(row["Employee ID"]) else ""
+                employee_id = str(row[emp_id_col]).strip() if pd.notna(row[emp_id_col]) else ""
                 
                 # Skip if Employee ID is empty after stripping
                 if not employee_id:
                     skipped_count += 1
                     continue
                 
-                # Get values for all other columns, handling missing ones
-                employee_data = {}
-                employee_data["employee_id"] = employee_id
+                # Get values for all other fields, handling missing ones
+                employee_data = {
+                    "employee_id": employee_id,
+                    "name": None,
+                    "daily_wage": None,
+                    "mobile_number": None,
+                    "nid_passport": None,
+                    "designation": None,
+                    "join_date": None
+                }
                 
-                # Name (Column B)
-                name_column = "Name" if "Name" in row.index else None
-                employee_data["name"] = str(row[name_column]) if name_column and pd.notna(row[name_column]) else ""
-                
-                # Daily Wage (Column C)
-                wage_column = "Daily Wage" if "Daily Wage" in row.index else None
-                try:
-                    employee_data["daily_wage"] = float(row[wage_column]) if wage_column and pd.notna(row[wage_column]) else None
-                except (ValueError, TypeError):
-                    employee_data["daily_wage"] = None
-                
-                # Mobile Number (Column D)
-                mobile_column = "Mobile Number" if "Mobile Number" in row.index else None
-                employee_data["mobile_number"] = str(row[mobile_column]) if mobile_column and pd.notna(row[mobile_column]) else ""
-                
-                # NID/Passport (Column E)
-                nid_column = "NID / Passport Number" if "NID / Passport Number" in row.index else None
-                employee_data["nid_passport"] = str(row[nid_column]) if nid_column and pd.notna(row[nid_column]) else ""
-                
-                # Designation (Column F)
-                designation_column = "Designation" if "Designation" in row.index else None
-                employee_data["designation"] = str(row[designation_column]) if designation_column and pd.notna(row[designation_column]) else ""
-                
-                # Join Date (Column H)
-                join_date_column = "Join Date" if "Join Date" in row.index else None
-                if join_date_column and pd.notna(row[join_date_column]):
-                    try:
-                        if isinstance(row[join_date_column], datetime):
-                            employee_data["join_date"] = row[join_date_column].strftime("%Y-%m-%d")
+                # Process each field
+                for db_field, excel_field in field_mapping.items():
+                    if db_field == 'employee_id':
+                        # Already processed
+                        continue
+                    
+                    if excel_field in row and pd.notna(row[excel_field]):
+                        if db_field == 'daily_wage':
+                            # Handle numeric field
+                            try:
+                                employee_data[db_field] = float(row[excel_field])
+                            except (ValueError, TypeError):
+                                logger.warning(f"Could not convert '{row[excel_field]}' to float for employee {employee_id}")
+                        elif db_field == 'join_date':
+                            # Handle date field
+                            try:
+                                if isinstance(row[excel_field], datetime):
+                                    employee_data[db_field] = row[excel_field].strftime("%Y-%m-%d")
+                                else:
+                                    employee_data[db_field] = pd.to_datetime(row[excel_field]).strftime("%Y-%m-%d")
+                            except Exception as e:
+                                logger.warning(f"Could not parse date '{row[excel_field]}' for employee {employee_id}: {e}")
                         else:
-                            employee_data["join_date"] = pd.to_datetime(row[join_date_column]).strftime("%Y-%m-%d")
-                    except:
-                        employee_data["join_date"] = None
-                else:
-                    employee_data["join_date"] = None
+                            # String fields
+                            employee_data[db_field] = str(row[excel_field])
                 
                 # Log the data being processed
-                logger.info(f"Processing row {index+1}: ID={employee_data['employee_id']}, Name={employee_data['name']}")
+                logger.info(f"Processing row {index+1}: ID={employee_data['employee_id']}, Name={employee_data.get('name', 'N/A')}")
                 
                 # Check if employee already exists and update or insert accordingly
                 cursor.execute("SELECT id FROM employees WHERE employee_id = ?", (employee_data["employee_id"],))
@@ -225,12 +268,25 @@ def import_excel_data(filepath):
                     logger.info(f"Inserted new employee: {employee_data['employee_id']}")
                 
                 imported_count += 1
-                import_results.append(employee_data)
                 
             except Exception as e:
                 logger.error(f"Error processing row {index+1}: {str(e)}")
                 errors.append(f"Row {index+1}: {str(e)}")
                 skipped_count += 1
+        
+        # Record the import in the history table
+        file_name = os.path.basename(filepath)
+        cursor.execute('''
+        INSERT INTO import_history 
+        (file_name, records_imported, records_skipped, has_errors, error_details)
+        VALUES (?, ?, ?, ?, ?)
+        ''', (
+            file_name,
+            imported_count,
+            skipped_count,
+            len(errors) > 0,
+            json.dumps(errors) if errors else None
+        ))
         
         # Commit changes and close connection
         conn.commit()
@@ -241,11 +297,10 @@ def import_excel_data(filepath):
         
         return {
             "success": True,
+            "message": f"Successfully imported {imported_count} employees",
             "imported_count": imported_count,
             "skipped_count": skipped_count,
-            "errors": errors,
-            "import_results": import_results,
-            "message": f"Successfully imported {imported_count} employees."
+            "errors": errors
         }
         
     except Exception as e:
@@ -253,6 +308,8 @@ def import_excel_data(filepath):
         return {
             "success": False,
             "message": f"Error importing Excel file: {str(e)}",
+            "imported_count": 0,
+            "skipped_count": 0,
             "errors": [str(e)]
         }
 
@@ -262,64 +319,71 @@ def display_all_employees():
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     
-    cursor.execute('SELECT * FROM employees ORDER BY import_date DESC')
+    cursor.execute('''
+    SELECT * FROM employees ORDER BY import_date DESC
+    ''')
+    
     employees = cursor.fetchall()
+    conn.close()
     
     if not employees:
         print("No employees found in the database.")
-    else:
-        print(f"\nTotal employees: {len(employees)}")
-        print("\n{:<15} {:<25} {:<10} {:<15} {:<20} {:<15} {:<12}".format(
-            "Employee ID", "Name", "Daily Wage", "Mobile", "NID/Passport", "Designation", "Join Date"
-        ))
-        print("-" * 120)
-        
-        for emp in employees:
-            print("{:<15} {:<25} {:<10} {:<15} {:<20} {:<15} {:<12}".format(
-                emp['employee_id'], 
-                emp['name'][:23] + (emp['name'][23:] and '...'), 
-                str(emp['daily_wage'] or 'N/A'), 
-                emp['mobile_number'] or 'N/A',
-                emp['nid_passport'] or 'N/A',
-                emp['designation'] or 'N/A',
-                emp['join_date'] or 'N/A'
-            ))
+        return
     
+    print(f"\nTotal employees in database: {len(employees)}")
+    print("\n--- EMPLOYEE LIST ---")
+    for i, emp in enumerate(employees):
+        print(f"{i+1:3d}. {emp['employee_id']:15} | {emp['name'] or 'N/A':25} | Wage: {emp['daily_wage'] or 'N/A'}")
+    
+    print("\n--- IMPORT HISTORY ---")
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute('''
+    SELECT * FROM import_history ORDER BY import_date DESC
+    ''')
+    
+    history = cursor.fetchall()
     conn.close()
+    
+    for entry in history:
+        status = "✓ Success" if not entry['has_errors'] else f"⚠ Completed with {entry['error_details'].count(':') if entry['error_details'] else 0} errors"
+        print(f"{entry['import_date']} | {entry['file_name']} | {entry['records_imported']} imported, {entry['records_skipped']} skipped | {status}")
 
 def main():
-    # Initialize the database
-    init_db()
-    
-    # Check command line arguments
+    # Check command-line arguments
     if len(sys.argv) < 2:
         print("Usage: python direct_import.py path/to/excel_file.xlsx")
         return
     
-    # Get the Excel file path from command line
-    excel_file = sys.argv[1]
+    filepath = sys.argv[1]
+    
+    # Initialize the database
+    init_db()
     
     # Import the data
-    result = import_excel_data(excel_file)
+    print(f"\n--- IMPORTING EMPLOYEES FROM {filepath} ---\n")
+    result = import_excel_data(filepath)
     
-    # Print the result
+    # Print result
     if result['success']:
         print(f"\n✅ {result['message']}")
+        print(f"  Imported: {result['imported_count']}")
+        print(f"  Skipped: {result['skipped_count']}")
+        print(f"  Errors: {len(result['errors'])}")
         
-        # Display some stats
-        print(f"  - Imported: {result['imported_count']}")
-        print(f"  - Skipped: {result['skipped_count']}")
-        print(f"  - Errors: {len(result['errors'])}")
-        
-        # Display all employees
-        display_all_employees()
+        if result['errors']:
+            print("\nErrors:")
+            for i, error in enumerate(result['errors'][:5]):  # Show only first 5 errors
+                print(f"  {i+1}. {error}")
+            if len(result['errors']) > 5:
+                print(f"  ... and {len(result['errors']) - 5} more errors")
     else:
         print(f"\n❌ Error: {result['message']}")
-        
-        if 'errors' in result and result['errors']:
-            print("\nDetailed errors:")
-            for error in result['errors']:
-                print(f"  - {error}")
+    
+    # Display all employees in the database
+    display_all_employees()
 
 if __name__ == "__main__":
     main()

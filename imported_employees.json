@@ -2,1522 +2,753 @@
   {
     "Employee ID": "01958122300",
     "Name": "Md. Muradul Alam",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Daily Wage": 16.5
   },
   {
     "Employee ID": "01958122301",
     "Name": "Md. Nesaruddin Piash Khan",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Daily Wage": 13.0,
+    "NID / Passport Number": "4218511493.0"
   },
   {
     "Employee ID": "01958122302",
     "Name": "Md. Anis",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Daily Wage": 10.0,
+    "NID / Passport Number": "2.0082214959953416e+16",
+    "Join Date": "1970-01-01"
   },
   {
     "Employee ID": "01958122303",
     "Name": "Md. Shahin Alam",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Daily Wage": 10.0,
+    "NID / Passport Number": "1.993159161010784e+16"
   },
   {
     "Employee ID": "01958122304",
     "Name": "Md. Saiful Islam",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Daily Wage": 10.0
   },
   {
     "Employee ID": "01958122314",
     "Name": "Afroza",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Daily Wage": 10.0,
+    "NID / Passport Number": "4654727637.0"
   },
   {
     "Employee ID": "01517110040",
     "Name": "Mohiuddin",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "4664417161.0"
   },
   {
     "Employee ID": "01822076763",
     "Name": "Rakesh Mojumdar",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "4208351215.0"
   },
   {
     "Employee ID": "01601481957",
     "Name": "Ariyan Ahmed",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "2863694713.0"
   },
   {
     "Employee ID": "01958122316",
-    "Name": "Azizul",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Azizul"
   },
   {
     "Employee ID": "01958122329",
-    "Name": "Poly",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Poly"
   },
   {
     "Employee ID": "01776826269",
     "Name": "Arif Ahmed",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "9196204133591.0"
   },
   {
     "Employee ID": "01839600295",
     "Name": "Sohel Rana",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "6009758696.0"
   },
   {
     "Employee ID": "01325879168",
     "Name": "Rejaul Karim",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "6003238398.0"
   },
   {
     "Employee ID": "01850900566",
     "Name": "Salauddin Jalo",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "9146143947.0"
   },
   {
     "Employee ID": "01746482883",
     "Name": "Salauddin feni",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "1506147626.0"
   },
   {
     "Employee ID": "01400702117",
-    "Name": "Sagor",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Sagor"
   },
   {
     "Employee ID": "01958122319",
     "Name": "Arup deb",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "8260830586.0"
   },
   {
     "Employee ID": "01795297827",
-    "Name": "Alomgir",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Alomgir"
   },
   {
     "Employee ID": "01789998921",
-    "Name": "Tajbir",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Tajbir"
   },
   {
     "Employee ID": "01765536135",
-    "Name": "Rummon",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Rummon"
   },
   {
     "Employee ID": "01876927425",
     "Name": "Abdul Jalil",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "3283887465.0"
   },
   {
     "Employee ID": "01906832807",
     "Name": "Raihan Pahar",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "6024958057.0"
   },
   {
     "Employee ID": "01829975605",
-    "Name": "Arif Nova",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Arif Nova"
   },
   {
     "Employee ID": "01730544416",
     "Name": "Parvej",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "8729054331.0"
   },
   {
     "Employee ID": "01752338910",
     "Name": "Parvej Shylet",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "8689043654.0"
   },
   {
     "Employee ID": "01866354766",
     "Name": "Mehedi Hasan NK",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "8724066685.0"
   },
   {
     "Employee ID": "01327134512",
     "Name": "Mehedi Hasan Cumi",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "1509972335.0"
   },
   {
     "Employee ID": "01838232227",
     "Name": "Hafijur Isalm",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "8718240245793.0"
   },
   {
     "Employee ID": "01954444897",
-    "Name": "Muhin",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Muhin"
   },
   {
     "Employee ID": "01819721342",
-    "Name": "Abu Toyab",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Abu Toyab"
   },
   {
     "Employee ID": "01972723989",
-    "Name": "Riyad",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Riyad"
   },
   {
     "Employee ID": "01875458104",
     "Name": "Jasim Uddin",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "7328241596.0"
   },
   {
     "Employee ID": "01769911617",
-    "Name": "Jasim Pagla",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Jasim Pagla"
   },
   {
     "Employee ID": "01917619322",
-    "Name": "Nazrul Sk",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Nazrul Sk"
   },
   {
     "Employee ID": "01721676342",
-    "Name": "Zihad SK",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Zihad SK"
   },
   {
     "Employee ID": "01979232780",
-    "Name": "Ifty",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Ifty"
   },
   {
     "Employee ID": "01855723773",
-    "Name": "Joynal Abedin",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Joynal Abedin"
   },
   {
     "Employee ID": "01860446818",
     "Name": "Kiash Uddin",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "2.00784136575051e+16"
   },
   {
     "Employee ID": "01400633830",
-    "Name": "Ahmed Hossain",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Ahmed Hossain"
   },
   {
     "Employee ID": "01870025789",
     "Name": "Jillor Rahman",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "4672467729.0"
   },
   {
     "Employee ID": "01845484746",
     "Name": "Robi Sankor",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "8703418460.0"
   },
   {
     "Employee ID": "01882592012",
-    "Name": "Ashraful",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Ashraful"
   },
   {
     "Employee ID": "01821926588",
     "Name": "Samsuddin",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "1022756280.0"
   },
   {
     "Employee ID": "01824712721",
     "Name": "Saber Ahmed",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "8238114725.0"
   },
   {
     "Employee ID": "01604945259",
     "Name": "Shamim Hosen",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "3323978654.0"
   },
   {
     "Employee ID": "01619110337",
     "Name": "Wazib",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "1504310382.0"
   },
   {
     "Employee ID": "01780228737",
-    "Name": "Tanshen",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Tanshen"
   },
   {
     "Employee ID": "01894628512",
-    "Name": "Yasin",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Yasin"
   },
   {
     "Employee ID": "01568239239",
-    "Name": "Aman Uddin",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Aman Uddin"
   },
   {
     "Employee ID": "01824292031",
     "Name": "Sahajan Escort",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "9153962395.0"
   },
   {
     "Employee ID": "01819563078",
-    "Name": "Akash",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Akash"
   },
   {
     "Employee ID": "01876694931",
-    "Name": "Easin",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Easin"
   },
   {
     "Employee ID": "01864717098",
-    "Name": "Azim Uddin",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Azim Uddin"
   },
   {
     "Employee ID": "01885840694",
-    "Name": "Mojahid",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Mojahid"
   },
   {
     "Employee ID": "01882480779",
-    "Name": "Md.Hussain",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Md.Hussain"
   },
   {
     "Employee ID": "01839129423",
-    "Name": "Ajomgir",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Ajomgir"
   },
   {
     "Employee ID": "01888142962",
     "Name": "Atikul Islam",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "7787397665.0"
   },
   {
     "Employee ID": "01641415057",
     "Name": "Riaj uddin",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "1.97615916371276e+16"
   },
   {
     "Employee ID": "01828648235",
     "Name": "Abdur Rahman",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "5065127663.0"
   },
   {
     "Employee ID": "01833255590",
-    "Name": "Sahab Uddin",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Sahab Uddin"
   },
   {
     "Employee ID": "01881787961",
     "Name": "Md.Azad",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "8778679682.0"
   },
   {
     "Employee ID": "01826498939",
-    "Name": "Mohshen",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Mohshen"
   },
   {
     "Employee ID": "01622706810",
-    "Name": "Alauddin",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Alauddin"
   },
   {
     "Employee ID": "01889250883",
-    "Name": "Abdullah",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Abdullah"
   },
   {
     "Employee ID": "01812583864",
     "Name": "Shafikul Islam",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "4620731762.0"
   },
   {
     "Employee ID": "01818005432",
     "Name": "Mojammel hoq",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "7793301149.0"
   },
   {
     "Employee ID": "01868250538",
-    "Name": "Moinuddin",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Moinuddin"
   },
   {
     "Employee ID": "01607728195",
     "Name": "mainul hasan",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "3773834688.0"
   },
   {
     "Employee ID": "01711248579",
     "Name": "Amirul Islam",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "1964724320.0"
   },
   {
     "Employee ID": "01858272885",
     "Name": "Md. Manik",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "1517865198760.0"
   },
   {
     "Employee ID": "01814480970",
-    "Name": "Partha Dhar",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Partha Dhar"
   },
   {
     "Employee ID": "01811001729",
     "Name": "Kamrul Hasan",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "7821814139.0"
   },
   {
     "Employee ID": "01779270796",
     "Name": "Sajjad Bin Alam",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "4154543906.0"
   },
   {
     "Employee ID": "01876714066",
     "Name": "Md.Mahfujul Karim",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "1513361044020.0"
   },
   {
     "Employee ID": "01838778210",
     "Name": "Emran Hosen",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "3323202071.0"
   },
   {
     "Employee ID": "01603118715",
     "Name": "Ashraful Karim",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "4219310424.0"
   },
   {
     "Employee ID": "01817787887",
     "Name": "Abbas Chowdhury",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "5959493320.0"
   },
   {
     "Employee ID": "01600865418",
-    "Name": "Sumon Chakma",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Sumon Chakma"
   },
   {
     "Employee ID": "01865358454",
     "Name": "Wasir Kamal Rahat",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "4212850707.0"
   },
   {
     "Employee ID": "01861245325",
     "Name": "Rakibul Karim",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "2.00615161301082e+16"
   },
   {
     "Employee ID": "01859524606",
-    "Name": "Afnan Sami",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Afnan Sami"
   },
   {
     "Employee ID": "0160886399",
-    "Name": "Humayun",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Humayun"
   },
   {
     "Employee ID": "01896084973",
     "Name": "Osanu Marma",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "6009856680.0"
   },
   {
     "Employee ID": "01775779785",
     "Name": "Mostafa",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "5066660221.0"
   },
   {
     "Employee ID": "01728722214",
     "Name": "Riaz Khan",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "2.00301114470051e+16"
   },
   {
     "Employee ID": "01837014485",
     "Name": "Mizanul Karim",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Daily Wage": "Escort",
+    "NID / Passport Number": "1.96422156782672e+16"
   },
   {
     "Employee ID": "01823073172",
-    "Name": "Shariful Islam",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Shariful Islam"
   },
   {
     "Employee ID": "01995453255",
-    "Name": "Nipen Dash",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Nipen Dash"
   },
   {
     "Employee ID": "01721676342",
-    "Name": "Mamun",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Mamun"
   },
   {
     "Employee ID": "01917103881",
-    "Name": "Jakaria ",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Jakaria "
   },
   {
     "Employee ID": "01890799417",
-    "Name": "Joynal ",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Joynal "
   },
   {
     "Employee ID": "01831542911",
-    "Name": "Sujon",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Sujon"
   },
   {
     "Employee ID": "01728722214",
-    "Name": "riyaz khan",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "riyaz khan"
   },
   {
     "Employee ID": "01600865418",
-    "Name": "Sumon Chakma",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Sumon Chakma"
   },
   {
     "Employee ID": "01540340594",
-    "Name": "Aloi Bodoa Munna",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Aloi Bodoa Munna"
   },
   {
     "Employee ID": "01821051015",
-    "Name": "Apru Marma",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Apru Marma"
   },
   {
     "Employee ID": "01811369817",
     "Name": "Saiful Alam",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Daily Wage": "Escort",
+    "NID / Passport Number": "2400589863.0"
   },
   {
     "Employee ID": "01811001729",
-    "Name": "Rocky",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Rocky"
   },
   {
     "Employee ID": "01958122304",
     "Name": "Md.Saiful Islam",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "1592037104539.0"
   },
   {
     "Employee ID": "01612642218",
-    "Name": "Apu Bishas",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Apu Bishas"
   },
   {
     "Employee ID": "01619988730",
-    "Name": "Foijur Rahman",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Foijur Rahman"
   },
   {
     "Employee ID": "01880873773",
-    "Name": "Nijam uddin",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Nijam uddin"
   },
   {
     "Employee ID": "01648085428",
-    "Name": "Rayhan Alam",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Rayhan Alam"
   },
   {
     "Employee ID": "01686470860",
-    "Name": "Jashim uddin",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Jashim uddin"
   },
   {
     "Employee ID": "01925624284",
-    "Name": "Atik escort",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Atik escort"
   },
   {
     "Employee ID": "01870070585",
-    "Name": "Babu",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Babu"
   },
   {
     "Employee ID": "01775779785",
-    "Name": "Mostofa",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Mostofa"
   },
   {
     "Employee ID": "01818501931",
-    "Name": "Tanbir Alam",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Tanbir Alam"
   },
   {
     "Employee ID": "01760211570",
-    "Name": "Rahim",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Rahim"
   },
   {
     "Employee ID": "01837728063",
-    "Name": "Md Mamun",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Md Mamun"
   },
   {
     "Employee ID": "01619027781",
-    "Name": "Uttam",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Uttam"
   },
   {
     "Employee ID": "01948173877",
     "Name": "Monjur Alam",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "9410873548955.0"
   },
   {
     "Employee ID": "01757593745",
-    "Name": "Md Ahad",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Md Ahad"
   },
   {
     "Employee ID": "01831703006",
-    "Name": "Sheik Naim",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Sheik Naim"
   },
   {
     "Employee ID": "01722035212",
     "Name": "Mijanul Karim",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "1.964221567827621e+16"
   },
   {
     "Employee ID": "01760893687",
     "Name": "Tanzil Afreen Mahi",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "2412959146.0"
   },
   {
     "Employee ID": "01811926710",
-    "Name": "Mohsen",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Mohsen"
   },
   {
     "Employee ID": "01833255590",
-    "Name": "Sahabuddin",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Sahabuddin"
   },
   {
     "Employee ID": "01884444480",
-    "Name": "Emran Hossen Sr",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Emran Hossen Sr"
   },
   {
     "Employee ID": "01890799417",
-    "Name": "Joynal ",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Joynal "
   },
   {
     "Employee ID": "01786550469",
-    "Name": "Ronju",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Ronju"
   },
   {
     "Employee ID": "01759997449",
-    "Name": "Fojlur Rahamn",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Fojlur Rahamn"
   },
   {
     "Employee ID": "01920009612",
-    "Name": "Abu Taleb",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Abu Taleb"
   },
   {
     "Employee ID": "01891483181",
-    "Name": "Ahsan",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Ahsan"
   },
   {
     "Employee ID": "01866128104",
-    "Name": "Ayub Ali",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Ayub Ali"
   },
   {
     "Employee ID": "01537318138",
-    "Name": "Jack Marma",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Jack Marma"
   },
   {
     "Employee ID": "01891969914",
-    "Name": "Debasis",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Debasis"
   },
   {
     "Employee ID": "01885596346",
-    "Name": "Arifur Rahman Manik",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Arifur Rahman Manik"
   },
   {
     "Employee ID": "01648085428",
     "Name": "Raihanul Alam",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "2403584762.0"
   },
   {
     "Employee ID": "01300060654",
-    "Name": "Sahajan SG",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Sahajan SG"
   },
   {
     "Employee ID": "01874053242",
-    "Name": "Abid",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Abid"
   },
   {
     "Employee ID": "01870992762",
-    "Name": "Sana ullah",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Sana ullah"
   },
   {
     "Employee ID": "01869974298",
     "Name": "Bozol Mia",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "3722390451.0"
   },
   {
     "Employee ID": "01843415742",
-    "Name": "imrul",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "imrul"
   },
   {
     "Employee ID": "01321506611",
-    "Name": "amirul",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "amirul"
   },
   {
     "Employee ID": "01821926588",
-    "Name": "shamsuddin",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "shamsuddin"
   },
   {
     "Employee ID": "01722338367",
-    "Name": "Monjur Alam",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Monjur Alam"
   },
   {
     "Employee ID": "01858904998",
-    "Name": "selim",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "selim"
   },
   {
     "Employee ID": "01335697655",
-    "Name": "probir",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "probir"
   },
   {
     "Employee ID": "01858904998",
     "Name": "Md Selim",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "4177657303.0"
   },
   {
     "Employee ID": "01946012813",
     "Name": "Md Jahangir Alam",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "9107693229.0"
   },
   {
     "Employee ID": "01833752939",
     "Name": "Nur Uddin Ebon",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "5090663187.0"
   },
   {
     "Employee ID": "01778594981",
     "Name": "Shawon Ahmed Dakua",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "7814196114.0"
   },
   {
     "Employee ID": "01902487789",
-    "Name": "Saifur Rahman",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Saifur Rahman"
   },
   {
     "Employee ID": "01828179219",
     "Name": "Rajdeep Lala",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "1594132669368.0"
   },
   {
     "Employee ID": "01841988627",
     "Name": "Md Faruk Ahmed",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "9555152041.0"
   },
   {
     "Employee ID": "01998858901",
     "Name": "Md Abdul Aziz",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Daily Wage": "Escort",
+    "NID / Passport Number": "2418503841.0"
   },
   {
     "Employee ID": "01300643720",
-    "Name": "himel chowdhuri",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "himel chowdhuri"
   },
   {
     "Employee ID": "01782600396",
-    "Name": "foysal",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "foysal"
   },
   {
     "Employee ID": "01686470860",
-    "Name": "Jasim uddin",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Jasim uddin"
   },
   {
     "Employee ID": "01863930557",
-    "Name": "khayez ahmed",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "khayez ahmed"
   },
   {
     "Employee ID": "01870992762",
-    "Name": "sanaullah",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "sanaullah"
   },
   {
     "Employee ID": "01857551431\u202c",
-    "Name": "Emon",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Emon"
   },
   {
     "Employee ID": "01817964837",
-    "Name": "Mahfuz",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Mahfuz"
   },
   {
     "Employee ID": "01877785759",
-    "Name": "Rejowan",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "Rejowan"
   },
   {
     "Employee ID": "01876448207",
-    "Name": "omor faruk",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "omor faruk"
   },
   {
     "Employee ID": "01400691119",
-    "Name": "masud",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "masud"
   },
   {
     "Employee ID": "01325029207",
-    "Name": "raihan pabna",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "raihan pabna"
   },
   {
     "Employee ID": "01636302059",
-    "Name": "saiful islam gurd",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "saiful islam gurd"
   },
   {
     "Employee ID": "01645298034",
     "Name": "jony",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "5101874476.0"
   },
   {
     "Employee ID": "01575287830",
     "Name": "sumon rahman",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "NID / Passport Number": "2.00515186661095e+16"
   },
   {
     "Employee ID": "01337903921",
-    "Name": "hafizul ",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "hafizul "
   },
   {
     "Employee ID": "01817785782",
-    "Name": "mahfuz",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "mahfuz"
   },
   {
     "Employee ID": "01745550330",
-    "Name": "full miya",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "full miya"
   },
   {
     "Employee ID": "01306913299",
-    "Name": "ruhul amin",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "ruhul amin"
   },
   {
     "Employee ID": "01812478807",
-    "Name": "meraj",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "meraj"
   },
   {
     "Employee ID": "01607727710",
-    "Name": "tuhin",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "tuhin"
   },
   {
     "Employee ID": "01845807302",
-    "Name": "sayed",
-    "Daily Wage": null,
-    "Mobile Number": "",
-    "NID / Passport Number": "",
-    "Designation": "",
-    "Join Date": null
+    "Name": "sayed"
   }
 ]
