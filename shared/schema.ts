@@ -93,7 +93,7 @@ export const insertDailyExpenditureSchema = createInsertSchema(dailyExpenditure)
   timestamp: true,
 });
 
-// Daily Income schema
+// Cash Receive schema
 export const dailyIncome = pgTable("daily_income", {
   id: serial("id").primaryKey(),
   date: date("date").notNull().defaultNow(),

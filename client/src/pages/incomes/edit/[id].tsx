@@ -148,9 +148,9 @@ export default function EditIncome() {
 
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
-          <CardTitle>Edit Daily Income</CardTitle>
+          <CardTitle>Edit Cash Receive</CardTitle>
           <CardDescription>
-            Update the income transaction.
+            Update the cash receive transaction.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -274,7 +274,7 @@ export default function EditIncome() {
               />
 
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Saving..." : "Update Income"}
+                {isSubmitting ? "Saving..." : "Update Cash Receive"}
               </Button>
             </form>
           </Form>

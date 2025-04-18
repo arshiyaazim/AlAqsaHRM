@@ -110,9 +110,9 @@ export default function AddIncome() {
 
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
-          <CardTitle>Add Daily Income</CardTitle>
+          <CardTitle>Add Cash Receive</CardTitle>
           <CardDescription>
-            Record a new income transaction.
+            Record a new cash receive transaction.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -236,7 +236,7 @@ export default function AddIncome() {
               />
 
               <Button type="submit" className="w-full" disabled={isSubmitting}>
-                {isSubmitting ? "Saving..." : "Save Income"}
+                {isSubmitting ? "Saving..." : "Save Cash Receive"}
               </Button>
             </form>
           </Form>
