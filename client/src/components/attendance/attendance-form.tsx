@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
+import EmployeeIdAutocomplete from "@/components/common/employee-id-autocomplete";
 
 import {
   Form,
@@ -190,40 +191,21 @@ export default function AttendanceForm({ onComplete, projectId, date }: Attendan
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Employee</FormLabel>
-                    <Select 
-                      value={field.value?.toString()} 
-                      onValueChange={(value) => field.onChange(parseInt(value))}
-                      disabled={!form.watch("projectId")}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder={form.watch("projectId") ? "Select an employee" : "Select a project first"} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {isLoadingEmployees ? (
-                          <div className="p-2">
-                            <Skeleton className="h-5 w-full" />
-                            <Skeleton className="h-5 w-full mt-2" />
-                          </div>
-                        ) : filteredEmployees?.length ? (
-                          filteredEmployees.map((employee) => (
-                            <SelectItem 
-                              key={employee.id} 
-                              value={employee.id.toString()}
-                            >
-                              {`${employee.firstName} ${employee.lastName} (${employee.employeeId})`}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="0" disabled>
-                            {form.watch("projectId") 
-                              ? "No employees assigned to this project" 
-                              : "Select a project first"}
-                          </SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <EmployeeIdAutocomplete 
+                        value={field.value ? field.value.toString() : ""}
+                        onChange={(value) => {
+                          if (value) {
+                            field.onChange(parseInt(value));
+                          } else {
+                            field.onChange(undefined);
+                          }
+                        }}
+                        placeholder={form.watch("projectId") ? "Search for employee ID" : "Select a project first"}
+                        disabled={!form.watch("projectId")}
+                        showEmployeeName={true}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
