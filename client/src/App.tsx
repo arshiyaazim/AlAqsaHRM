@@ -21,6 +21,8 @@ import EditIncome from "@/pages/incomes/edit/[id]";
 import PayrollList from "@/pages/payroll/index";
 import ProcessPayroll from "@/pages/payroll/process";
 import ProjectsPage from "@/pages/projects/index";
+import AddProjectPage from "@/pages/projects/add";
+import EditProjectPage from "@/pages/projects/edit/[id]";
 import Reports from "@/pages/reports/index";
 import Settings from "@/pages/settings";
 import AuthPage from "@/pages/auth-page";
@@ -52,6 +54,8 @@ function Router() {
       <Route path="/attendance" component={AttendanceList} />
       <Route path="/attendance/record" component={RecordAttendance} />
       <Route path="/projects" component={ProjectsPage} />
+      <Route path="/projects/add" component={AddProjectPage} />
+      <Route path="/projects/edit/:id" component={EditProjectPage} />
       <Route path="/expenditures" component={ExpenditureList} />
       <Route path="/expenditures/add" component={AddExpenditure} />
       <Route path="/expenditures/edit/:id" component={EditExpenditure} />
