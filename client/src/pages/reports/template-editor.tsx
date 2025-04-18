@@ -531,7 +531,8 @@ export default function TemplateEditor() {
         visible: true,
         computeTotal: ['number', 'currency'].includes(col.format),
         width: 100,
-        align: col.format === 'number' || col.format === 'currency' ? 'right' : 'left',
+        // Explicitly cast the align to our allowed union type
+        align: (col.format === 'number' || col.format === 'currency' ? 'right' : 'left') as 'left' | 'center' | 'right',
       }));
     }
     return [];

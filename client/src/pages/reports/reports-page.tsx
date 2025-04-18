@@ -644,7 +644,7 @@ export default function ReportsPage() {
                           <div>
                             <Label htmlFor="endDate2">End Date</Label>
                             <DatePicker
-                              id="endDate2"
+                              placeholder="Select end date"
                               onChange={(date) => 
                                 setFilters(prev => ({ 
                                   ...prev, 
