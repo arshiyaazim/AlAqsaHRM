@@ -111,6 +111,15 @@ export interface IStorage {
   // Company settings operations
   getCompanySettings(): Promise<CompanySettings | undefined>;
   createOrUpdateCompanySettings(settings: Partial<InsertCompanySettings>): Promise<CompanySettings>;
+  
+  // Report operations
+  getCompanyDetails(): Promise<any>;
+  getAttendanceRecords(filters?: any): Promise<any[]>;
+  getPayrollRecords(filters?: any): Promise<any[]>;
+  getEmployees(filters?: any): Promise<any[]>;
+  getProjects(filters?: any): Promise<any[]>;
+  getExpenditures(filters?: any): Promise<any[]>;
+  getIncomes(filters?: any): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -754,6 +763,214 @@ export class DatabaseStorage implements IStorage {
         updatedAt: new Date()
       };
     }
+  }
+
+  // Report operations
+  async getCompanyDetails(): Promise<any> {
+    const settings = await this.getCompanySettings();
+    return {
+      companyName: settings?.companyName || "Company Name",
+      companyLogo: settings?.logoUrl || "",
+      companyAddress: settings?.address || "",
+      companyPhone: settings?.phone || "",
+      companyEmail: settings?.email || "",
+      reportDate: new Date().toISOString(),
+      generatedBy: "HR Management System"
+    };
+  }
+
+  async getAttendanceRecords(filters?: any): Promise<any[]> {
+    let query = db.select({
+      id: attendance.id,
+      date: attendance.date,
+      employeeId: attendance.employeeId,
+      employeeName: employees.fullName,
+      checkIn: attendance.checkIn,
+      checkOut: attendance.checkOut,
+      projectId: attendance.projectId,
+      projectName: projects.name,
+      status: attendance.status,
+      remarks: attendance.remarks,
+      hoursWorked: attendance.hoursWorked,
+    })
+    .from(attendance)
+    .leftJoin(employees, eq(attendance.employeeId, employees.id))
+    .leftJoin(projects, eq(attendance.projectId, projects.id));
+    
+    if (filters) {
+      if (filters.dateFrom && filters.dateTo) {
+        query = query.where(
+          and(
+            gte(attendance.date, new Date(filters.dateFrom)),
+            lte(attendance.date, new Date(filters.dateTo))
+          )
+        );
+      }
+      
+      if (filters.employeeId) {
+        query = query.where(eq(attendance.employeeId, filters.employeeId));
+      }
+      
+      if (filters.projectId) {
+        query = query.where(eq(attendance.projectId, filters.projectId));
+      }
+      
+      if (filters.status) {
+        query = query.where(eq(attendance.status, filters.status));
+      }
+    }
+    
+    return await query;
+  }
+
+  async getPayrollRecords(filters?: any): Promise<any[]> {
+    let query = db.select({
+      id: payroll.id,
+      employeeId: payroll.employeeId,
+      employeeName: employees.fullName,
+      periodStart: payroll.periodStart,
+      periodEnd: payroll.periodEnd,
+      basicSalary: payroll.basicSalary,
+      allowances: payroll.allowances,
+      deductions: payroll.deductions,
+      tax: payroll.tax,
+      netSalary: payroll.netSalary,
+      status: payroll.status,
+      remarks: payroll.remarks,
+      paymentDate: payroll.paymentDate,
+    })
+    .from(payroll)
+    .leftJoin(employees, eq(payroll.employeeId, employees.id));
+    
+    if (filters) {
+      if (filters.periodStart && filters.periodEnd) {
+        query = query.where(
+          and(
+            gte(payroll.periodStart, new Date(filters.periodStart)),
+            lte(payroll.periodEnd, new Date(filters.periodEnd))
+          )
+        );
+      }
+      
+      if (filters.employeeId) {
+        query = query.where(eq(payroll.employeeId, filters.employeeId));
+      }
+      
+      if (filters.status) {
+        query = query.where(eq(payroll.status, filters.status));
+      }
+    }
+    
+    return await query;
+  }
+
+  async getEmployees(filters?: any): Promise<any[]> {
+    let query = db.select().from(employees);
+    
+    if (filters) {
+      if (filters.designation) {
+        query = query.where(eq(employees.designation, filters.designation));
+      }
+      
+      if (filters.status) {
+        query = query.where(eq(employees.status, filters.status));
+      }
+    }
+    
+    return await query;
+  }
+
+  async getProjects(filters?: any): Promise<any[]> {
+    let query = db.select().from(projects);
+    
+    if (filters) {
+      if (filters.status) {
+        query = query.where(eq(projects.status, filters.status));
+      }
+      
+      if (filters.clientName) {
+        query = query.where(eq(projects.clientName, filters.clientName));
+      }
+    }
+    
+    return await query;
+  }
+
+  async getExpenditures(filters?: any): Promise<any[]> {
+    let query = db.select({
+      id: dailyExpenditure.id,
+      date: dailyExpenditure.date,
+      amount: dailyExpenditure.amount,
+      category: dailyExpenditure.category,
+      description: dailyExpenditure.description,
+      employeeId: dailyExpenditure.employeeId,
+      employeeName: employees.fullName,
+      projectId: dailyExpenditure.projectId,
+      projectName: projects.name,
+    })
+    .from(dailyExpenditure)
+    .leftJoin(employees, eq(dailyExpenditure.employeeId, employees.id))
+    .leftJoin(projects, eq(dailyExpenditure.projectId, projects.id));
+    
+    if (filters) {
+      if (filters.dateFrom && filters.dateTo) {
+        query = query.where(
+          and(
+            gte(dailyExpenditure.date, new Date(filters.dateFrom)),
+            lte(dailyExpenditure.date, new Date(filters.dateTo))
+          )
+        );
+      }
+      
+      if (filters.category) {
+        query = query.where(eq(dailyExpenditure.category, filters.category));
+      }
+      
+      if (filters.employeeId) {
+        query = query.where(eq(dailyExpenditure.employeeId, filters.employeeId));
+      }
+      
+      if (filters.projectId) {
+        query = query.where(eq(dailyExpenditure.projectId, filters.projectId));
+      }
+    }
+    
+    return await query;
+  }
+
+  async getIncomes(filters?: any): Promise<any[]> {
+    let query = db.select({
+      id: dailyIncome.id,
+      date: dailyIncome.date,
+      amount: dailyIncome.amount,
+      category: dailyIncome.category,
+      description: dailyIncome.description,
+      projectId: dailyIncome.projectId,
+      projectName: projects.name,
+    })
+    .from(dailyIncome)
+    .leftJoin(projects, eq(dailyIncome.projectId, projects.id));
+    
+    if (filters) {
+      if (filters.dateFrom && filters.dateTo) {
+        query = query.where(
+          and(
+            gte(dailyIncome.date, new Date(filters.dateFrom)),
+            lte(dailyIncome.date, new Date(filters.dateTo))
+          )
+        );
+      }
+      
+      if (filters.category) {
+        query = query.where(eq(dailyIncome.category, filters.category));
+      }
+      
+      if (filters.projectId) {
+        query = query.where(eq(dailyIncome.projectId, filters.projectId));
+      }
+    }
+    
+    return await query;
   }
 }
 
