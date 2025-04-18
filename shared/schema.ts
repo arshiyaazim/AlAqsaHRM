@@ -14,6 +14,7 @@ export const users = pgTable("users", {
   employeeId: text("employeeid").notNull(),
   createdAt: timestamp("createdat").defaultNow(),
   isActive: boolean("isactive").default(true),
+  permissions: jsonb("permissions").default("{}"), // Custom permissions for menu visibility
 });
 
 export const insertUserSchema = createInsertSchema(users).omit({

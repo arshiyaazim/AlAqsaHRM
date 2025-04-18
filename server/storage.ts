@@ -37,6 +37,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, user: Partial<InsertUser>): Promise<User | undefined>;
   updateUserRole(id: number, role: string): Promise<User | undefined>;
+  updateUserPermissions(id: number, permissions: object): Promise<User | undefined>;
   deleteUser(id: number): Promise<boolean>;
   
   // File operations
@@ -190,6 +191,19 @@ export class DatabaseStorage implements IStorage {
     const [updatedUser] = await db
       .update(users)
       .set({ role })
+      .where(eq(users.id, id))
+      .returning();
+    
+    return updatedUser;
+  }
+  
+  async updateUserPermissions(id: number, permissions: object): Promise<User | undefined> {
+    const existingUser = await this.getUser(id);
+    if (!existingUser) return undefined;
+    
+    const [updatedUser] = await db
+      .update(users)
+      .set({ permissions })
       .where(eq(users.id, id))
       .returning();
     
