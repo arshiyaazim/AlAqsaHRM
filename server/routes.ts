@@ -1048,12 +1048,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid income ID" });
+        return res.status(400).json({ message: "Invalid cash receive ID" });
       }
       
       const income = await storage.getDailyIncome(id);
       if (!income) {
-        return res.status(404).json({ message: "Income record not found" });
+        return res.status(404).json({ message: "Cash receive record not found" });
       }
       
       res.json(income);
@@ -1093,14 +1093,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid income ID" });
+        return res.status(400).json({ message: "Invalid cash receive ID" });
       }
       
       const validatedData = insertDailyIncomeSchema.partial().parse(req.body);
       const updatedIncome = await storage.updateDailyIncome(id, validatedData);
       
       if (!updatedIncome) {
-        return res.status(404).json({ message: "Income record not found" });
+        return res.status(404).json({ message: "Cash receive record not found" });
       }
       
       res.json(updatedIncome);
@@ -1113,12 +1113,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) {
-        return res.status(400).json({ message: "Invalid income ID" });
+        return res.status(400).json({ message: "Invalid cash receive ID" });
       }
       
       const success = await storage.deleteDailyIncome(id);
       if (!success) {
-        return res.status(404).json({ message: "Income record not found" });
+        return res.status(404).json({ message: "Cash receive record not found" });
       }
       
       res.status(204).send();
@@ -1471,6 +1471,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           data = await storage.getAllExpenditures(filters);
           break;
         case 'income':
+        case 'cashReceive':
           data = await storage.getAllIncomes(filters);
           break;
         default:

@@ -73,12 +73,12 @@ export default function AddIncome() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to create income record");
+        throw new Error(errorData.message || "Failed to create cash receive record");
       }
 
       toast({
-        title: "Income recorded",
-        description: "The income record has been created successfully.",
+        title: "Cash Receive recorded",
+        description: "The cash receive record has been created successfully.",
       });
 
       // Invalidate the incomes query to refresh the list
@@ -89,7 +89,7 @@ export default function AddIncome() {
     } catch (error) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "An error occurred while saving the income",
+        description: error instanceof Error ? error.message : "An error occurred while saving the cash receive",
         variant: "destructive",
       });
     } finally {
