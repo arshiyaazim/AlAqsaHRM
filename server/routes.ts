@@ -21,7 +21,7 @@ import { authenticateJWT, authorize, generateToken } from "./middleware/auth";
 import { readEmployeeExcel } from "./utils/excelImport";
 import { upload, handleFileUploadErrors } from "./utils/fileUpload";
 import path from "path";
-import { promises as fs } from "fs";
+import fs from "fs";
 
 // Helper to generate the next employee ID in format EMP-1001, EMP-1002, etc.
 async function getNextEmployeeId(storage: any): Promise<number> {
@@ -774,8 +774,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if file exists
-      const fs = require('fs');
-      const path = require('path');
       const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(process.cwd(), filePath);
       
       if (!fs.existsSync(absolutePath)) {
@@ -812,8 +810,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if file exists
-      const fs = require('fs');
-      const path = require('path');
       const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(process.cwd(), filePath);
       
       if (!fs.existsSync(absolutePath)) {

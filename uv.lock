@@ -369,6 +369,7 @@ dependencies = [
     { name = "flask-wtf" },
     { name = "python-dotenv" },
     { name = "werkzeug" },
+    { name = "wtforms" },
 ]
 
 [package.metadata]
@@ -379,6 +380,7 @@ requires-dist = [
     { name = "flask-wtf", specifier = ">=1.2.2" },
     { name = "python-dotenv", specifier = ">=1.1.0" },
     { name = "werkzeug", specifier = ">=3.1.3" },
+    { name = "wtforms", specifier = ">=3.2.1" },
 ]
 
 [[package]]
