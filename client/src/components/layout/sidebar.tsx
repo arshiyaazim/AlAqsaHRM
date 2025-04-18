@@ -64,10 +64,20 @@ export default function Sidebar() {
   return (
     <div className="hidden md:block w-64 bg-white shadow-md overflow-y-auto">
       <div className="px-6 py-4 border-b border-gray-200">
-        <h1 className="text-xl font-bold text-[#2C5282] flex items-center">
-          <UserPlus className="h-6 w-6 mr-2" />
-          {settings.companyName}
-        </h1>
+        <div className="flex items-center">
+          {settings.logoUrl ? (
+            <img 
+              src={settings.logoUrl} 
+              alt={settings.companyName} 
+              className="h-8 w-auto mr-3"
+            />
+          ) : (
+            <UserPlus className="h-6 w-6 mr-2 text-[#2C5282]" />
+          )}
+          <h1 className="text-xl font-bold text-[#2C5282]">
+            {settings.companyName}
+          </h1>
+        </div>
       </div>
       
       <nav className="px-3 py-4">

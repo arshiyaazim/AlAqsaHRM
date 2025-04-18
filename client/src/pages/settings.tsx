@@ -100,19 +100,37 @@ export default function Settings() {
     try {
       console.log("Company settings:", data);
       
-      // Prepare form data if logo is a file
-      const formData = new FormData();
+      // If logo is a File, upload it first
+      let logoUrl = undefined;
+      
       if (data.logo instanceof File) {
-        formData.append('logo', data.logo);
+        const formData = new FormData();
+        formData.append('file', data.logo);
+        
+        // Upload the file
+        const uploadResponse = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!uploadResponse.ok) {
+          throw new Error('Failed to upload logo');
+        }
+        
+        const uploadResult = await uploadResponse.json();
+        logoUrl = uploadResult.filePath; // Store the file path
       }
       
-      // Add other fields to the form data
-      formData.append('companyName', data.companyName);
-      formData.append('companyTagline', data.companyTagline || '');
-      formData.append('primaryColor', data.primaryColor);
+      // Save company settings with the logo URL
+      const settingsData = {
+        companyName: data.companyName,
+        companyTagline: data.companyTagline || '',
+        primaryColor: data.primaryColor,
+        logoUrl: logoUrl // Use the uploaded file URL
+      };
       
       // Save company settings
-      const response = await apiRequest('POST', '/api/settings/company', data);
+      const response = await apiRequest('POST', '/api/settings/company', settingsData);
       
       if (!response.ok) {
         throw new Error('Failed to save company settings');

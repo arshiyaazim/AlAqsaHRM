@@ -152,8 +152,17 @@ export default function Header({ onMenuClick }: HeaderProps) {
             >
               <Menu className="h-6 w-6" />
             </button>
-            <h1 className="text-lg font-medium md:hidden">{settings.companyName}</h1>
-            <div className="relative max-w-md w-full md:ml-0 hidden md:block">
+            <div className="flex items-center">
+              {settings.logoUrl ? (
+                <img 
+                  src={settings.logoUrl} 
+                  alt={settings.companyName} 
+                  className="h-8 w-auto mr-3"
+                />
+              ) : null}
+              <h1 className="text-lg font-medium md:hidden">{settings.companyName}</h1>
+            </div>
+            <div className="relative max-w-md w-full md:ml-4 hidden md:block">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search className="h-5 w-5 text-gray-400" />
               </div>

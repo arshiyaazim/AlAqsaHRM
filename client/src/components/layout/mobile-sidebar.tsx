@@ -60,10 +60,20 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
         
         <div className="flex-1 flex flex-col overflow-y-auto pt-5 pb-4">
           <div className="px-4 flex items-center justify-between">
-            <h1 className="text-xl font-bold text-[#2C5282] flex items-center">
-              <UserPlus className="h-6 w-6 mr-2" />
-              {settings.companyName}
-            </h1>
+            <div className="flex items-center">
+              {settings.logoUrl ? (
+                <img 
+                  src={settings.logoUrl} 
+                  alt={settings.companyName} 
+                  className="h-8 w-auto mr-3"
+                />
+              ) : (
+                <UserPlus className="h-6 w-6 mr-2 text-[#2C5282]" />
+              )}
+              <h1 className="text-xl font-bold text-[#2C5282]">
+                {settings.companyName}
+              </h1>
+            </div>
           </div>
           
           <div className="mt-5 flex-1">
