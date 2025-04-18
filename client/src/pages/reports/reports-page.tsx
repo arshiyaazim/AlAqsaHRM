@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import EmployeeIdAutocomplete from '@/components/common/employee-id-autocomplete';
 import { useLocation } from 'wouter';
 import { FileText, Download, Pencil, Trash2, Plus, Filter, FileDown, RefreshCw, Copy } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -487,12 +488,13 @@ export default function ReportsPage() {
                             {template.config.filters.includes('employeeId') && (
                               <div className="mt-4">
                                 <Label htmlFor="employeeId">Employee</Label>
-                                <Input 
-                                  id="employeeId" 
-                                  placeholder="Employee ID"
-                                  onChange={(e) => 
-                                    setFilters(prev => ({ ...prev, employeeId: e.target.value }))
+                                <EmployeeIdAutocomplete 
+                                  value={filters.employeeId || ""}
+                                  onChange={(value) => 
+                                    setFilters(prev => ({ ...prev, employeeId: value }))
                                   }
+                                  placeholder="Select employee ID"
+                                  showEmployeeName={true}
                                 />
                               </div>
                             )}
@@ -659,12 +661,13 @@ export default function ReportsPage() {
                       {selectedTemplate.config.filters.includes('employeeId') && (
                         <div>
                           <Label htmlFor="employeeId2">Employee</Label>
-                          <Input 
-                            id="employeeId2" 
-                            placeholder="Employee ID"
-                            onChange={(e) => 
-                              setFilters(prev => ({ ...prev, employeeId: e.target.value }))
+                          <EmployeeIdAutocomplete 
+                            value={filters.employeeId || ""}
+                            onChange={(value) => 
+                              setFilters(prev => ({ ...prev, employeeId: value }))
                             }
+                            placeholder="Select employee ID"
+                            showEmployeeName={true}
                           />
                         </div>
                       )}

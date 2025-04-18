@@ -16,6 +16,7 @@ import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import EmployeeIdAutocomplete from "@/components/common/employee-id-autocomplete";
 
 // Type for the employee list
 interface Employee {
@@ -161,24 +162,12 @@ export default function AddProjectPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="employee">Employee ID</Label>
-                <Select 
-                  value={selectedEmployeeId} 
-                  onValueChange={handleEmployeeChange}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select employee" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {isLoadingEmployees ? (
-                      <SelectItem value="loading" disabled>Loading employees...</SelectItem>
-                    ) : employees?.map(employee => (
-                      <SelectItem key={employee.id} value={employee.employeeId}>
-                        {employee.employeeId}: {employee.firstName} {employee.lastName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <EmployeeIdAutocomplete 
+                  value={selectedEmployeeId}
+                  onChange={handleEmployeeChange}
+                  placeholder="Select employee ID"
+                  showEmployeeName={true}
+                />
               </div>
 
               <div className="space-y-2">
