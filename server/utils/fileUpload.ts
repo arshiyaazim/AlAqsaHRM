@@ -9,6 +9,9 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
+// Export the uploads directory path for use in other files
+export const UPLOADS_DIR = uploadDir;
+
 // Configure storage
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {

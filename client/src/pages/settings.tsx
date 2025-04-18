@@ -118,7 +118,10 @@ export default function Settings() {
         }
         
         const uploadResult = await uploadResponse.json();
-        logoUrl = uploadResult.filePath; // Store the file path
+        console.log("Upload result:", uploadResult);
+        
+        // Use the url or filePath property from the response
+        logoUrl = uploadResult.url || uploadResult.filePath;
       }
       
       // Save company settings with the logo URL

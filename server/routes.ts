@@ -1191,6 +1191,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No file uploaded" });
       }
       
+      // Debug file upload
+      console.log("File upload attempt:", {
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size
+      });
+      
       const filePath = req.file.path;
       const fileName = req.file.originalname;
       
@@ -1207,18 +1214,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Save file metadata
       storage.saveUploadedFile(fileData)
         .then(() => {
+          // Return the relative URL to the file, not the full path
+          const fileUrl = `/uploads/${path.basename(filePath)}`;
           res.status(200).json({
             message: "File uploaded successfully",
-            filePath: filePath.replace(/\\/g, "/"),
-            fileName
+            filePath: fileUrl,
+            fileName,
+            url: fileUrl // Add a clear url property
           });
         })
         .catch(error => {
           console.error("Error saving file metadata:", error);
+          // Still return a usable URL
+          const fileUrl = `/uploads/${path.basename(filePath)}`;
           res.status(200).json({
             message: "File uploaded successfully but metadata not saved",
-            filePath: filePath.replace(/\\/g, "/"),
-            fileName
+            filePath: fileUrl,
+            fileName,
+            url: fileUrl // Add a clear url property
           });
         });
     } catch (err) {
