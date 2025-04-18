@@ -1,165 +1,264 @@
 {% extends 'base.html' %}
 
-{% block title %}Field Attendance Tracker - Clock In/Out{% endblock %}
+{% block title %}Clock In/Out - Field Attendance Tracker{% endblock %}
+
+{% block extra_head %}
+<style>
+    #map {
+        height: 200px;
+        width: 100%;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+    }
+    
+    #photoPreviewContainer {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+    }
+    
+    #photoPreviewContainer.show {
+        max-height: 250px;
+        margin-bottom: 1rem;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-8 col-lg-6">
+        <!-- Attendance Form Card -->
         <div class="card shadow">
             <div class="card-header bg-primary text-white">
-                <h4 class="mb-0"><i class="fas fa-clock"></i> Attendance Tracker</h4>
+                <h2 class="h4 mb-0"><i class="fas fa-user-clock"></i> Attendance Tracker</h2>
             </div>
+            
             <div class="card-body">
-                <form id="attendanceForm" action="{{ url_for('submit') }}" method="POST" enctype="multipart/form-data">
-                    <!-- Hidden fields for GPS coordinates -->
-                    <input type="hidden" name="latitude" id="latitude">
-                    <input type="hidden" name="longitude" id="longitude">
+                <!-- Location Status Alert -->
+                <div id="locationStatus" class="alert alert-warning mb-3" role="alert">
+                    <i class="fas fa-spinner fa-spin me-2"></i> Getting your location...
+                </div>
+                
+                <!-- Map to show current location -->
+                <div id="map" class="d-none"></div>
+                
+                <!-- Photo preview -->
+                <div id="photoPreviewContainer" class="text-center bg-light p-2 rounded">
+                    <img id="photoPreview" class="img-fluid" src="" alt="Photo Preview">
+                </div>
+                
+                <!-- Attendance Form -->
+                <form id="attendanceForm" method="POST" action="{{ url_for('submit') }}" enctype="multipart/form-data">
+                    {{ form.csrf_token }}
                     
                     <div class="mb-3">
-                        <label for="employee_id" class="form-label">Employee ID <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control form-control-lg" id="employee_id" name="employee_id" required placeholder="Enter your Employee ID">
+                        <label for="{{ form.employee_id.id }}" class="form-label">{{ form.employee_id.label.text }}</label>
+                        {{ form.employee_id(class="form-control form-control-lg", placeholder="Enter your employee ID") }}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="{{ form.action.id }}" class="form-label">{{ form.action.label.text }}</label>
+                        {{ form.action(class="form-select form-select-lg") }}
                     </div>
                     
                     <div class="mb-4">
-                        <label class="form-label">Take a Selfie (Optional)</label>
-                        <div class="d-flex flex-column">
-                            <div class="p-2 border rounded text-center mb-2" id="photoPreviewContainer" style="display: none;">
-                                <img id="photoPreview" class="img-fluid" style="max-height: 200px;">
-                            </div>
-                            <div class="input-group">
-                                <input type="file" class="form-control" id="photo" name="photo" accept="image/*" capture="user">
-                                <button type="button" class="btn btn-outline-secondary" id="clearPhoto">Clear</button>
-                            </div>
-                        </div>
+                        <label for="{{ form.photo.id }}" class="form-label d-flex justify-content-between">
+                            <span>{{ form.photo.label.text }}</span>
+                            <button type="button" id="takePictureBtn" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-camera"></i> Take Picture
+                            </button>
+                        </label>
+                        {{ form.photo(class="form-control", style="display: none;") }}
+                        <input type="file" id="cameraInput" accept="image/*" capture="user" class="d-none">
                     </div>
                     
-                    <div class="location-status mb-4">
-                        <div class="alert alert-info" id="locationStatus">
-                            <i class="fas fa-location-dot"></i> Location access: <span id="locationStatusText">Waiting...</span>
-                        </div>
-                    </div>
+                    <!-- Hidden fields for location data -->
+                    <input type="hidden" id="latitude" name="latitude">
+                    <input type="hidden" id="longitude" name="longitude">
                     
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-success btn-lg" name="action" value="Clock In">
-                            <i class="fas fa-sign-in-alt"></i> Clock In
+                    <div class="d-grid gap-3">
+                        <button id="clockInBtn" type="submit" class="btn btn-success btn-lg" onclick="setAction('Clock In')">
+                            <i class="fas fa-sign-in-alt me-2"></i> Clock In
                         </button>
-                        <button type="submit" class="btn btn-danger btn-lg" name="action" value="Clock Out">
-                            <i class="fas fa-sign-out-alt"></i> Clock Out
+                        <button id="clockOutBtn" type="submit" class="btn btn-danger btn-lg" onclick="setAction('Clock Out')">
+                            <i class="fas fa-sign-out-alt me-2"></i> Clock Out
                         </button>
                     </div>
                 </form>
             </div>
-            <div class="card-footer text-muted">
-                <small>Note: Your current location will be recorded when you clock in/out</small>
+            
+            <div class="card-footer text-center">
+                <a href="{{ url_for('admin_login') }}" class="text-decoration-none">
+                    <i class="fas fa-lock me-1"></i> Admin Login
+                </a>
             </div>
         </div>
     </div>
 </div>
 {% endblock %}
 
-{% block scripts %}
+{% block extra_scripts %}
+<!-- Google Maps (you can replace with your API key) -->
+<script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&callback=initMap">
+</script>
+
 <script>
+    // Initialize variables
+    let map;
+    let marker;
+    let currentPosition = null;
+    const locationStatus = document.getElementById('locationStatus');
+    const latitudeField = document.getElementById('latitude');
+    const longitudeField = document.getElementById('longitude');
+    const mapElement = document.getElementById('map');
+    const photoInput = document.getElementById('{{ form.photo.id }}');
+    const cameraInput = document.getElementById('cameraInput');
+    const takePictureBtn = document.getElementById('takePictureBtn');
+    const photoPreview = document.getElementById('photoPreview');
+    const photoPreviewContainer = document.getElementById('photoPreviewContainer');
+    
+    // Function to set action value when clicking clock in/out buttons
+    function setAction(action) {
+        document.getElementById('{{ form.action.id }}').value = action;
+    }
+    
+    // Get geolocation
+    function getLocation() {
+        if (navigator.geolocation) {
+            locationStatus.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Getting your location...';
+            locationStatus.className = 'alert alert-warning mb-3';
+            
+            navigator.geolocation.getCurrentPosition(showPosition, showError, {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            });
+        } else {
+            locationStatus.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i> Geolocation is not supported by this browser.';
+            locationStatus.className = 'alert alert-danger mb-3';
+        }
+    }
+    
+    // Show position on success
+    function showPosition(position) {
+        currentPosition = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+        };
+        
+        // Update hidden form fields
+        latitudeField.value = currentPosition.lat;
+        longitudeField.value = currentPosition.lng;
+        
+        // Update status message
+        locationStatus.innerHTML = '<i class="fas fa-map-marker-alt me-2"></i> Location found! Ready to clock in/out.';
+        locationStatus.className = 'alert alert-success mb-3';
+        
+        // Show map
+        mapElement.classList.remove('d-none');
+        
+        // Initialize map if Google Maps API is loaded
+        if (typeof google !== 'undefined') {
+            initMap();
+        }
+    }
+    
+    // Handle errors
+    function showError(error) {
+        let message = '';
+        switch(error.code) {
+            case error.PERMISSION_DENIED:
+                message = "Location access was denied. Please enable location services for this website.";
+                break;
+            case error.POSITION_UNAVAILABLE:
+                message = "Location information is unavailable. Please try again.";
+                break;
+            case error.TIMEOUT:
+                message = "The request to get your location timed out. Please try again.";
+                break;
+            case error.UNKNOWN_ERROR:
+                message = "An unknown error occurred. Please try again.";
+                break;
+        }
+        
+        locationStatus.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i> ' + message;
+        locationStatus.className = 'alert alert-danger mb-3';
+    }
+    
+    // Initialize Google Map
+    function initMap() {
+        if (!currentPosition) {
+            return; // Wait until we have position
+        }
+        
+        // Create map centered at current location
+        map = new google.maps.Map(mapElement, {
+            center: currentPosition,
+            zoom: 16,
+            disableDefaultUI: true,
+            zoomControl: true
+        });
+        
+        // Add marker for current position
+        marker = new google.maps.Marker({
+            position: currentPosition,
+            map: map,
+            title: 'Your location'
+        });
+    }
+    
+    // Handle taking photos
+    takePictureBtn.addEventListener('click', function() {
+        cameraInput.click();
+    });
+    
+    cameraInput.addEventListener('change', function(e) {
+        if (this.files && this.files[0]) {
+            const file = this.files[0];
+            
+            // Create a data transfer object and add the file
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            
+            // Set the files to the real input
+            photoInput.files = dataTransfer.files;
+            
+            // Preview the image
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                photoPreview.src = e.target.result;
+                photoPreviewContainer.classList.add('show');
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+    
+    // Form validation
+    document.getElementById('attendanceForm').addEventListener('submit', function(e) {
+        const employeeId = document.getElementById('{{ form.employee_id.id }}').value.trim();
+        
+        if (!employeeId) {
+            e.preventDefault();
+            alert('Please enter your Employee ID');
+            return false;
+        }
+        
+        if (!latitudeField.value || !longitudeField.value) {
+            e.preventDefault();
+            alert('Location data is required. Please wait for your location to be detected or try refreshing the page.');
+            return false;
+        }
+        
+        return true;
+    });
+    
+    // Get location when page loads
     document.addEventListener('DOMContentLoaded', function() {
-        const photoInput = document.getElementById('photo');
-        const photoPreview = document.getElementById('photoPreview');
-        const photoPreviewContainer = document.getElementById('photoPreviewContainer');
-        const clearPhotoBtn = document.getElementById('clearPhoto');
-        const locationStatus = document.getElementById('locationStatusText');
-        const attendanceForm = document.getElementById('attendanceForm');
-        const latitudeInput = document.getElementById('latitude');
-        const longitudeInput = document.getElementById('longitude');
-        
-        // Handle photo preview
-        photoInput.addEventListener('change', function(e) {
-            if (e.target.files && e.target.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    photoPreview.src = e.target.result;
-                    photoPreviewContainer.style.display = 'block';
-                }
-                reader.readAsDataURL(e.target.files[0]);
-            }
-        });
-        
-        // Clear photo
-        clearPhotoBtn.addEventListener('click', function() {
-            photoInput.value = '';
-            photoPreviewContainer.style.display = 'none';
-        });
-        
-        // Request location permission when form is about to be submitted
-        attendanceForm.addEventListener('submit', function(e) {
-            if (!latitudeInput.value || !longitudeInput.value) {
-                e.preventDefault();
-                // Try to get location
-                getLocation(function() {
-                    // After getting location, submit the form
-                    attendanceForm.submit();
-                });
-            }
-        });
-        
-        // Attempt to get location on page load
         getLocation();
         
-        // Function to get current location
-        function getLocation(callback) {
-            if (navigator.geolocation) {
-                locationStatus.textContent = "Requesting...";
-                
-                navigator.geolocation.getCurrentPosition(
-                    // Success
-                    function(position) {
-                        latitudeInput.value = position.coords.latitude;
-                        longitudeInput.value = position.coords.longitude;
-                        locationStatus.textContent = "Location acquired";
-                        document.getElementById('locationStatus').classList.remove('alert-info', 'alert-danger');
-                        document.getElementById('locationStatus').classList.add('alert-success');
-                        
-                        if (callback && typeof callback === 'function') {
-                            callback();
-                        }
-                    },
-                    // Error
-                    function(error) {
-                        let errorMessage = "Unable to access your location";
-                        switch(error.code) {
-                            case error.PERMISSION_DENIED:
-                                errorMessage = "Location access denied. Please enable location services.";
-                                break;
-                            case error.POSITION_UNAVAILABLE:
-                                errorMessage = "Location information unavailable.";
-                                break;
-                            case error.TIMEOUT:
-                                errorMessage = "Location request timed out.";
-                                break;
-                        }
-                        
-                        locationStatus.textContent = errorMessage;
-                        document.getElementById('locationStatus').classList.remove('alert-info', 'alert-success');
-                        document.getElementById('locationStatus').classList.add('alert-danger');
-                        
-                        if (callback && typeof callback === 'function') {
-                            callback();  // Still proceed with form submission
-                        }
-                    },
-                    // Options
-                    {
-                        enableHighAccuracy: true,
-                        timeout: 10000,
-                        maximumAge: 0
-                    }
-                );
-            } else {
-                locationStatus.textContent = "Geolocation is not supported by this browser";
-                document.getElementById('locationStatus').classList.remove('alert-info', 'alert-success');
-                document.getElementById('locationStatus').classList.add('alert-danger');
-                
-                if (callback && typeof callback === 'function') {
-                    callback();  // Still proceed with form submission
-                }
-            }
-        }
+        // Periodically update location
+        setInterval(getLocation, 60000); // Update every minute
     });
 </script>
 {% endblock %}
