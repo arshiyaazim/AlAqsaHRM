@@ -11,13 +11,15 @@ import {
   UserPlus,
   X,
   ArrowDownCircle,
-  ArrowUpCircle
+  ArrowUpCircle,
+  FolderKanban
 } from "lucide-react";
 
 const navigationItems = [
   { name: "Dashboard", href: "/", icon: Home },
   { name: "Employees", href: "/employees", icon: Users },
   { name: "Attendance", href: "/attendance", icon: Calendar },
+  { name: "Projects", href: "/projects", icon: FolderKanban },
   { name: "Daily Expenditure", href: "/expenditures", icon: ArrowUpCircle },
   { name: "Daily Income", href: "/incomes", icon: ArrowDownCircle },
   { name: "Payroll", href: "/payroll", icon: DollarSign },
