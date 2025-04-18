@@ -46,7 +46,12 @@ export async function readEmployeeExcel(filePath: string): Promise<ImportResult>
     console.log('Worksheet structure:', Object.keys(worksheet).filter(k => !k.startsWith('!')));
     
     // Convert to JSON with header: 1 option to get raw rows with column values
-    const rawData = utils.sheet_to_json(worksheet, { header: 1 }); 
+    const rawData = utils.sheet_to_json(worksheet, { 
+      header: 1,
+      raw: true, // Get raw values instead of formatted values
+      cellDates: true, // Parse dates as JS Date objects
+      defval: null // Default value for empty cells
+    }); 
     
     console.log('Raw data rows:', rawData.length);
     if (rawData.length > 0) {
@@ -81,10 +86,10 @@ export async function readEmployeeExcel(filePath: string): Promise<ImportResult>
         // Get the mobile number from column A (index 0)
         const mobileValue = row[0] || '';
         
-        // Stop processing if column A is empty (no more employees)
+        // Skip this row if column A is empty, but continue processing other rows
         if (!mobileValue || mobileValue.toString().trim() === '') {
-          console.log(`Stopping import at row ${index + 1} due to empty mobile number (column A)`);
-          break;
+          console.log(`Skipping row ${index + 1} due to empty mobile number (column A), but continuing import`);
+          continue;
         }
         
         // Extract data from specific columns according to requirements
@@ -109,17 +114,29 @@ export async function readEmployeeExcel(filePath: string): Promise<ImportResult>
         // Column F (index 5) - Designation
         const designation = (row[5] || '').toString();
         
-        // Column H (index 7) - Date of Join
-        let joinDate = row[7] || new Date().toISOString();
-        if (joinDate instanceof Date) {
-          joinDate = joinDate.toISOString();
-        } else if (typeof joinDate === 'number') {
-          // If it's an Excel date number (Excel dates are stored as days since 1/1/1900)
-          // Excel date serial number to JS date: serial number = days since 1899-12-30
-          const excelEpoch = new Date(1899, 11, 30); // Dec 30, 1899
-          const jsDate = new Date(excelEpoch);
-          jsDate.setDate(excelEpoch.getDate() + joinDate);
-          joinDate = jsDate.toISOString();
+        // Column H (index 7) - Date of Join - Use today's date if not provided or invalid
+        let joinDate = new Date().toISOString();
+        
+        try {
+          if (row[7]) {
+            if (row[7] instanceof Date) {
+              joinDate = row[7].toISOString();
+            } else if (typeof row[7] === 'number') {
+              // If it's an Excel date number (Excel dates are stored as days since 1/1/1900)
+              const excelEpoch = new Date(1899, 11, 30); // Dec 30, 1899
+              const jsDate = new Date(excelEpoch);
+              jsDate.setDate(excelEpoch.getDate() + row[7]);
+              joinDate = jsDate.toISOString();
+            } else if (typeof row[7] === 'string') {
+              // Try to parse as date string
+              const parsedDate = new Date(row[7]);
+              if (!isNaN(parsedDate.getTime())) {
+                joinDate = parsedDate.toISOString();
+              }
+            }
+          }
+        } catch (dateError) {
+          console.warn(`Could not parse join date for row ${index + 1}, using today's date instead:`, dateError);
         }
         
         // Column I (index 8) - Address
@@ -128,12 +145,18 @@ export async function readEmployeeExcel(filePath: string): Promise<ImportResult>
         // Column M (index 12) - Loan/Advance (if applicable)
         const loanAdvance = (row[12] || 0).toString();
         
-        // Auto-generate employee ID (EMP-XXXX)
-        const employeeId = `EMP-${startEmployeeId++}`;
+        // Use the mobile number as the employee ID as per company requirements
+        // Only generate EMP-XXXX if mobile is not in the format we expect
+        let employeeId = mobileValue.toString();
+        
+        // If it doesn't look like a mobile number, use the auto-generated format
+        if (!/^\d{10,15}$/.test(employeeId.replace(/\D/g, ''))) {
+          employeeId = `EMP-${startEmployeeId++}`;
+        }
         
         // Create employee object
         const employee: Partial<InsertEmployee> = {
-          employeeId,
+          employeeId,  // Use mobile number as employeeId
           firstName,
           lastName,
           designation,
