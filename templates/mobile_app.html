@@ -1,0 +1,582 @@
+{% extends "base.html" %}
+
+{% block title %}Mobile Attendance - Al-Aqsa Security{% endblock %}
+
+{% block head %}
+<style>
+    body {
+        background-color: #f8f9fc;
+        font-family: 'Nunito', sans-serif;
+        color: #5a5c69;
+        overscroll-behavior-y: contain; /* Prevents pull-to-refresh */
+    }
+
+    .navbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .mobile-container {
+        padding-top: 70px;
+        padding-bottom: 20px;
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+    
+    .clock-card {
+        background-color: white;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        margin-bottom: 20px;
+        text-align: center;
+    }
+    
+    .current-time {
+        font-size: 2.2rem;
+        font-weight: 700;
+        color: #4e73df;
+        margin-bottom: 0;
+    }
+    
+    .current-date {
+        font-size: 1rem;
+        color: #858796;
+        margin-top: 4px;
+    }
+    
+    .form-card {
+        background-color: white;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        margin-bottom: 20px;
+    }
+    
+    .form-label {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #4e73df;
+        margin-bottom: 8px;
+    }
+    
+    .form-control, .form-select {
+        border-radius: 10px;
+        border: 1px solid #e3e6f0;
+        padding: 12px 15px;
+        font-size: 1rem;
+        margin-bottom: 20px;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        box-shadow: 0 0 0 3px rgba(78, 115, 223, 0.25);
+    }
+    
+    .action-toggles {
+        display: flex;
+        margin: 15px 0 25px;
+        position: relative;
+        background-color: #f1f3fa;
+        border-radius: 50px;
+        height: 50px;
+        padding: 3px;
+    }
+    
+    .action-toggle {
+        flex: 1;
+        position: relative;
+        z-index: 1;
+    }
+    
+    .action-toggle input[type="radio"] {
+        opacity: 0;
+        position: absolute;
+    }
+    
+    .action-toggle label {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 44px;
+        width: 100%;
+        border-radius: 50px;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+    
+    .action-toggle input[type="radio"]:checked + label {
+        background-color: white;
+        color: #4e73df;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .action-toggle:first-child input[type="radio"]:checked + label {
+        color: #1cc88a;
+    }
+    
+    .action-toggle:last-child input[type="radio"]:checked + label {
+        color: #e74a3b;
+    }
+    
+    .location-card {
+        background-color: #f8f9fc;
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 20px;
+        border: 1px solid #e3e6f0;
+    }
+    
+    .location-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    
+    .location-title {
+        font-weight: 600;
+        color: #4e73df;
+        display: flex;
+        align-items: center;
+    }
+    
+    .location-title i {
+        margin-right: 8px;
+    }
+    
+    .status-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 5px;
+    }
+    
+    .status-acquiring {
+        background-color: #f6c23e;
+        animation: pulse 1.5s infinite;
+    }
+    
+    .status-success {
+        background-color: #1cc88a;
+    }
+    
+    .status-error {
+        background-color: #e74a3b;
+    }
+    
+    .location-content {
+        font-size: 0.9rem;
+        margin-bottom: 15px;
+    }
+    
+    .location-coordinates {
+        font-family: monospace;
+        font-size: 0.8rem;
+        color: #858796;
+        margin-bottom: 10px;
+    }
+    
+    .refresh-button {
+        background-color: #f1f3fa;
+        border: none;
+        border-radius: 50px;
+        padding: 8px 15px;
+        display: flex;
+        align-items: center;
+        font-size: 0.85rem;
+        color: #4e73df;
+    }
+    
+    .refresh-button i {
+        margin-right: 5px;
+    }
+    
+    .camera-card {
+        background-color: #f8f9fc;
+        border-radius: 12px;
+        padding: 15px;
+        margin-bottom: 25px;
+        border: 1px solid #e3e6f0;
+    }
+    
+    .camera-header {
+        font-weight: 600;
+        color: #4e73df;
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    
+    .camera-header i {
+        margin-right: 8px;
+    }
+    
+    .camera-description {
+        font-size: 0.85rem;
+        color: #858796;
+        margin-bottom: 15px;
+    }
+    
+    .camera-button {
+        background-color: #4e73df;
+        color: white;
+        border: none;
+        border-radius: 50px;
+        padding: 10px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        font-weight: 600;
+    }
+    
+    .camera-button i {
+        margin-right: 8px;
+    }
+    
+    .camera-preview-container {
+        display: none;
+        margin-top: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .camera-preview {
+        width: 100%;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    .capture-button {
+        background-color: #1cc88a;
+        color: white;
+        border: none;
+        border-radius: 50px;
+        width: 60px;
+        height: 60px;
+        font-size: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 15px auto;
+        box-shadow: 0 4px 10px rgba(28, 200, 138, 0.3);
+    }
+    
+    .photo-preview-container {
+        display: none;
+        margin-top: 15px;
+        margin-bottom: 15px;
+    }
+    
+    .photo-preview {
+        width: 100%;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    .retake-button {
+        background-color: #f1f3fa;
+        color: #4e73df;
+        border: none;
+        border-radius: 50px;
+        padding: 10px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 15px auto;
+        font-weight: 600;
+    }
+    
+    .retake-button i {
+        margin-right: 8px;
+    }
+    
+    .submit-button {
+        background-color: #4e73df;
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 15px;
+        font-size: 1rem;
+        font-weight: 600;
+        box-shadow: 0 4px 15px rgba(78, 115, 223, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        margin-top: 10px;
+    }
+    
+    .submit-button i {
+        margin-right: 10px;
+    }
+    
+    .submit-button:disabled {
+        background-color: #b7bce9;
+        box-shadow: none;
+    }
+    
+    .admin-link {
+        display: block;
+        text-align: center;
+        margin-top: 20px;
+        color: #4e73df;
+        text-decoration: none;
+        font-size: 0.9rem;
+    }
+    
+    .admin-link i {
+        margin-right: 5px;
+    }
+    
+    /* Bottom app bar */
+    .bottom-app-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: white;
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        padding: 12px 0;
+        display: flex;
+        justify-content: space-around;
+        z-index: 1000;
+    }
+    
+    .app-bar-action {
+        text-align: center;
+        font-size: 0.75rem;
+        color: #858796;
+        text-decoration: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .app-bar-action i {
+        font-size: 1.5rem;
+        margin-bottom: 4px;
+    }
+    
+    .app-bar-action.active {
+        color: #4e73df;
+    }
+    
+    /* Make room for bottom bar */
+    .bottom-spacer {
+        height: 70px;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 0.6; }
+        50% { opacity: 1; }
+        100% { opacity: 0.6; }
+    }
+    
+    /* Hide canvas used for photo capture */
+    #captureCanvas {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block body_class %}mobile-body{% endblock %}
+
+{% block content %}
+<div class="container-fluid mobile-container">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+            <!-- Clock Card -->
+            <div class="clock-card">
+                <div id="currentTime" class="current-time">--:--:-- --</div>
+                <div id="currentDate" class="current-date">Loading date...</div>
+            </div>
+            
+            <!-- Attendance Form -->
+            <form id="attendanceForm" method="post" action="{{ url_for('submit') }}" enctype="multipart/form-data" class="form-card">
+                <h5 class="mb-4 text-center">Track Your Attendance</h5>
+                
+                <!-- Employee ID -->
+                <div class="mb-3">
+                    <label for="employee_id" class="form-label">Employee ID</label>
+                    <input type="text" class="form-control" id="employee_id" name="employee_id" placeholder="Enter your ID" required>
+                </div>
+                
+                <!-- Project Selection -->
+                <div class="mb-3">
+                    <label for="project_id" class="form-label">Select Project</label>
+                    <select class="form-select" id="project_id" name="project_id">
+                        <option value="">-- Select Project --</option>
+                        {% for project in projects %}
+                        <option value="{{ project.id }}">{{ project.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Clock In/Out Toggle -->
+                <div class="action-toggles">
+                    <div class="action-toggle">
+                        <input type="radio" id="clockIn" name="action" value="Clock In" checked>
+                        <label for="clockIn">Clock In</label>
+                    </div>
+                    <div class="action-toggle">
+                        <input type="radio" id="clockOut" name="action" value="Clock Out">
+                        <label for="clockOut">Clock Out</label>
+                    </div>
+                </div>
+                
+                <!-- Location Card -->
+                <div class="location-card">
+                    <div class="location-header">
+                        <div class="location-title">
+                            <i class="bi bi-geo-alt"></i> Location
+                        </div>
+                        <div class="location-status">
+                            <span id="locationStatus" class="status-indicator status-acquiring"></span>
+                            <span id="locationStatusText">Acquiring...</span>
+                        </div>
+                    </div>
+                    
+                    <div id="locationInfo" class="location-content">
+                        Acquiring your location...
+                    </div>
+                    
+                    <div id="coordinatesInfo" class="location-coordinates"></div>
+                    
+                    <!-- Hidden location inputs -->
+                    <input type="hidden" id="latitude" name="latitude">
+                    <input type="hidden" id="longitude" name="longitude">
+                    
+                    <button type="button" id="refreshLocationBtn" class="refresh-button">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh Location
+                    </button>
+                </div>
+                
+                <!-- Camera Card -->
+                <div class="camera-card">
+                    <div class="camera-header">
+                        <i class="bi bi-camera"></i> Photo Verification
+                    </div>
+                    
+                    <p class="camera-description">
+                        Take a selfie to verify your identity and location. This helps confirm your physical presence at work.
+                    </p>
+                    
+                    <button type="button" id="toggleCameraBtn" class="camera-button">
+                        <i class="bi bi-camera"></i> Take Photo
+                    </button>
+                    
+                    <div id="cameraContainer" class="camera-preview-container">
+                        <video id="cameraPreview" class="camera-preview" autoplay playsinline></video>
+                        <button type="button" id="captureBtn" class="capture-button">
+                            <i class="bi bi-camera"></i>
+                        </button>
+                    </div>
+                    
+                    <div id="photoPreviewContainer" class="photo-preview-container">
+                        <img id="photoPreview" class="photo-preview" src="">
+                        <button type="button" id="retakePhotoBtn" class="retake-button">
+                            <i class="bi bi-arrow-clockwise"></i> Retake Photo
+                        </button>
+                    </div>
+                    
+                    <canvas id="captureCanvas"></canvas>
+                    <input type="file" id="photoInput" name="photo" accept="image/*" style="display: none;">
+                </div>
+                
+                <!-- Submit Button -->
+                <button type="submit" id="submitBtn" class="submit-button" disabled>
+                    <i class="bi bi-check-circle"></i> Submit Attendance
+                </button>
+            </form>
+            
+            <!-- Link to Admin Login -->
+            <a href="{{ url_for('admin_login') }}" class="admin-link">
+                <i class="bi bi-shield-lock"></i> Admin Login
+            </a>
+            
+            <!-- Bottom Spacer -->
+            <div class="bottom-spacer"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Bottom App Bar -->
+<div class="bottom-app-bar">
+    <a href="{{ url_for('index') }}" class="app-bar-action active">
+        <i class="bi bi-house"></i>
+        <span>Home</span>
+    </a>
+    <a href="#" class="app-bar-action" id="clockInShortcut">
+        <i class="bi bi-box-arrow-in-right"></i>
+        <span>Clock In</span>
+    </a>
+    <a href="#" class="app-bar-action" id="clockOutShortcut">
+        <i class="bi bi-box-arrow-right"></i>
+        <span>Clock Out</span>
+    </a>
+    <a href="#" class="app-bar-action" id="installAppButton">
+        <i class="bi bi-download"></i>
+        <span>Install</span>
+    </a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Handle action toggles for Clock In/Out
+    document.addEventListener('DOMContentLoaded', function() {
+        // Setup clock in/out shortcuts
+        document.getElementById('clockInShortcut').addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('clockIn').checked = true;
+        });
+        
+        document.getElementById('clockOutShortcut').addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('clockOut').checked = true;
+        });
+        
+        // Handle install app button
+        let deferredPrompt;
+        const installButton = document.getElementById('installAppButton');
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent Chrome 67 and earlier from automatically showing the prompt
+            e.preventDefault();
+            // Stash the event so it can be triggered later
+            deferredPrompt = e;
+            // Show the button
+            installButton.style.display = 'flex';
+        });
+        
+        installButton.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                // Show the install prompt
+                deferredPrompt.prompt();
+                // Wait for the user to respond to the prompt
+                const { outcome } = await deferredPrompt.userChoice;
+                // We've used the prompt, and can't use it again, throw it away
+                deferredPrompt = null;
+            }
+        });
+        
+        // Hide the install button if app is already installed
+        window.addEventListener('appinstalled', () => {
+            installButton.style.display = 'none';
+        });
+        
+        // Check if app is already installed
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            installButton.style.display = 'none';
+        }
+    });
+</script>
+{% endblock %}

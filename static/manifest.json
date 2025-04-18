@@ -1,51 +1,65 @@
 {
-  "name": "Field Attendance Tracker",
+  "name": "Al-Aqsa Security - Attendance System",
   "short_name": "Attendance",
-  "description": "Track field employee attendance with location",
+  "description": "Field employee attendance tracking system with location and photo verification",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#007bff",
+  "theme_color": "#4e73df",
   "icons": [
-    {
-      "src": "/static/icons/icon-72x72.png",
-      "sizes": "72x72",
-      "type": "image/png"
-    },
-    {
-      "src": "/static/icons/icon-96x96.png",
-      "sizes": "96x96",
-      "type": "image/png"
-    },
-    {
-      "src": "/static/icons/icon-128x128.png",
-      "sizes": "128x128",
-      "type": "image/png"
-    },
-    {
-      "src": "/static/icons/icon-144x144.png",
-      "sizes": "144x144",
-      "type": "image/png"
-    },
-    {
-      "src": "/static/icons/icon-152x152.png",
-      "sizes": "152x152",
-      "type": "image/png"
-    },
     {
       "src": "/static/icons/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/static/icons/icon-384x384.png",
-      "sizes": "384x384",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/static/icons/icon-512x512.png",
       "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "orientation": "portrait",
+  "scope": "/",
+  "lang": "en-US",
+  "dir": "ltr",
+  "categories": ["business", "productivity", "utilities"],
+  "shortcuts": [
+    {
+      "name": "Clock In",
+      "url": "/?action=clockin",
+      "icons": [
+        {
+          "src": "/static/icons/clockin.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Clock Out",
+      "url": "/?action=clockout",
+      "icons": [
+        {
+          "src": "/static/icons/clockout.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/static/screenshots/screen1.png",
+      "sizes": "1170x2532",
+      "type": "image/png"
+    },
+    {
+      "src": "/static/screenshots/screen2.png",
+      "sizes": "1170x2532",
       "type": "image/png"
     }
-  ]
+  ],
+  "prefer_related_applications": false
 }
