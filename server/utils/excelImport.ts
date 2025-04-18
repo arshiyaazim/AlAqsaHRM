@@ -88,9 +88,11 @@ export async function readEmployeeExcel(filePath: string): Promise<ImportResult>
         if (joinDate instanceof Date) {
           joinDate = joinDate.toISOString();
         } else if (typeof joinDate === 'number') {
-          // If it's an Excel date number
-          const excelDate = XLSX.SSF.parse_date_code(joinDate);
-          const jsDate = new Date(excelDate.y, excelDate.m - 1, excelDate.d);
+          // If it's an Excel date number (Excel dates are stored as days since 1/1/1900)
+          // Excel date serial number to JS date: serial number = days since 1899-12-30
+          const excelEpoch = new Date(1899, 11, 30); // Dec 30, 1899
+          const jsDate = new Date(excelEpoch);
+          jsDate.setDate(excelEpoch.getDate() + joinDate);
           joinDate = jsDate.toISOString();
         }
         
