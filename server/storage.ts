@@ -106,6 +106,10 @@ export interface IStorage {
   // Dashboard stats operations
   getDashboardStats(): Promise<DashboardStats | undefined>;
   createOrUpdateDashboardStats(stats: InsertDashboardStats): Promise<DashboardStats>;
+  
+  // Company settings operations
+  getCompanySettings(): Promise<CompanySettings | undefined>;
+  createOrUpdateCompanySettings(settings: Partial<InsertCompanySettings>): Promise<CompanySettings>;
 }
 
 export class DatabaseStorage implements IStorage {
