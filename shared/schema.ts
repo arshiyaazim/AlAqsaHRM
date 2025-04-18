@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, date, time, boolean, numeric, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, date, time, boolean, numeric, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -189,3 +189,21 @@ export type InsertPayment = z.infer<typeof insertPaymentSchema>;
 
 export type DashboardStats = typeof dashboardStats.$inferSelect;
 export type InsertDashboardStats = z.infer<typeof insertDashboardStatsSchema>;
+
+// Company Settings schema
+export const companySettings = pgTable("company_settings", {
+  id: serial("id").primaryKey(),
+  companyName: text("company_name").notNull().default("HR & Payroll Management"),
+  companyTagline: text("company_tagline").default("Manage your workforce efficiently"),
+  primaryColor: text("primary_color").notNull().default("#2C5282"),
+  logoUrl: text("logo_url"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertCompanySettingsSchema = createInsertSchema(companySettings).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type CompanySettings = typeof companySettings.$inferSelect;
+export type InsertCompanySettings = z.infer<typeof insertCompanySettingsSchema>;
