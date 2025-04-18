@@ -13,7 +13,8 @@ from wtforms.validators import DataRequired
 # App configuration
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///attendance.db')
+# Use SQLite by default
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///attendance.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload size
@@ -86,6 +87,11 @@ with app.app_context():
         admin.set_password('admin')  # Change this in production!
         db.session.add(admin)
         db.session.commit()
+
+# Pass current date to all templates
+@app.context_processor
+def inject_now():
+    return {'now': datetime.datetime.utcnow()}
 
 # Routes
 @app.route('/')

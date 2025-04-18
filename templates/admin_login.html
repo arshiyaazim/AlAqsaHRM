@@ -5,32 +5,45 @@
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-6 col-lg-4">
+        <!-- Admin Login Card -->
         <div class="card shadow">
             <div class="card-header bg-primary text-white">
-                <h4 class="mb-0"><i class="fas fa-lock"></i> Admin Login</h4>
+                <h2 class="h4 mb-0"><i class="fas fa-lock"></i> Admin Login</h2>
             </div>
+            
             <div class="card-body">
-                <form action="{{ url_for('admin_login') }}" method="POST">
+                <form method="POST" action="{{ url_for('admin_login') }}">
+                    {{ form.csrf_token }}
+                    
                     <div class="mb-3">
-                        <label for="username" class="form-label">Username</label>
-                        <input type="text" class="form-control" id="username" name="username" required>
+                        <label for="{{ form.username.id }}" class="form-label">{{ form.username.label.text }}</label>
+                        {{ form.username(class="form-control", placeholder="Enter username") }}
                     </div>
                     
                     <div class="mb-4">
-                        <label for="password" class="form-label">Password</label>
-                        <input type="password" class="form-control" id="password" name="password" required>
+                        <label for="{{ form.password.id }}" class="form-label">{{ form.password.label.text }}</label>
+                        {{ form.password(class="form-control", placeholder="Enter password") }}
                     </div>
                     
                     <div class="d-grid">
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-sign-in-alt"></i> Login
-                        </button>
+                        {{ form.submit(class="btn btn-primary btn-lg") }}
                     </div>
                 </form>
             </div>
-            <div class="card-footer text-muted text-center">
-                <small>Default credentials: admin / admin123</small>
+            
+            <div class="card-footer text-center">
+                <a href="{{ url_for('index') }}" class="text-decoration-none">
+                    <i class="fas fa-arrow-left me-1"></i> Back to Attendance Form
+                </a>
             </div>
+        </div>
+        
+        <div class="mt-3 text-center">
+            <small class="text-muted">
+                Default admin credentials: <br>
+                Username: admin <br>
+                Password: admin
+            </small>
         </div>
     </div>
 </div>
