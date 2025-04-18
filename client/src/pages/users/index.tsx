@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
 import {
   Table,
   TableBody,
@@ -22,9 +25,62 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, UserX, CheckCircle, XCircle, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { 
+  Loader2, 
+  UserX, 
+  CheckCircle, 
+  XCircle, 
+  ShieldAlert, 
+  ShieldCheck, 
+  UserPlus,
+  Eye,
+  Home,
+  Users,
+  Calendar,
+  DollarSign,
+  FileText,
+  Settings,
+  ArrowDownCircle,
+  ArrowUpCircle,
+  FolderKanban
+} from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -37,14 +93,47 @@ interface User {
   id: number;
   email: string;
   fullName: string;
+  firstName: string;
+  lastName: string;
+  employeeId: string;
   role: string;
   isActive: boolean;
   createdAt: string;
+  permissions?: {
+    [key: string]: boolean;
+  };
 }
+
+// Create user form schema
+const createUserSchema = z.object({
+  firstName: z.string().min(2, { message: "First name must be at least 2 characters" }),
+  lastName: z.string().min(2, { message: "Last name must be at least 2 characters" }),
+  email: z.string().email({ message: "Please enter a valid email address" }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
+  employeeId: z.string().min(1, { message: "Employee ID is required" }),
+  role: z.string().min(1, { message: "Role is required" }),
+});
 
 export default function UsersPage() {
   const { toast } = useToast();
   const [userToDelete, setUserToDelete] = useState<number | null>(null);
+  const [isAddUserOpen, setIsAddUserOpen] = useState<boolean>(false);
+  const [isPermissionsOpen, setIsPermissionsOpen] = useState<boolean>(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [userPermissions, setUserPermissions] = useState<{[key: string]: boolean}>({});
+  
+  // Create user form
+  const form = useForm<z.infer<typeof createUserSchema>>({
+    resolver: zodResolver(createUserSchema),
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+      employeeId: "",
+      role: "viewer",
+    },
+  });
   
   // Fetch all users
   const { data: users = [], isLoading } = useQuery<User[]>({
@@ -186,6 +275,76 @@ export default function UsersPage() {
     },
   });
   
+  // Create user
+  const createUserMutation = useMutation({
+    mutationFn: async (data: z.infer<typeof createUserSchema>) => {
+      const response = await apiRequest("POST", "/api/auth/register", data);
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "User created",
+        description: "New user has been created successfully",
+      });
+      setIsAddUserOpen(false);
+      form.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to create user",
+        description: error.message || "Something went wrong",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  // Update user permissions
+  const updatePermissionsMutation = useMutation({
+    mutationFn: async ({ userId, permissions }: { userId: number; permissions: object }) => {
+      const response = await apiRequest("PATCH", `/api/users/${userId}/permissions`, { permissions });
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Permissions updated",
+        description: "User permissions have been updated successfully",
+      });
+      setIsPermissionsOpen(false);
+      setSelectedUser(null);
+      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to update permissions",
+        description: error.message || "Something went wrong",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handle form submission for new user
+  const onSubmit = (data: z.infer<typeof createUserSchema>) => {
+    createUserMutation.mutate(data);
+  };
+  
+  // Open permissions dialog
+  const openPermissionsDialog = (user: User) => {
+    setSelectedUser(user);
+    setUserPermissions(user.permissions || {});
+    setIsPermissionsOpen(true);
+  };
+  
+  // Save permissions
+  const savePermissions = () => {
+    if (selectedUser) {
+      updatePermissionsMutation.mutate({
+        userId: selectedUser.id,
+        permissions: userPermissions,
+      });
+    }
+  };
+  
   // Handle role change
   const handleRoleChange = (userId: number, role: string) => {
     updateRoleMutation.mutate({ userId, role });
@@ -214,9 +373,355 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-[#2D3748]">User Management</h1>
-        <p className="mt-1 text-sm text-gray-500">Manage user accounts and permissions</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-semibold text-[#2D3748]">User Management</h1>
+          <p className="mt-1 text-sm text-gray-500">Manage user accounts and permissions</p>
+        </div>
+        <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-[#2C5282] hover:bg-[#1A365D]">
+              <UserPlus className="h-4 w-4 mr-2" />
+              Add User
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[475px]">
+            <DialogHeader>
+              <DialogTitle>Create New User</DialogTitle>
+              <DialogDescription>
+                Add a new user to the system. All users start with basic permissions.
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="firstName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>First Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="John" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="lastName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Last Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Doe" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="john.doe@example.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="••••••••" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="employeeId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Employee ID</FormLabel>
+                      <FormControl>
+                        <Input placeholder="E12345" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="role"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Role</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a role" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="hr">HR</SelectItem>
+                          <SelectItem value="viewer">Viewer</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsAddUserOpen(false)}
+                    disabled={createUserMutation.isPending}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit"
+                    disabled={createUserMutation.isPending}
+                  >
+                    {createUserMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : null}
+                    Create User
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Permissions Dialog */}
+        <Dialog open={isPermissionsOpen} onOpenChange={setIsPermissionsOpen}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Manage User Permissions</DialogTitle>
+              <DialogDescription>
+                {selectedUser && 
+                  `Configure menu visibility permissions for ${selectedUser.fullName} (${selectedUser.role})`
+                }
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="py-4">
+              <h3 className="text-sm font-medium mb-3">Menu Visibility</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-4">
+                  <div className="flex items-start space-x-3">
+                    <Checkbox
+                      id="dashboard"
+                      checked={userPermissions?.dashboard || false}
+                      onCheckedChange={(checked) => 
+                        setUserPermissions({ ...userPermissions, dashboard: !!checked })
+                      }
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                      <label
+                        htmlFor="dashboard"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center"
+                      >
+                        <Home className="h-4 w-4 mr-2 text-muted-foreground" />
+                        Dashboard
+                      </label>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start space-x-3">
+                    <Checkbox
+                      id="employees"
+                      checked={userPermissions?.employees || false}
+                      onCheckedChange={(checked) => 
+                        setUserPermissions({ ...userPermissions, employees: !!checked })
+                      }
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                      <label
+                        htmlFor="employees"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center"
+                      >
+                        <Users className="h-4 w-4 mr-2 text-muted-foreground" />
+                        Employees
+                      </label>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start space-x-3">
+                    <Checkbox
+                      id="projects"
+                      checked={userPermissions?.projects || false}
+                      onCheckedChange={(checked) => 
+                        setUserPermissions({ ...userPermissions, projects: !!checked })
+                      }
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                      <label
+                        htmlFor="projects"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center"
+                      >
+                        <FolderKanban className="h-4 w-4 mr-2 text-muted-foreground" />
+                        Projects
+                      </label>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start space-x-3">
+                    <Checkbox
+                      id="attendance"
+                      checked={userPermissions?.attendance || false}
+                      onCheckedChange={(checked) => 
+                        setUserPermissions({ ...userPermissions, attendance: !!checked })
+                      }
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                      <label
+                        htmlFor="attendance"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center"
+                      >
+                        <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+                        Attendance
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="flex items-start space-x-3">
+                    <Checkbox
+                      id="payroll"
+                      checked={userPermissions?.payroll || false}
+                      onCheckedChange={(checked) => 
+                        setUserPermissions({ ...userPermissions, payroll: !!checked })
+                      }
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                      <label
+                        htmlFor="payroll"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center"
+                      >
+                        <DollarSign className="h-4 w-4 mr-2 text-muted-foreground" />
+                        Payroll
+                      </label>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start space-x-3">
+                    <Checkbox
+                      id="expenditures"
+                      checked={userPermissions?.expenditures || false}
+                      onCheckedChange={(checked) => 
+                        setUserPermissions({ ...userPermissions, expenditures: !!checked })
+                      }
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                      <label
+                        htmlFor="expenditures"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center"
+                      >
+                        <ArrowDownCircle className="h-4 w-4 mr-2 text-muted-foreground" />
+                        Expenditures
+                      </label>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start space-x-3">
+                    <Checkbox
+                      id="incomes"
+                      checked={userPermissions?.incomes || false}
+                      onCheckedChange={(checked) => 
+                        setUserPermissions({ ...userPermissions, incomes: !!checked })
+                      }
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                      <label
+                        htmlFor="incomes"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center"
+                      >
+                        <ArrowUpCircle className="h-4 w-4 mr-2 text-muted-foreground" />
+                        Cash Receive
+                      </label>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start space-x-3">
+                    <Checkbox
+                      id="reports"
+                      checked={userPermissions?.reports || false}
+                      onCheckedChange={(checked) => 
+                        setUserPermissions({ ...userPermissions, reports: !!checked })
+                      }
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                      <label
+                        htmlFor="reports"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center"
+                      >
+                        <FileText className="h-4 w-4 mr-2 text-muted-foreground" />
+                        Reports
+                      </label>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-start space-x-3">
+                    <Checkbox
+                      id="settings"
+                      checked={userPermissions?.settings || false}
+                      onCheckedChange={(checked) => 
+                        setUserPermissions({ ...userPermissions, settings: !!checked })
+                      }
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                      <label
+                        htmlFor="settings"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex items-center"
+                      >
+                        <Settings className="h-4 w-4 mr-2 text-muted-foreground" />
+                        Settings
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsPermissionsOpen(false)}
+                disabled={updatePermissionsMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={savePermissions}
+                disabled={updatePermissionsMutation.isPending}
+              >
+                {updatePermissionsMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : null}
+                Save Permissions
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
       
       {/* Pending Registrations */}
@@ -323,40 +828,51 @@ export default function UsersPage() {
                 </TableCell>
                 <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
                 <TableCell>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 border-red-600 hover:bg-red-50"
-                        onClick={() => setUserToDelete(user.id)}
-                      >
-                        <UserX className="h-4 w-4 mr-1" />
-                        Remove
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This action cannot be undone. This will permanently delete the user account
-                          and all associated data.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel onClick={() => setUserToDelete(null)}>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          className="bg-red-600 hover:bg-red-700"
-                          onClick={() => deleteMutation.mutate(user.id)}
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-blue-600 border-blue-600 hover:bg-blue-50"
+                      onClick={() => openPermissionsDialog(user)}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      Permissions
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 border-red-600 hover:bg-red-50"
+                          onClick={() => setUserToDelete(user.id)}
                         >
-                          {deleteMutation.isPending ? (
-                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                          ) : null}
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                          <UserX className="h-4 w-4 mr-1" />
+                          Remove
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete the user account
+                            and all associated data.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel onClick={() => setUserToDelete(null)}>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-red-600 hover:bg-red-700"
+                            onClick={() => deleteMutation.mutate(user.id)}
+                          >
+                            {deleteMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            ) : null}
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
