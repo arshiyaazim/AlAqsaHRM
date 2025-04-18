@@ -42,18 +42,18 @@ export default function IncomeList() {
 
       if (response.ok) {
         toast({
-          title: "Income deleted",
-          description: "The income record has been deleted successfully.",
+          title: "Cash Receive deleted",
+          description: "The cash receive record has been deleted successfully.",
         });
         queryClient.invalidateQueries({ queryKey: ["/api/incomes"] });
       } else {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to delete income");
+        throw new Error(errorData.message || "Failed to delete cash receive record");
       }
     } catch (error) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "An error occurred while deleting the income",
+        description: error instanceof Error ? error.message : "An error occurred while deleting the cash receive record",
         variant: "destructive",
       });
     } finally {
@@ -65,21 +65,21 @@ export default function IncomeList() {
   return (
     <div className="container mx-auto py-6">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Daily Income</h1>
+        <h1 className="text-2xl font-bold">Cash Receive</h1>
         <Button asChild>
           <Link href="/incomes/add">
-            <Plus className="mr-2 h-4 w-4" /> Add Income
+            <Plus className="mr-2 h-4 w-4" /> Add Cash Receive
           </Link>
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Income Records</CardTitle>
+          <CardTitle>Cash Receive Records</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="py-8 text-center">Loading income data...</div>
+            <div className="py-8 text-center">Loading cash receive data...</div>
           ) : incomes && incomes.length > 0 ? (
             <Table>
               <TableHeader>
@@ -119,7 +119,7 @@ export default function IncomeList() {
               </TableBody>
             </Table>
           ) : (
-            <div className="py-8 text-center">No income records found. Add one to get started.</div>
+            <div className="py-8 text-center">No cash receive records found. Add one to get started.</div>
           )}
         </CardContent>
       </Card>
@@ -130,7 +130,7 @@ export default function IncomeList() {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this income record? This action cannot be undone.
+              Are you sure you want to delete this cash receive record? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
