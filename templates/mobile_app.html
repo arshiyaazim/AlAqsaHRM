@@ -3,12 +3,33 @@
 {% block title %}Mobile Attendance - Al-Aqsa Security{% endblock %}
 
 {% block head %}
+<!-- Additional meta tags for mobile -->
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#4e73df">
+<meta name="msapplication-TileColor" content="#4e73df">
+<meta name="msapplication-navbutton-color" content="#4e73df">
+<meta name="application-name" content="Attendance">
+<meta name="apple-mobile-web-app-title" content="Attendance">
+
+<!-- Add icon links for iOS -->
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+<link rel="apple-touch-startup-image" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+
+<!-- Add quick action link for iOS -->
+<link rel="apple-touch-icon" sizes="96x96" href="{{ url_for('static', filename='icons/clockin.png') }}" data-action="clockin">
+<link rel="apple-touch-icon" sizes="96x96" href="{{ url_for('static', filename='icons/clockout.png') }}" data-action="clockout">
+
 <style>
     body {
         background-color: #f8f9fc;
         font-family: 'Nunito', sans-serif;
         color: #5a5c69;
         overscroll-behavior-y: contain; /* Prevents pull-to-refresh */
+        touch-action: manipulation; /* Prevents double-tap zoom on mobile */
+        user-select: none; /* Prevents text selection for better touch experience */
+        -webkit-tap-highlight-color: transparent; /* Removes tap highlight on iOS */
     }
 
     .navbar {
@@ -530,53 +551,119 @@
 {% endblock %}
 
 {% block scripts %}
+<!-- Bootstrap Toast JavaScript for notifications -->
 <script>
-    // Handle action toggles for Clock In/Out
-    document.addEventListener('DOMContentLoaded', function() {
-        // Setup clock in/out shortcuts
-        document.getElementById('clockInShortcut').addEventListener('click', function(e) {
-            e.preventDefault();
-            document.getElementById('clockIn').checked = true;
-        });
-        
-        document.getElementById('clockOutShortcut').addEventListener('click', function(e) {
-            e.preventDefault();
-            document.getElementById('clockOut').checked = true;
-        });
-        
-        // Handle install app button
-        let deferredPrompt;
-        const installButton = document.getElementById('installAppButton');
-        
-        window.addEventListener('beforeinstallprompt', (e) => {
-            // Prevent Chrome 67 and earlier from automatically showing the prompt
-            e.preventDefault();
-            // Stash the event so it can be triggered later
-            deferredPrompt = e;
-            // Show the button
-            installButton.style.display = 'flex';
-        });
-        
-        installButton.addEventListener('click', async () => {
-            if (deferredPrompt) {
-                // Show the install prompt
-                deferredPrompt.prompt();
-                // Wait for the user to respond to the prompt
-                const { outcome } = await deferredPrompt.userChoice;
-                // We've used the prompt, and can't use it again, throw it away
-                deferredPrompt = null;
+    // We need to make sure Bootstrap's Toast JS is available
+    window.bootstrap = window.bootstrap || {};
+    if (!window.bootstrap.Toast) {
+        window.bootstrap.Toast = class Toast {
+            constructor(element, options) {
+                this.element = element;
+                this.options = options || {autohide: true, delay: 5000};
+                this.timeout = null;
             }
-        });
-        
-        // Hide the install button if app is already installed
-        window.addEventListener('appinstalled', () => {
-            installButton.style.display = 'none';
-        });
-        
-        // Check if app is already installed
-        if (window.matchMedia('(display-mode: standalone)').matches) {
-            installButton.style.display = 'none';
-        }
-    });
+            
+            show() {
+                this.element.classList.add('show');
+                if (this.options.autohide) {
+                    this.timeout = setTimeout(() => {
+                        this.hide();
+                    }, this.options.delay || 5000);
+                }
+            }
+            
+            hide() {
+                this.element.classList.remove('show');
+                setTimeout(() => {
+                    // Trigger hidden event
+                    const event = new Event('hidden.bs.toast');
+                    this.element.dispatchEvent(event);
+                }, 150);
+            }
+        };
+    }
 </script>
+
+<!-- Toast container for notifications -->
+<div class="toast-container position-fixed bottom-0 start-50 translate-middle-x p-3" style="z-index: 1090;"></div>
+
+<!-- Mobile App JavaScript -->
+<script src="{{ url_for('static', filename='js/mobile-app.js') }}"></script>
+
+<!-- Service Worker Registration for Mobile App -->
+<script>
+    // This script is only needed if our primary JS file fails to load
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+            navigator.serviceWorker.register('/static/js/mobile-service-worker.js')
+                .then(function(registration) {
+                    console.log('Mobile ServiceWorker registration successful with scope: ', registration.scope);
+                })
+                .catch(function(error) {
+                    console.log('Mobile ServiceWorker registration failed: ', error);
+                });
+        });
+    }
+</script>
+
+<!-- Additional styles for offline mode -->
+<style>
+    /* Add styles for offline mode */
+    body.offline .offline-indicator {
+        display: block;
+    }
+    
+    .offline-indicator {
+        display: none;
+        position: fixed;
+        top: 1rem;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(231, 74, 59, 0.9);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 10px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        z-index: 1100;
+        text-align: center;
+        max-width: 90%;
+    }
+    
+    .offline-indicator.visible {
+        display: block;
+        animation: bounce 1s;
+    }
+    
+    /* Toast notifications */
+    .toast {
+        background-color: rgba(255, 255, 255, 0.9);
+        border-radius: 10px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        margin-bottom: 0.75rem;
+        min-width: 250px;
+        max-width: 80vw;
+        overflow: hidden;
+        pointer-events: auto;
+    }
+    
+    .toast.bg-success {
+        background-color: rgba(28, 200, 138, 0.9) !important;
+    }
+    
+    .toast.bg-danger {
+        background-color: rgba(231, 74, 59, 0.9) !important;
+    }
+    
+    .toast.bg-info {
+        background-color: rgba(78, 115, 223, 0.9) !important;
+    }
+    
+    @keyframes bounce {
+        0%, 20%, 50%, 80%, 100% {transform: translateX(-50%) translateY(0);}
+        40% {transform: translateX(-50%) translateY(-5px);}
+        60% {transform: translateX(-50%) translateY(-2px);}
+    }
+</style>
 {% endblock %}
