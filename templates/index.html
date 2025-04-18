@@ -57,6 +57,11 @@
                     </div>
                     
                     <div class="mb-3">
+                        <label for="{{ form.project_id.id }}" class="form-label">{{ form.project_id.label.text }}</label>
+                        {{ form.project_id(class="form-select") }}
+                    </div>
+                    
+                    <div class="mb-3">
                         <label for="{{ form.action.id }}" class="form-label">{{ form.action.label.text }}</label>
                         {{ form.action(class="form-select form-select-lg") }}
                     </div>

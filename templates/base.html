@@ -36,6 +36,26 @@
             </div>
         </div>
     </header>
+    
+    <!-- Admin Navigation (only shown when logged in) -->
+    {% if session.get('admin_logged_in') %}
+    <nav class="bg-light py-2 border-bottom shadow-sm">
+        <div class="container">
+            <ul class="nav nav-pills">
+                <li class="nav-item">
+                    <a class="nav-link" id="dashboard-nav" href="{{ url_for('admin_dashboard') }}">
+                        <i class="fas fa-chart-line"></i> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="projects-nav" href="{{ url_for('admin_projects') }}">
+                        <i class="fas fa-project-diagram"></i> Projects
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    {% endif %}
 
     <!-- Main Content -->
     <main class="container my-4">

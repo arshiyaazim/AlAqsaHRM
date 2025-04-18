@@ -189,3 +189,16 @@
     {% endif %}
 </div>
 {% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set active navigation
+        try {
+            document.getElementById('dashboard-nav').classList.add('active');
+        } catch (e) {
+            console.error('Navigation element not found', e);
+        }
+    });
+</script>
+{% endblock %}

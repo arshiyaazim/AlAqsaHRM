@@ -1,127 +1,183 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ title }}{% endblock %}
+{% block title %}
+{% if project %}Edit Project: {{ project.name }}{% else %}Add New Project{% endif %} - Field Attendance Tracker
+{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="row">
-        <div class="col-md-8 col-lg-6 mx-auto">
-            <h1>{{ title }}</h1>
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h2 class="h4 mb-0">
+                    {% if project %}
+                    <i class="fas fa-edit"></i> Edit Project: {{ project.name }}
+                    {% else %}
+                    <i class="fas fa-plus-circle"></i> Add New Project
+                    {% endif %}
+                </h2>
+            </div>
             
-            <form method="POST" class="mt-4">
-                {{ form.hidden_tag() }}
-                
-                <div class="form-group">
-                    {{ form.name.label }}
-                    {{ form.name(class="form-control", placeholder="Enter project name") }}
-                    {% if form.name.errors %}
-                    <div class="text-danger">
-                        {% for error in form.name.errors %}
-                        <small>{{ error }}</small>
-                        {% endfor %}
+            <div class="card-body">
+                <form method="POST" class="needs-validation" novalidate>
+                    {{ form.hidden_tag() }}
+                    
+                    <!-- Project Name -->
+                    <div class="mb-3">
+                        <label for="{{ form.name.id }}" class="form-label">{{ form.name.label.text }} <span class="text-danger">*</span></label>
+                        {{ form.name(class="form-control", placeholder="Enter project name") }}
+                        {% if form.name.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.name.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
                     </div>
-                    {% endif %}
-                </div>
-                
-                <div class="form-group">
-                    {{ form.description.label }}
-                    {{ form.description(class="form-control", rows=3, placeholder="Enter project description") }}
-                    {% if form.description.errors %}
-                    <div class="text-danger">
-                        {% for error in form.description.errors %}
-                        <small>{{ error }}</small>
-                        {% endfor %}
+                    
+                    <!-- Project Description -->
+                    <div class="mb-3">
+                        <label for="{{ form.description.id }}" class="form-label">{{ form.description.label.text }}</label>
+                        {{ form.description(class="form-control", rows=4, placeholder="Enter project description") }}
+                        {% if form.description.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.description.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
                     </div>
-                    {% endif %}
-                </div>
-                
-                <div class="form-group">
-                    {{ form.location.label }}
-                    {{ form.location(class="form-control", placeholder="Enter project location") }}
-                    {% if form.location.errors %}
-                    <div class="text-danger">
-                        {% for error in form.location.errors %}
-                        <small>{{ error }}</small>
-                        {% endfor %}
+                    
+                    <!-- Project Location -->
+                    <div class="mb-3">
+                        <label for="{{ form.location.id }}" class="form-label">{{ form.location.label.text }}</label>
+                        {{ form.location(class="form-control", placeholder="Enter project location") }}
+                        {% if form.location.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.location.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
                     </div>
-                    {% endif %}
-                </div>
-                
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            {{ form.start_date.label }}
+                    
+                    <!-- Project Dates -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.start_date.id }}" class="form-label">{{ form.start_date.label.text }}</label>
                             {{ form.start_date(class="form-control", type="date") }}
                             {% if form.start_date.errors %}
-                            <div class="text-danger">
+                            <div class="invalid-feedback d-block">
                                 {% for error in form.start_date.errors %}
-                                <small>{{ error }}</small>
+                                {{ error }}
                                 {% endfor %}
                             </div>
                             {% endif %}
                         </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            {{ form.end_date.label }}
+                        
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ form.end_date.id }}" class="form-label">{{ form.end_date.label.text }}</label>
                             {{ form.end_date(class="form-control", type="date") }}
                             {% if form.end_date.errors %}
-                            <div class="text-danger">
+                            <div class="invalid-feedback d-block">
                                 {% for error in form.end_date.errors %}
-                                <small>{{ error }}</small>
+                                {{ error }}
                                 {% endfor %}
                             </div>
                             {% endif %}
                         </div>
                     </div>
-                </div>
-                
-                <div class="form-group">
-                    <div class="custom-control custom-switch">
-                        {{ form.active(class="custom-control-input") }}
-                        {{ form.active.label(class="custom-control-label") }}
+                    
+                    <!-- Project Status -->
+                    <div class="mb-3 form-check">
+                        {{ form.active(class="form-check-input") }}
+                        <label class="form-check-label" for="{{ form.active.id }}">
+                            {{ form.active.label.text }}
+                        </label>
                     </div>
-                    {% if form.active.errors %}
-                    <div class="text-danger">
-                        {% for error in form.active.errors %}
-                        <small>{{ error }}</small>
-                        {% endfor %}
+                    
+                    <!-- Custom Fields JSON (for advanced users) -->
+                    <div class="mb-3">
+                        <label for="{{ form.custom_fields.id }}" class="form-label d-flex justify-content-between align-items-center">
+                            <span>{{ form.custom_fields.label.text }}</span>
+                            <span class="badge bg-secondary" data-toggle="tooltip" title="Use the Fields management page for easier custom field management">Advanced</span>
+                        </label>
+                        {{ form.custom_fields(class="form-control font-monospace", rows=5, placeholder='{"field_name": {"type": "text", "required": false}}') }}
+                        {% if form.custom_fields.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.custom_fields.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <small class="form-text text-muted">
+                            Advanced users can directly edit the JSON structure. For easier management, save the project first and use the Fields management page.
+                        </small>
                     </div>
-                    {% endif %}
-                </div>
-                
-                <div class="form-group">
-                    {{ form.custom_fields.label }}
-                    <small class="form-text text-muted">Enter custom fields as JSON. You can also manage fields from the project's detail page.</small>
-                    {{ form.custom_fields(class="form-control", rows=5, style="font-family: monospace;") }}
-                    {% if form.custom_fields.errors %}
-                    <div class="text-danger">
-                        {% for error in form.custom_fields.errors %}
-                        <small>{{ error }}</small>
-                        {% endfor %}
+                    
+                    <!-- Submit Buttons -->
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{{ url_for('admin_projects') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Save Project
+                        </button>
                     </div>
-                    {% endif %}
-                </div>
-                
-                <div class="form-group mt-4">
-                    <a href="{{ url_for('admin_projects') }}" class="btn btn-secondary">Cancel</a>
-                    {{ form.submit(class="btn btn-primary") }}
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     </div>
 </div>
 {% endblock %}
 
-{% block scripts %}
+{% block extra_scripts %}
 <script>
+    // Initialize any necessary JavaScript for the form
     document.addEventListener('DOMContentLoaded', function() {
-        // Set the active tab
-        try {
-            document.querySelector('#projects-nav').classList.add('active');
-        } catch (e) {
-            console.log('Navigation element not found');
-        }
+        // Set up date validation
+        const startDateInput = document.getElementById('{{ form.start_date.id }}');
+        const endDateInput = document.getElementById('{{ form.end_date.id }}');
+        
+        // Validate end date is after start date
+        endDateInput.addEventListener('change', function() {
+            if (startDateInput.value && this.value) {
+                const startDate = new Date(startDateInput.value);
+                const endDate = new Date(this.value);
+                
+                if (endDate < startDate) {
+                    this.setCustomValidity('End date must be after start date');
+                } else {
+                    this.setCustomValidity('');
+                }
+            }
+        });
+        
+        // Custom JSON validation
+        const customFieldsInput = document.getElementById('{{ form.custom_fields.id }}');
+        customFieldsInput.addEventListener('blur', function() {
+            if (this.value.trim()) {
+                try {
+                    JSON.parse(this.value);
+                    this.setCustomValidity('');
+                } catch (e) {
+                    this.setCustomValidity('Invalid JSON format');
+                }
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+        
+        // Form validation
+        const form = document.querySelector('form');
+        form.addEventListener('submit', function(event) {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            
+            form.classList.add('was-validated');
+        }, false);
     });
 </script>
 {% endblock %}
