@@ -1,1179 +1,1354 @@
-import { useState, useEffect } from "react";
-import { useParams, useLocation } from "wouter";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm, useFieldArray, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { ChevronLeft, Plus, Trash2, Eye, Save, LayoutGrid, GripVertical, Check, X } from "lucide-react";
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'wouter';
+import { useToast } from '@/hooks/use-toast';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import {
+  DragDropContext,
+  Droppable,
+  Draggable,
+  DropResult,
+  ResponderProvided,
+} from '@hello-pangea/dnd';
+import { GripVertical, Plus, Trash2, Undo, Save, ArrowLeft, Eye } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+// Interface definitions for report templates
+interface ColumnConfig {
+  key: string;
+  title: string;
+  format?: 'text' | 'number' | 'date' | 'currency' | 'percentage';
+  align?: 'left' | 'center' | 'right';
+  width?: number;
+  visible?: boolean;
+  computeTotal?: boolean;
+}
 
-// Define schema for template form
-const columnSchema = z.object({
-  key: z.string(),
-  title: z.string().min(1, "Title is required"),
-  width: z.number().optional(),
-  format: z.enum(["text", "number", "date", "currency", "percentage"]).optional(),
-  align: z.enum(["left", "center", "right"]).optional(),
-  visible: z.boolean().optional(),
-  computeTotal: z.boolean().optional()
-});
+interface ReportConfig {
+  columns: ColumnConfig[];
+  filters: string[];
+  showTotals: boolean;
+  orientation: 'portrait' | 'landscape';
+  pageSize: 'A4' | 'A3' | 'Letter' | 'Legal';
+  pageMargin?: {
+    top: number;
+    right: number;
+    bottom: number;
+    left: number;
+  };
+  fontSize?: number;
+  fontFamily?: string;
+  headerImageUrl?: string;
+  footerText?: string;
+  includeDateRange?: boolean;
+}
 
+interface ReportTemplate {
+  id: string;
+  name: string;
+  description: string;
+  type: 'attendance' | 'payroll' | 'employee' | 'project' | 'expenditure' | 'income';
+  config: ReportConfig;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Validation schema
 const templateSchema = z.object({
-  id: z.string().optional(),
-  name: z.string().min(3, "Name must be at least 3 characters"),
-  description: z.string().min(5, "Description must be at least 5 characters"),
-  type: z.enum(["attendance", "payroll", "employee", "project", "expenditure", "income"]),
-  isDefault: z.boolean().default(false),
+  name: z.string().min(1, 'Name is required'),
+  description: z.string(),
+  type: z.enum(['attendance', 'payroll', 'employee', 'project', 'expenditure', 'income']),
   config: z.object({
-    columns: z.array(columnSchema),
-    filters: z.array(z.string()),
-    showTotals: z.boolean().default(true),
-    orientation: z.enum(["portrait", "landscape"]).default("landscape"),
-    pageSize: z.enum(["A4", "A3", "Letter", "Legal"]).default("A4"),
-    pageMargin: z.object({
-      top: z.number(),
-      right: z.number(),
-      bottom: z.number(),
-      left: z.number()
-    }).optional(),
-    fontSize: z.number().min(8).max(16).optional(),
+    showTotals: z.boolean(),
+    orientation: z.enum(['portrait', 'landscape']),
+    pageSize: z.enum(['A4', 'A3', 'Letter', 'Legal']),
+    fontSize: z.number().optional(),
     fontFamily: z.string().optional(),
-    includeDateRange: z.boolean().default(true)
-  })
+    headerImageUrl: z.string().optional(),
+    footerText: z.string().optional(),
+    includeDateRange: z.boolean().optional(),
+    filters: z.array(z.string()),
+    columns: z.array(
+      z.object({
+        key: z.string(),
+        title: z.string(),
+        format: z.enum(['text', 'number', 'date', 'currency', 'percentage']).optional(),
+        align: z.enum(['left', 'center', 'right']).optional(),
+        width: z.number().optional(),
+        visible: z.boolean().optional(),
+        computeTotal: z.boolean().optional(),
+      })
+    ),
+    pageMargin: z
+      .object({
+        top: z.number(),
+        right: z.number(),
+        bottom: z.number(),
+        left: z.number(),
+      })
+      .optional(),
+  }),
 });
 
 type TemplateFormValues = z.infer<typeof templateSchema>;
 
-// Available column options for each report type
-const availableColumns: Record<string, Array<{ key: string; title: string; format: string; width: number; visible: boolean; align: string; }>> = {
+// Column options based on report type
+const columnOptions = {
   attendance: [
-    { key: "date", title: "Date", format: "date", width: 100, visible: true, align: "center" },
-    { key: "employeeName", title: "Employee Name", format: "text", width: 150, visible: true, align: "left" },
-    { key: "checkIn", title: "Check In", format: "text", width: 100, visible: true, align: "center" },
-    { key: "checkOut", title: "Check Out", format: "text", width: 100, visible: true, align: "center" },
-    { key: "hoursWorked", title: "Hours", format: "number", width: 80, visible: true, align: "center" },
-    { key: "projectName", title: "Project", format: "text", width: 120, visible: true, align: "left" },
-    { key: "status", title: "Status", format: "text", width: 100, visible: true, align: "center" },
-    { key: "remarks", title: "Remarks", format: "text", width: 200, visible: true, align: "left" }
+    { key: 'date', title: 'Date', format: 'date' },
+    { key: 'employeeId', title: 'Employee ID', format: 'text' },
+    { key: 'employeeName', title: 'Employee Name', format: 'text' },
+    { key: 'checkIn', title: 'Check In', format: 'text' },
+    { key: 'checkOut', title: 'Check Out', format: 'text' },
+    { key: 'hoursWorked', title: 'Hours Worked', format: 'number' },
+    { key: 'projectName', title: 'Project', format: 'text' },
+    { key: 'location', title: 'Location', format: 'text' },
+    { key: 'remarks', title: 'Remarks', format: 'text' },
   ],
   payroll: [
-    { key: "employeeName", title: "Employee Name", format: "text", width: 150, visible: true, align: "left" },
-    { key: "periodStart", title: "Period Start", format: "date", width: 100, visible: true, align: "center" },
-    { key: "periodEnd", title: "Period End", format: "date", width: 100, visible: true, align: "center" },
-    { key: "basicSalary", title: "Basic Salary", format: "currency", width: 120, visible: true, align: "right" },
-    { key: "allowances", title: "Allowances", format: "currency", width: 120, visible: true, align: "right" },
-    { key: "deductions", title: "Deductions", format: "currency", width: 120, visible: true, align: "right" },
-    { key: "tax", title: "Tax", format: "currency", width: 100, visible: true, align: "right" },
-    { key: "netSalary", title: "Net Salary", format: "currency", width: 120, visible: true, align: "right" },
-    { key: "status", title: "Status", format: "text", width: 100, visible: true, align: "center" },
-    { key: "paymentDate", title: "Payment Date", format: "date", width: 100, visible: true, align: "center" }
+    { key: 'periodStart', title: 'Period Start', format: 'date' },
+    { key: 'periodEnd', title: 'Period End', format: 'date' },
+    { key: 'employeeId', title: 'Employee ID', format: 'text' },
+    { key: 'employeeName', title: 'Employee Name', format: 'text' },
+    { key: 'designation', title: 'Designation', format: 'text' },
+    { key: 'daysWorked', title: 'Days Worked', format: 'number' },
+    { key: 'basicSalary', title: 'Basic Salary', format: 'currency' },
+    { key: 'allowances', title: 'Allowances', format: 'currency' },
+    { key: 'overtime', title: 'Overtime', format: 'currency' },
+    { key: 'deductions', title: 'Deductions', format: 'currency' },
+    { key: 'tax', title: 'Tax', format: 'currency' },
+    { key: 'netSalary', title: 'Net Salary', format: 'currency' },
+    { key: 'paymentStatus', title: 'Payment Status', format: 'text' },
+    { key: 'paymentDate', title: 'Payment Date', format: 'date' },
+    { key: 'paymentMethod', title: 'Payment Method', format: 'text' },
   ],
   employee: [
-    { key: "employeeId", title: "ID", format: "text", width: 80, visible: true, align: "center" },
-    { key: "fullName", title: "Name", format: "text", width: 150, visible: true, align: "left" },
-    { key: "designation", title: "Designation", format: "text", width: 120, visible: true, align: "left" },
-    { key: "phone", title: "Phone", format: "text", width: 120, visible: true, align: "left" },
-    { key: "email", title: "Email", format: "text", width: 150, visible: true, align: "left" },
-    { key: "dailyWage", title: "Daily Wage", format: "currency", width: 120, visible: true, align: "right" },
-    { key: "joinDate", title: "Join Date", format: "date", width: 100, visible: true, align: "center" },
-    { key: "status", title: "Status", format: "text", width: 100, visible: true, align: "center" }
+    { key: 'employeeId', title: 'Employee ID', format: 'text' },
+    { key: 'firstName', title: 'First Name', format: 'text' },
+    { key: 'lastName', title: 'Last Name', format: 'text' },
+    { key: 'fullName', title: 'Full Name', format: 'text' },
+    { key: 'designation', title: 'Designation', format: 'text' },
+    { key: 'department', title: 'Department', format: 'text' },
+    { key: 'joinDate', title: 'Join Date', format: 'date' },
+    { key: 'dailyWage', title: 'Daily Wage', format: 'currency' },
+    { key: 'mobileNumber', title: 'Mobile Number', format: 'text' },
+    { key: 'nidPassport', title: 'NID/Passport', format: 'text' },
+    { key: 'address', title: 'Address', format: 'text' },
+    { key: 'email', title: 'Email', format: 'text' },
+    { key: 'status', title: 'Status', format: 'text' },
   ],
   project: [
-    { key: "name", title: "Project Name", format: "text", width: 150, visible: true, align: "left" },
-    { key: "clientName", title: "Client", format: "text", width: 150, visible: true, align: "left" },
-    { key: "startDate", title: "Start Date", format: "date", width: 100, visible: true, align: "center" },
-    { key: "endDate", title: "End Date", format: "date", width: 100, visible: true, align: "center" },
-    { key: "status", title: "Status", format: "text", width: 100, visible: true, align: "center" },
-    { key: "budget", title: "Budget", format: "currency", width: 120, visible: true, align: "right" },
-    { key: "description", title: "Description", format: "text", width: 200, visible: true, align: "left" }
+    { key: 'name', title: 'Project Name', format: 'text' },
+    { key: 'clientName', title: 'Client Name', format: 'text' },
+    { key: 'vessel', title: 'Vessel', format: 'text' },
+    { key: 'lighter', title: 'Lighter', format: 'text' },
+    { key: 'startDate', title: 'Start Date', format: 'date' },
+    { key: 'endDate', title: 'End Date', format: 'date' },
+    { key: 'salary', title: 'Salary', format: 'currency' },
+    { key: 'releasePoint', title: 'Release Point', format: 'text' },
+    { key: 'conveyance', title: 'Conveyance', format: 'text' },
+    { key: 'loanAdvance', title: 'Loan/Advance', format: 'currency' },
+    { key: 'due', title: 'Due', format: 'currency' },
+    { key: 'status', title: 'Status', format: 'text' },
+    { key: 'description', title: 'Description', format: 'text' },
+    { key: 'employeeCount', title: 'Employee Count', format: 'number' },
+    { key: 'totalExpenditure', title: 'Total Expenditure', format: 'currency' },
   ],
   expenditure: [
-    { key: "date", title: "Date", format: "date", width: 100, visible: true, align: "center" },
-    { key: "amount", title: "Amount", format: "currency", width: 120, visible: true, align: "right" },
-    { key: "category", title: "Category", format: "text", width: 120, visible: true, align: "left" },
-    { key: "description", title: "Description", format: "text", width: 200, visible: true, align: "left" },
-    { key: "employeeName", title: "Employee", format: "text", width: 150, visible: true, align: "left" },
-    { key: "projectName", title: "Project", format: "text", width: 150, visible: true, align: "left" }
+    { key: 'date', title: 'Date', format: 'date' },
+    { key: 'projectName', title: 'Project', format: 'text' },
+    { key: 'category', title: 'Category', format: 'text' },
+    { key: 'description', title: 'Description', format: 'text' },
+    { key: 'amount', title: 'Amount', format: 'currency' },
+    { key: 'paymentMethod', title: 'Payment Method', format: 'text' },
+    { key: 'recordedBy', title: 'Recorded By', format: 'text' },
+    { key: 'attachmentUrl', title: 'Attachment', format: 'text' },
+    { key: 'remarks', title: 'Remarks', format: 'text' },
   ],
   income: [
-    { key: "date", title: "Date", format: "date", width: 100, visible: true, align: "center" },
-    { key: "amount", title: "Amount", format: "currency", width: 120, visible: true, align: "right" },
-    { key: "category", title: "Category", format: "text", width: 120, visible: true, align: "left" },
-    { key: "description", title: "Description", format: "text", width: 200, visible: true, align: "left" },
-    { key: "projectName", title: "Project", format: "text", width: 150, visible: true, align: "left" }
-  ]
+    { key: 'date', title: 'Date', format: 'date' },
+    { key: 'projectName', title: 'Project', format: 'text' },
+    { key: 'source', title: 'Source', format: 'text' },
+    { key: 'description', title: 'Description', format: 'text' },
+    { key: 'amount', title: 'Amount', format: 'currency' },
+    { key: 'paymentMethod', title: 'Payment Method', format: 'text' },
+    { key: 'recordedBy', title: 'Recorded By', format: 'text' },
+    { key: 'attachmentUrl', title: 'Attachment', format: 'text' },
+    { key: 'remarks', title: 'Remarks', format: 'text' },
+  ],
 };
 
-// Available filter options for each report type
-const availableFilters: Record<string, Array<{ value: string; label: string }>> = {
-  attendance: [
-    { value: "dateRange", label: "Date Range" },
-    { value: "employee", label: "Employee" },
-    { value: "project", label: "Project" },
-    { value: "status", label: "Status" }
-  ],
-  payroll: [
-    { value: "dateRange", label: "Period Range" },
-    { value: "employee", label: "Employee" },
-    { value: "status", label: "Status" }
-  ],
-  employee: [
-    { value: "designation", label: "Designation" },
-    { value: "status", label: "Status" }
-  ],
-  project: [
-    { value: "status", label: "Status" },
-    { value: "clientName", label: "Client" }
-  ],
-  expenditure: [
-    { value: "dateRange", label: "Date Range" },
-    { value: "category", label: "Category" },
-    { value: "employee", label: "Employee" },
-    { value: "project", label: "Project" }
-  ],
-  income: [
-    { value: "dateRange", label: "Date Range" },
-    { value: "category", label: "Category" },
-    { value: "project", label: "Project" }
-  ]
+// Filter options based on report type
+const filterOptions = {
+  attendance: ['dateRange', 'employeeId', 'projectId'],
+  payroll: ['dateRange', 'employeeId', 'paymentStatus'],
+  employee: ['designation', 'department', 'status'],
+  project: ['status', 'clientName', 'dateRange'],
+  expenditure: ['dateRange', 'projectId', 'category'],
+  income: ['dateRange', 'projectId', 'source'],
 };
 
-// Mock data for preview table
-const previewData: Record<string, any[]> = {
-  attendance: [
-    { 
-      date: new Date().toISOString(), 
-      employeeName: "John Doe", 
-      checkIn: "09:00 AM", 
-      checkOut: "05:00 PM", 
-      hoursWorked: 8, 
-      projectName: "Site A Construction", 
-      status: "Present", 
-      remarks: "On time" 
-    },
-    { 
-      date: new Date().toISOString(), 
-      employeeName: "Jane Smith", 
-      checkIn: "08:45 AM", 
-      checkOut: "04:30 PM", 
-      hoursWorked: 7.75, 
-      projectName: "Site B Maintenance", 
-      status: "Present", 
-      remarks: "Left early - approved" 
-    },
-  ],
-  payroll: [
-    { 
-      employeeName: "John Doe", 
-      periodStart: new Date(new Date().setDate(1)).toISOString(), 
-      periodEnd: new Date().toISOString(), 
-      basicSalary: 5000, 
-      allowances: 500, 
-      deductions: 300, 
-      tax: 425, 
-      netSalary: 4775, 
-      status: "Paid", 
-      paymentDate: new Date().toISOString() 
-    },
-    { 
-      employeeName: "Jane Smith", 
-      periodStart: new Date(new Date().setDate(1)).toISOString(), 
-      periodEnd: new Date().toISOString(), 
-      basicSalary: 6000, 
-      allowances: 600, 
-      deductions: 350, 
-      tax: 510, 
-      netSalary: 5740, 
-      status: "Paid", 
-      paymentDate: new Date().toISOString() 
-    },
-  ],
-  employee: [
-    { 
-      employeeId: "EMP-001", 
-      fullName: "John Doe", 
-      designation: "Supervisor", 
-      phone: "+1234567890", 
-      email: "john@example.com", 
-      dailyWage: 150, 
-      joinDate: new Date().toISOString(), 
-      status: "Active" 
-    },
-    { 
-      employeeId: "EMP-002", 
-      fullName: "Jane Smith", 
-      designation: "Engineer", 
-      phone: "+1987654321", 
-      email: "jane@example.com", 
-      dailyWage: 200, 
-      joinDate: new Date().toISOString(), 
-      status: "Active" 
-    },
-  ],
-  project: [
-    { 
-      name: "Site A Construction", 
-      clientName: "ABC Corporation", 
-      startDate: new Date().toISOString(), 
-      endDate: new Date(new Date().setMonth(new Date().getMonth() + 6)).toISOString(), 
-      status: "Active", 
-      budget: 50000, 
-      description: "Construction of new office building" 
-    },
-    { 
-      name: "Site B Maintenance", 
-      clientName: "XYZ Industries", 
-      startDate: new Date().toISOString(), 
-      endDate: new Date(new Date().setMonth(new Date().getMonth() + 3)).toISOString(), 
-      status: "Active", 
-      budget: 25000, 
-      description: "Regular maintenance and repairs" 
-    },
-  ],
-  expenditure: [
-    { 
-      date: new Date().toISOString(), 
-      amount: 1200, 
-      category: "Materials", 
-      description: "Purchase of construction materials", 
-      employeeName: "John Doe", 
-      projectName: "Site A Construction" 
-    },
-    { 
-      date: new Date().toISOString(), 
-      amount: 850, 
-      category: "Tools", 
-      description: "Equipment rental", 
-      employeeName: "Jane Smith", 
-      projectName: "Site B Maintenance" 
-    },
-  ],
-  income: [
-    { 
-      date: new Date().toISOString(), 
-      amount: 10000, 
-      category: "Advance Payment", 
-      description: "Initial payment for project", 
-      projectName: "Site A Construction" 
-    },
-    { 
-      date: new Date().toISOString(), 
-      amount: 5000, 
-      category: "Monthly Payment", 
-      description: "Regular maintenance payment", 
-      projectName: "Site B Maintenance" 
-    },
-  ]
-};
+// Format options for columns
+const formatOptions = [
+  { value: 'text', label: 'Text' },
+  { value: 'number', label: 'Number' },
+  { value: 'date', label: 'Date' },
+  { value: 'currency', label: 'Currency' },
+  { value: 'percentage', label: 'Percentage' },
+];
 
-// Default template configs for new templates
-const defaultTemplates: Record<string, any> = {
-  attendance: {
-    name: "New Attendance Report",
-    description: "Custom attendance report template",
-    type: "attendance",
-    isDefault: false,
-    config: {
-      columns: availableColumns.attendance.map(col => ({ ...col, computeTotal: col.format === "number" || col.format === "currency" })),
-      filters: ["dateRange", "employee", "project", "status"],
-      showTotals: true,
-      orientation: "landscape",
-      pageSize: "A4",
-      pageMargin: { top: 20, right: 20, bottom: 20, left: 20 },
-      fontSize: 10,
-      fontFamily: "Arial",
-      includeDateRange: true
-    }
-  },
-  payroll: {
-    name: "New Payroll Report",
-    description: "Custom payroll report template",
-    type: "payroll",
-    isDefault: false,
-    config: {
-      columns: availableColumns.payroll.map(col => ({ ...col, computeTotal: col.format === "number" || col.format === "currency" })),
-      filters: ["dateRange", "employee", "status"],
-      showTotals: true,
-      orientation: "landscape",
-      pageSize: "A4",
-      pageMargin: { top: 20, right: 20, bottom: 20, left: 20 },
-      fontSize: 10,
-      fontFamily: "Arial",
-      includeDateRange: true
-    }
-  },
-  employee: {
-    name: "New Employee Directory",
-    description: "Custom employee directory template",
-    type: "employee",
-    isDefault: false,
-    config: {
-      columns: availableColumns.employee.map(col => ({ ...col, computeTotal: col.format === "number" || col.format === "currency" })),
-      filters: ["designation", "status"],
-      showTotals: false,
-      orientation: "landscape",
-      pageSize: "A4",
-      pageMargin: { top: 20, right: 20, bottom: 20, left: 20 },
-      fontSize: 10,
-      fontFamily: "Arial",
-      includeDateRange: false
-    }
-  },
-  project: {
-    name: "New Project List",
-    description: "Custom project listing template",
-    type: "project",
-    isDefault: false,
-    config: {
-      columns: availableColumns.project.map(col => ({ ...col, computeTotal: col.format === "number" || col.format === "currency" })),
-      filters: ["status", "clientName"],
-      showTotals: true,
-      orientation: "landscape",
-      pageSize: "A4",
-      pageMargin: { top: 20, right: 20, bottom: 20, left: 20 },
-      fontSize: 10,
-      fontFamily: "Arial",
-      includeDateRange: false
-    }
-  },
-  expenditure: {
-    name: "New Expenditure Report",
-    description: "Custom expenditure report template",
-    type: "expenditure",
-    isDefault: false,
-    config: {
-      columns: availableColumns.expenditure.map(col => ({ ...col, computeTotal: col.format === "number" || col.format === "currency" })),
-      filters: ["dateRange", "category", "employee", "project"],
-      showTotals: true,
-      orientation: "landscape",
-      pageSize: "A4",
-      pageMargin: { top: 20, right: 20, bottom: 20, left: 20 },
-      fontSize: 10,
-      fontFamily: "Arial",
-      includeDateRange: true
-    }
-  },
-  income: {
-    name: "New Income Report",
-    description: "Custom income report template",
-    type: "income",
-    isDefault: false,
-    config: {
-      columns: availableColumns.income.map(col => ({ ...col, computeTotal: col.format === "number" || col.format === "currency" })),
-      filters: ["dateRange", "category", "project"],
-      showTotals: true,
-      orientation: "landscape",
-      pageSize: "A4",
-      pageMargin: { top: 20, right: 20, bottom: 20, left: 20 },
-      fontSize: 10,
-      fontFamily: "Arial",
-      includeDateRange: true
-    }
-  }
-};
+// Align options for columns
+const alignOptions = [
+  { value: 'left', label: 'Left' },
+  { value: 'center', label: 'Center' },
+  { value: 'right', label: 'Right' },
+];
+
+// Report type options
+const reportTypeOptions = [
+  { value: 'attendance', label: 'Attendance' },
+  { value: 'payroll', label: 'Payroll' },
+  { value: 'employee', label: 'Employee' },
+  { value: 'project', label: 'Project' },
+  { value: 'expenditure', label: 'Expenditure' },
+  { value: 'income', label: 'Income' },
+];
+
+// Page size options
+const pageSizeOptions = [
+  { value: 'A4', label: 'A4' },
+  { value: 'A3', label: 'A3' },
+  { value: 'Letter', label: 'Letter' },
+  { value: 'Legal', label: 'Legal' },
+];
+
+// Orientation options
+const orientationOptions = [
+  { value: 'portrait', label: 'Portrait' },
+  { value: 'landscape', label: 'Landscape' },
+];
+
+// Sortable column item component
+function SortableColumnItem({ 
+  column, 
+  index, 
+  onEdit, 
+  onDelete 
+}: { 
+  column: ColumnConfig; 
+  index: number; 
+  onEdit: (index: number, column: ColumnConfig) => void; 
+  onDelete: (index: number) => void; 
+}) {
+  return (
+    <Draggable draggableId={`column-${index}`} index={index}>
+      {(provided) => (
+        <div 
+          ref={provided.innerRef}
+          {...provided.draggableProps}
+          className="flex items-center space-x-4 p-3 border rounded-md bg-background mb-2"
+        >
+          <div className="cursor-grab" {...provided.dragHandleProps}>
+            <GripVertical size={20} className="text-muted-foreground" />
+          </div>
+          
+          <div className="flex-1 space-y-1">
+            <div className="font-medium">{column.title}</div>
+            <div className="text-xs text-muted-foreground">
+              {column.key} • {column.format || 'text'} 
+              {column.computeTotal && ' • Total'}
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => onEdit(index, column)}
+            >
+              Edit
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => onDelete(index)}
+            >
+              <Trash2 size={16} className="text-destructive" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </Draggable>
+  );
+}
 
 export default function TemplateEditor() {
-  const { id } = useParams<{ id: string }>();
-  const [, navigate] = useLocation();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("design");
-  const [selectedReportType, setSelectedReportType] = useState<string>("attendance");
-  const [isEditing, setIsEditing] = useState(false);
-  const queryClient = useQueryClient();
-
-  // Fetch template if editing
-  const { data: templateData, isLoading: isLoadingTemplate } = useQuery({
-    queryKey: ['/api/reports/templates', id],
-    queryFn: async () => {
-      if (!id) return null;
-      try {
-        const res = await fetch(`/api/reports/templates/${id}`);
-        if (!res.ok) throw new Error("Failed to fetch template");
-        return res.json();
-      } catch (error) {
-        console.error("Error fetching template:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load template data",
-          variant: "destructive",
-        });
-        return null;
-      }
-    },
-    enabled: !!id,
-  });
-
+  const [, navigate] = useLocation();
+  const [location] = useLocation();
+  
+  // Extract template ID from URL if editing
+  const templateId = new URLSearchParams(location.split('?')[1]).get('id');
+  const isEditing = !!templateId;
+  
+  // State management
+  const [activeTab, setActiveTab] = useState('basic');
+  const [editingColumn, setEditingColumn] = useState<ColumnConfig | null>(null);
+  const [editingColumnIndex, setEditingColumnIndex] = useState<number | null>(null);
+  const [isAddingColumn, setIsAddingColumn] = useState(false);
+  const [isDiscardDialogOpen, setIsDiscardDialogOpen] = useState(false);
+  
+  // DnD handler for column reordering
+  const onDragEnd = (result: DropResult, provided?: ResponderProvided) => {
+    if (!result.destination) return;
+    
+    const sourceIndex = result.source.index;
+    const destinationIndex = result.destination.index;
+    
+    if (sourceIndex === destinationIndex) return;
+    
+    const newColumns = [...watchColumns];
+    const [moved] = newColumns.splice(sourceIndex, 1);
+    newColumns.splice(destinationIndex, 0, moved);
+    
+    form.setValue('config.columns', newColumns, { shouldDirty: true });
+  };
+  
   // Form setup
   const form = useForm<TemplateFormValues>({
     resolver: zodResolver(templateSchema),
     defaultValues: {
-      name: "",
-      description: "",
-      type: "attendance",
-      isDefault: false,
+      name: '',
+      description: '',
+      type: 'attendance',
       config: {
         columns: [],
         filters: [],
         showTotals: true,
-        orientation: "landscape",
-        pageSize: "A4",
-        pageMargin: { top: 20, right: 20, bottom: 20, left: 20 },
-        fontSize: 10,
-        fontFamily: "Arial",
-        includeDateRange: true
+        orientation: 'landscape',
+        pageSize: 'A4',
+        fontSize: 12,
+        includeDateRange: true,
+      },
+    },
+  });
+  
+  // Get current values for conditional rendering
+  const watchType = form.watch('type');
+  const watchColumns = form.watch('config.columns');
+  
+  // Query to get template if editing
+  const {
+    data: templateData,
+    isLoading,
+    isError,
+    error,
+  } = useQuery({
+    queryKey: ['/api/reports/templates', templateId],
+    queryFn: async () => {
+      if (!templateId) return null;
+      
+      const response = await fetch(`/api/reports/templates/${templateId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch template details');
       }
-    }
+      return response.json();
+    },
+    enabled: !!templateId,
   });
-
-  const { fields, append, remove, move, replace } = useFieldArray({
-    control: form.control,
-    name: "config.columns"
-  });
-
-  // Initialize form with template data or default values
+  
+  // Initialize form with template data if editing
   useEffect(() => {
-    if (id && templateData) {
-      form.reset(templateData);
-      setSelectedReportType(templateData.type);
-      setIsEditing(true);
-    } else if (!id) {
-      // New template - use default for selected type
-      const defaultTemplate = defaultTemplates[selectedReportType];
+    if (templateData && isEditing) {
       form.reset({
-        ...defaultTemplate,
-        config: {
-          ...defaultTemplate.config,
-          columns: defaultTemplate.config.columns.map((col: any) => ({
-            ...col,
-            computeTotal: ['number', 'currency'].includes(col.format)
-          }))
-        }
+        name: templateData.name,
+        description: templateData.description,
+        type: templateData.type,
+        config: templateData.config,
       });
     }
-  }, [id, templateData, form, selectedReportType]);
-
-  // Handle report type change for new templates
-  useEffect(() => {
-    if (!isEditing && !id) {
-      const defaultTemplate = defaultTemplates[selectedReportType];
-      form.reset({
-        ...defaultTemplate,
-        config: {
-          ...defaultTemplate.config,
-          columns: defaultTemplate.config.columns.map((col: any) => ({
-            ...col,
-            computeTotal: ['number', 'currency'].includes(col.format)
-          }))
-        }
-      });
-    }
-  }, [selectedReportType, form, isEditing, id]);
-
+  }, [templateData, isEditing, form]);
+  
   // Save template mutation
   const saveMutation = useMutation({
     mutationFn: async (templateData: TemplateFormValues) => {
-      const url = id ? `/api/reports/templates/${id}` : '/api/reports/templates';
-      const method = id ? 'PUT' : 'POST';
+      const payload = {
+        ...templateData,
+        id: templateId || `template-${Date.now()}`,
+        isDefault: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
       
-      const res = await apiRequest(method, url, templateData);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || 'Failed to save template');
+      const method = isEditing ? 'PUT' : 'POST';
+      const url = isEditing 
+        ? `/api/reports/templates/${templateId}` 
+        : '/api/reports/templates';
+      
+      const response = await apiRequest(method, url, payload);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to ${isEditing ? 'update' : 'create'} template`);
       }
-      return await res.json();
+      
+      return response.json();
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/reports/templates'] });
+    onSuccess: () => {
       toast({
-        title: "Template saved",
-        description: "Report template has been saved successfully",
+        title: `Template ${isEditing ? 'updated' : 'created'} successfully`,
+        description: `Report template has been ${isEditing ? 'updated' : 'created'}.`,
       });
-      navigate("/reports/templates");
+      
+      // Invalidate queries and navigate back
+      queryClient.invalidateQueries({ queryKey: ['/api/reports/templates'] });
+      navigate('/reports');
     },
     onError: (error: Error) => {
       toast({
-        title: "Error saving template",
+        title: `Failed to ${isEditing ? 'update' : 'create'} template`,
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
-    }
+    },
   });
-
+  
   // Handle form submission
   const onSubmit = (data: TemplateFormValues) => {
-    // Ensure only visible columns are included in computations
-    const updatedData = {
-      ...data,
-      config: {
-        ...data.config,
-        columns: data.config.columns.map(col => ({
-          ...col,
-          computeTotal: col.visible && ['number', 'currency'].includes(col.format || '') ? col.computeTotal : false
-        }))
-      }
+    saveMutation.mutate(data);
+  };
+  
+  // Reset columns when report type changes
+  useEffect(() => {
+    if (form.formState.isDirty && !isEditing) {
+      form.setValue('config.columns', []);
+      form.setValue('config.filters', []);
+    }
+  }, [watchType, form, isEditing]);
+  
+  // This function is no longer needed since we're using the @hello-pangea/dnd
+  // onDragEnd handler instead for column reordering
+  const handleDragEnd = () => {
+    // Empty as we're now using onDragEnd from DragDropContext
+  };
+  
+  // Handle adding or editing a column
+  const handleColumnChange = (column: ColumnConfig) => {
+    if (editingColumnIndex !== null) {
+      // Edit existing column
+      const updatedColumns = [...watchColumns];
+      updatedColumns[editingColumnIndex] = column;
+      form.setValue('config.columns', updatedColumns, { shouldDirty: true });
+    } else {
+      // Add new column
+      form.setValue('config.columns', [...watchColumns, column], { shouldDirty: true });
+    }
+    
+    setEditingColumn(null);
+    setEditingColumnIndex(null);
+    setIsAddingColumn(false);
+  };
+  
+  // Initialize column edit
+  const handleEditColumn = (index: number, column: ColumnConfig) => {
+    setEditingColumn({ ...column });
+    setEditingColumnIndex(index);
+    setIsAddingColumn(true);
+  };
+  
+  // Handle column deletion
+  const handleDeleteColumn = (index: number) => {
+    const updatedColumns = [...watchColumns];
+    updatedColumns.splice(index, 1);
+    form.setValue('config.columns', updatedColumns, { shouldDirty: true });
+  };
+  
+  // Check for default columns to add
+  const getDefaultColumns = () => {
+    const type = form.getValues('type');
+    if (columnOptions[type as keyof typeof columnOptions]) {
+      return columnOptions[type as keyof typeof columnOptions].map(col => ({
+        ...col,
+        // Explicitly cast the format to our allowed union type
+        format: (col.format as 'text' | 'number' | 'date' | 'currency' | 'percentage'),
+        visible: true,
+        computeTotal: ['number', 'currency'].includes(col.format),
+        width: 100,
+        align: col.format === 'number' || col.format === 'currency' ? 'right' : 'left',
+      }));
+    }
+    return [];
+  };
+  
+  // Add default columns
+  const handleAddDefaultColumns = () => {
+    form.setValue('config.columns', getDefaultColumns(), { shouldDirty: true });
+    
+    // Also set default filters
+    const type = form.getValues('type');
+    if (filterOptions[type as keyof typeof filterOptions]) {
+      form.setValue('config.filters', [...filterOptions[type as keyof typeof filterOptions]], { shouldDirty: true });
+    }
+  };
+  
+  // Handle filter checkbox change
+  const handleFilterChange = (filterId: string, checked: boolean) => {
+    const currentFilters = form.getValues('config.filters');
+    
+    if (checked) {
+      form.setValue('config.filters', [...currentFilters, filterId], { shouldDirty: true });
+    } else {
+      form.setValue(
+        'config.filters',
+        currentFilters.filter(id => id !== filterId),
+        { shouldDirty: true }
+      );
+    }
+  };
+  
+  // Preview the report template
+  const handlePreview = () => {
+    // Get current form data
+    const formData = form.getValues();
+    
+    // Build the preview URL with template data
+    const previewData = {
+      id: templateId || `preview-${Date.now()}`,
+      name: formData.name || 'Preview Template',
+      description: formData.description || '',
+      type: formData.type,
+      config: formData.config,
+      isDefault: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
     
-    saveMutation.mutate(updatedData);
+    // Open preview in new window
+    const queryParams = new URLSearchParams();
+    queryParams.append('templateId', previewData.id);
+    queryParams.append('format', 'html');
+    queryParams.append('dataType', previewData.type);
+    
+    window.open(`/api/reports/generate?${queryParams.toString()}`, '_blank');
   };
-
-  // Handle drag and drop for columns
-  const onDragEnd = (result: any) => {
-    if (!result.destination) return;
-    move(result.source.index, result.destination.index);
-  };
-
-  if (isLoadingTemplate && id) {
+  
+  // Loading state
+  if (isLoading) {
     return (
-      <div className="container py-8 flex items-center justify-center min-h-[50vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary border-t-transparent"></div>
+      <div className="container py-6 flex justify-center items-center min-h-[70vh]">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
       </div>
     );
   }
-
+  
+  // Error state
+  if (isError && isEditing) {
+    return (
+      <div className="container py-6">
+        <Card className="p-6 text-center">
+          <CardTitle className="text-destructive mb-2">Error Loading Template</CardTitle>
+          <CardDescription className="mb-4">
+            {error instanceof Error ? error.message : 'Failed to load template data'}
+          </CardDescription>
+          <Button variant="outline" onClick={() => navigate('/reports')}>
+            <ArrowLeft size={16} className="mr-2" />
+            Back to Reports
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+  
+  // Column form for adding/editing columns
+  const ColumnForm = () => (
+    <Card className="border-t-0 rounded-t-none">
+      <CardHeader>
+        <CardTitle>{editingColumnIndex !== null ? 'Edit Column' : 'Add Column'}</CardTitle>
+        <CardDescription>Configure the column properties</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <FormLabel htmlFor="column-key">Column ID</FormLabel>
+            <Input
+              id="column-key"
+              value={editingColumn?.key || ''}
+              onChange={e => setEditingColumn({ ...editingColumn!, key: e.target.value })}
+              placeholder="e.g., employeeName"
+            />
+            <p className="text-xs text-muted-foreground">
+              Unique identifier for the column
+            </p>
+          </div>
+          
+          <div className="space-y-2">
+            <FormLabel htmlFor="column-title">Display Title</FormLabel>
+            <Input
+              id="column-title"
+              value={editingColumn?.title || ''}
+              onChange={e => setEditingColumn({ ...editingColumn!, title: e.target.value })}
+              placeholder="e.g., Employee Name"
+            />
+            <p className="text-xs text-muted-foreground">
+              The title displayed in the report
+            </p>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <FormLabel htmlFor="column-format">Format</FormLabel>
+            <Select
+              value={editingColumn?.format || 'text'}
+              onValueChange={value => 
+                setEditingColumn({ 
+                  ...editingColumn!, 
+                  format: value as 'text' | 'number' | 'date' | 'currency' | 'percentage' 
+                })
+              }
+            >
+              <SelectTrigger id="column-format">
+                <SelectValue placeholder="Select format" />
+              </SelectTrigger>
+              <SelectContent>
+                {formatOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              How to format the column data
+            </p>
+          </div>
+          
+          <div className="space-y-2">
+            <FormLabel htmlFor="column-align">Alignment</FormLabel>
+            <Select
+              value={editingColumn?.align || 'left'}
+              onValueChange={value => 
+                setEditingColumn({ 
+                  ...editingColumn!, 
+                  align: value as 'left' | 'center' | 'right' 
+                })
+              }
+            >
+              <SelectTrigger id="column-align">
+                <SelectValue placeholder="Select alignment" />
+              </SelectTrigger>
+              <SelectContent>
+                {alignOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Text alignment in the column
+            </p>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <FormLabel htmlFor="column-width">Width (px)</FormLabel>
+            <Input
+              id="column-width"
+              type="number"
+              value={editingColumn?.width || 100}
+              onChange={e => 
+                setEditingColumn({ 
+                  ...editingColumn!, 
+                  width: parseInt(e.target.value) || 100
+                })
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              Column width in pixels
+            </p>
+          </div>
+          
+          <div className="space-y-4 pt-6">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="column-visible"
+                checked={editingColumn?.visible !== false}
+                onCheckedChange={checked => 
+                  setEditingColumn({ 
+                    ...editingColumn!, 
+                    visible: checked === true
+                  })
+                }
+              />
+              <label
+                htmlFor="column-visible"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Visible
+              </label>
+            </div>
+            
+            {(editingColumn?.format === 'number' || editingColumn?.format === 'currency') && (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="column-total"
+                  checked={editingColumn.computeTotal === true}
+                  onCheckedChange={checked => 
+                    setEditingColumn({ 
+                      ...editingColumn, 
+                      computeTotal: checked === true
+                    })
+                  }
+                />
+                <label
+                  htmlFor="column-total"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Calculate Total
+                </label>
+              </div>
+            )}
+          </div>
+        </div>
+      </CardContent>
+      <CardFooter className="flex justify-between">
+        <Button
+          variant="outline"
+          onClick={() => {
+            setEditingColumn(null);
+            setEditingColumnIndex(null);
+            setIsAddingColumn(false);
+          }}
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={() => {
+            if (!editingColumn) return;
+            if (!editingColumn.key || !editingColumn.title) {
+              toast({
+                title: 'Invalid column',
+                description: 'Column ID and Title are required',
+                variant: 'destructive',
+              });
+              return;
+            }
+            handleColumnChange(editingColumn);
+          }}
+        >
+          {editingColumnIndex !== null ? 'Update Column' : 'Add Column'}
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+  
   return (
     <div className="container py-6">
-      <div className="flex items-center mb-6">
-        <Button variant="outline" size="sm" className="mr-4" onClick={() => navigate("/reports/templates")}>
-          <ChevronLeft className="h-4 w-4 mr-2" />
-          Back to Templates
-        </Button>
+      <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            {id ? "Edit Report Template" : "Create Report Template"}
+          <h1 className="text-3xl font-bold tracking-tight">
+            {isEditing ? 'Edit Report Template' : 'Create New Report Template'}
           </h1>
-          <p className="text-gray-600">
-            {id ? "Modify an existing report template" : "Design a new customized report template"}
+          <p className="text-muted-foreground">
+            {isEditing 
+              ? 'Modify an existing report template'
+              : 'Build a custom report template to use across your reports'
+            }
           </p>
         </div>
+        
+        <div className="flex items-center space-x-2">
+          {form.formState.isDirty && (
+            <AlertDialog open={isDiscardDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" onClick={() => setIsDiscardDialogOpen(true)}>
+                  <Undo size={16} className="mr-2" />
+                  Discard Changes
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Discard changes?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    You have unsaved changes that will be lost. Are you sure you want to discard them?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setIsDiscardDialogOpen(false)}>
+                    Cancel
+                  </AlertDialogCancel>
+                  <AlertDialogAction onClick={() => {
+                    setIsDiscardDialogOpen(false);
+                    navigate('/reports');
+                  }}>
+                    Discard Changes
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+          
+          <Button variant="outline" onClick={() => navigate('/reports')}>
+            <ArrowLeft size={16} className="mr-2" />
+            Back
+          </Button>
+        </div>
       </div>
-
-      <form onSubmit={form.handleSubmit(onSubmit)}>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left column - template settings */}
-          <div className="lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle>Template Settings</CardTitle>
-                <CardDescription>
-                  Configure the basic settings for your report
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Template Name</Label>
-                  <Input
-                    id="name"
-                    placeholder="Enter template name"
-                    {...form.register("name")}
+      
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="w-full grid grid-cols-3">
+              <TabsTrigger value="basic">Basic Information</TabsTrigger>
+              <TabsTrigger value="columns">
+                Columns {watchColumns.length > 0 && `(${watchColumns.length})`}
+              </TabsTrigger>
+              <TabsTrigger value="options">Layout & Options</TabsTrigger>
+            </TabsList>
+            
+            {/* Basic Information Tab */}
+            <TabsContent value="basic" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Basic Information</CardTitle>
+                  <CardDescription>
+                    Enter the basic details for your report template
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Template Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., Monthly Attendance Report" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          A descriptive name for your report template
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                  {form.formState.errors.name && (
-                    <p className="text-sm text-destructive">
-                      {form.formState.errors.name.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Enter template description"
-                    {...form.register("description")}
+                  
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="e.g., Detailed monthly report showing employee attendance records"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          A brief description of what this report template is used for
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
                   />
-                  {form.formState.errors.description && (
-                    <p className="text-sm text-destructive">
-                      {form.formState.errors.description.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="type">Report Type</Label>
-                  <Controller
+                  
+                  <FormField
                     control={form.control}
                     name="type"
                     render={({ field }) => (
-                      <Select
-                        disabled={isEditing}
-                        value={field.value}
-                        onValueChange={(value) => {
-                          field.onChange(value);
-                          if (!isEditing) {
-                            setSelectedReportType(value);
+                      <FormItem>
+                        <FormLabel>Report Type</FormLabel>
+                        <Select
+                          disabled={isEditing}
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select report type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {reportTypeOptions.map(option => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormDescription>
+                          {isEditing
+                            ? "Report type cannot be changed after creation"
+                            : "The type of data this report will display"
                           }
-                        }}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select report type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="attendance">Attendance Report</SelectItem>
-                          <SelectItem value="payroll">Payroll Report</SelectItem>
-                          <SelectItem value="employee">Employee Directory</SelectItem>
-                          <SelectItem value="project">Project List</SelectItem>
-                          <SelectItem value="expenditure">Expenditure Report</SelectItem>
-                          <SelectItem value="income">Income Report</SelectItem>
-                        </SelectContent>
-                      </Select>
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
                     )}
                   />
-                </div>
-
-                <Separator className="my-4" />
-
-                <div className="space-y-4">
-                  <h3 className="font-medium">Format Options</h3>
-
-                  <div className="space-y-2">
-                    <Label>Page Orientation</Label>
-                    <Controller
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            {/* Columns Tab */}
+            <TabsContent value="columns" className="space-y-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Report Columns</CardTitle>
+                    <CardDescription>
+                      Configure the columns that will appear in your report
+                    </CardDescription>
+                  </div>
+                  <div className="flex space-x-2">
+                    {watchColumns.length === 0 && (
+                      <Button 
+                        variant="outline" 
+                        onClick={handleAddDefaultColumns}
+                        type="button"
+                      >
+                        Add Default Columns
+                      </Button>
+                    )}
+                    <Button
+                      onClick={() => {
+                        setEditingColumn({
+                          key: '',
+                          title: '',
+                          format: 'text',
+                          align: 'left',
+                          width: 100,
+                          visible: true,
+                        });
+                        setEditingColumnIndex(null);
+                        setIsAddingColumn(true);
+                      }}
+                      type="button"
+                      className="flex items-center gap-2"
+                    >
+                      <Plus size={16} />
+                      Add Column
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {watchColumns.length === 0 ? (
+                    <div className="p-8 text-center border rounded-md">
+                      <p className="text-muted-foreground mb-4">
+                        No columns added yet. Add columns to define your report structure.
+                      </p>
+                      <Button
+                        onClick={() => {
+                          setEditingColumn({
+                            key: '',
+                            title: '',
+                            format: 'text',
+                            align: 'left',
+                            width: 100,
+                            visible: true,
+                          });
+                          setEditingColumnIndex(null);
+                          setIsAddingColumn(true);
+                        }}
+                        type="button"
+                      >
+                        Add Your First Column
+                      </Button>
+                    </div>
+                  ) : (
+                    <div>
+                      <DragDropContext onDragEnd={onDragEnd}>
+                        <Droppable droppableId="columns-list">
+                          {(provided) => (
+                            <div
+                              {...provided.droppableProps}
+                              ref={provided.innerRef}
+                            >
+                              {watchColumns.map((column, index) => (
+                                <SortableColumnItem
+                                  key={`column-${index}`}
+                                  column={column}
+                                  index={index}
+                                  onEdit={handleEditColumn}
+                                  onDelete={handleDeleteColumn}
+                                />
+                              ))}
+                              {provided.placeholder}
+                            </div>
+                          )}
+                        </Droppable>
+                      </DragDropContext>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+              
+              {isAddingColumn && editingColumn && <ColumnForm />}
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Filters</CardTitle>
+                  <CardDescription>
+                    Select the filters users can apply to this report
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {filterOptions[watchType as keyof typeof filterOptions]?.map((filterId) => {
+                      const currentFilters = form.watch('config.filters');
+                      const isChecked = currentFilters.includes(filterId);
+                      
+                      let label = filterId;
+                      if (filterId === 'dateRange') label = 'Date Range';
+                      if (filterId === 'employeeId') label = 'Employee';
+                      if (filterId === 'projectId') label = 'Project';
+                      if (filterId === 'paymentStatus') label = 'Payment Status';
+                      if (filterId === 'designation') label = 'Designation';
+                      if (filterId === 'department') label = 'Department';
+                      if (filterId === 'status') label = 'Status';
+                      if (filterId === 'clientName') label = 'Client';
+                      if (filterId === 'category') label = 'Category';
+                      if (filterId === 'source') label = 'Source';
+                      
+                      return (
+                        <div key={filterId} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`filter-${filterId}`}
+                            checked={isChecked}
+                            onCheckedChange={(checked) => 
+                              handleFilterChange(filterId, checked === true)
+                            }
+                          />
+                          <label
+                            htmlFor={`filter-${filterId}`}
+                            className="text-sm font-medium leading-none"
+                          >
+                            {label}
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            
+            {/* Layout & Options Tab */}
+            <TabsContent value="options" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Layout Options</CardTitle>
+                  <CardDescription>
+                    Configure page layout and formatting options
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
                       control={form.control}
                       name="config.orientation"
                       render={({ field }) => (
-                        <RadioGroup
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          className="flex space-x-4"
-                        >
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="portrait" id="portrait" />
-                            <Label htmlFor="portrait">Portrait</Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="landscape" id="landscape" />
-                            <Label htmlFor="landscape">Landscape</Label>
-                          </div>
-                        </RadioGroup>
+                        <FormItem>
+                          <FormLabel>Orientation</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select orientation" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {orientationOptions.map(option => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            Page orientation for the report
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
                       )}
                     />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="pageSize">Page Size</Label>
-                    <Controller
+                    
+                    <FormField
                       control={form.control}
                       name="config.pageSize"
                       render={({ field }) => (
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select page size" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="A4">A4</SelectItem>
-                            <SelectItem value="A3">A3</SelectItem>
-                            <SelectItem value="Letter">Letter</SelectItem>
-                            <SelectItem value="Legal">Legal</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <FormItem>
+                          <FormLabel>Page Size</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select page size" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {pageSizeOptions.map(option => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            Standard page size for the report
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
                       )}
                     />
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="fontSize">Font Size (pt)</Label>
-                    <Controller
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
                       control={form.control}
                       name="config.fontSize"
                       render={({ field }) => (
-                        <Select value={field.value?.toString()} onValueChange={(value) => field.onChange(parseInt(value))}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select font size" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="8">8pt</SelectItem>
-                            <SelectItem value="9">9pt</SelectItem>
-                            <SelectItem value="10">10pt</SelectItem>
-                            <SelectItem value="11">11pt</SelectItem>
-                            <SelectItem value="12">12pt</SelectItem>
-                            <SelectItem value="14">14pt</SelectItem>
-                            <SelectItem value="16">16pt</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <FormItem>
+                          <FormLabel>Font Size (px)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              {...field}
+                              onChange={e => field.onChange(parseInt(e.target.value) || 12)}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Base font size for the report
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
                       )}
                     />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="fontFamily">Font Family</Label>
-                    <Controller
+                    
+                    <FormField
                       control={form.control}
                       name="config.fontFamily"
                       render={({ field }) => (
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select font family" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Arial">Arial</SelectItem>
-                            <SelectItem value="Helvetica">Helvetica</SelectItem>
-                            <SelectItem value="Times New Roman">Times New Roman</SelectItem>
-                            <SelectItem value="Courier New">Courier New</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <FormItem>
+                          <FormLabel>Font Family</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="e.g., Arial, sans-serif" 
+                              {...field}
+                              value={field.value || ''}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Font family for the report (optional)
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
                       )}
                     />
                   </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Controller
+                  
+                  <Separator />
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
                       control={form.control}
-                      name="config.showTotals"
+                      name="config.headerImageUrl"
                       render={({ field }) => (
-                        <Checkbox
-                          id="showTotals"
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
+                        <FormItem>
+                          <FormLabel>Header Image URL</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="e.g., https://example.com/logo.png" 
+                              {...field}
+                              value={field.value || ''}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            URL for header image (optional)
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
                       )}
                     />
-                    <Label htmlFor="showTotals">Show Totals</Label>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Controller
+                    
+                    <FormField
                       control={form.control}
-                      name="config.includeDateRange"
+                      name="config.footerText"
                       render={({ field }) => (
-                        <Checkbox
-                          id="includeDateRange"
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
+                        <FormItem>
+                          <FormLabel>Footer Text</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder="e.g., Confidential Report" 
+                              {...field}
+                              value={field.value || ''}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Custom text for report footer (optional)
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
                       )}
                     />
-                    <Label htmlFor="includeDateRange">Include Date Range</Label>
                   </div>
-                </div>
-
-                <Separator className="my-4" />
-
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-medium mb-2">Available Filters</h3>
-                    <div className="grid grid-cols-2 gap-2">
-                      {availableFilters[selectedReportType]?.map(filter => (
-                        <div key={filter.value} className="flex items-center space-x-2">
-                          <Controller
-                            control={form.control}
-                            name="config.filters"
-                            render={({ field }) => (
-                              <Checkbox
-                                id={`filter-${filter.value}`}
-                                checked={field.value?.includes(filter.value)}
-                                onCheckedChange={(checked) => {
-                                  const current = [...(field.value || [])];
-                                  if (checked) {
-                                    if (!current.includes(filter.value)) {
-                                      field.onChange([...current, filter.value]);
-                                    }
-                                  } else {
-                                    field.onChange(current.filter(value => value !== filter.value));
-                                  }
-                                }}
-                              />
-                            )}
-                          />
-                          <Label htmlFor={`filter-${filter.value}`}>{filter.label}</Label>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle>Display Options</CardTitle>
+                  <CardDescription>
+                    Configure display behavior and additional options
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="config.showTotals"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">Show Totals</FormLabel>
+                          <FormDescription>
+                            Show totals row for number/currency columns
+                          </FormDescription>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Right column - Columns & Preview */}
-          <div className="lg:col-span-2 space-y-6">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="design">Column Design</TabsTrigger>
-                <TabsTrigger value="preview">Preview</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="design" className="space-y-4 pt-4">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-center">
-                      <CardTitle>Report Columns</CardTitle>
-                      <div className="flex items-center space-x-2">
-                        <Label className="text-sm font-normal text-muted-foreground">
-                          {fields.length} column{fields.length !== 1 ? 's' : ''} configured
-                        </Label>
-                      </div>
-                    </div>
-                    <CardDescription>
-                      Configure the columns to display in your report. Drag to reorder.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <DragDropContext onDragEnd={onDragEnd}>
-                      <Droppable droppableId="report-columns">
-                        {(provided) => (
-                          <div
-                            {...provided.droppableProps}
-                            ref={provided.innerRef}
-                            className="space-y-2"
-                          >
-                            {fields.length === 0 ? (
-                              <div className="text-center py-8 border rounded-md border-dashed">
-                                <p className="text-gray-500 mb-4">No columns configured</p>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => {
-                                    const defaultColumns = availableColumns[selectedReportType];
-                                    replace(defaultColumns.map(col => ({
-                                      ...col,
-                                      computeTotal: ['number', 'currency'].includes(col.format)
-                                    })));
-                                  }}
-                                >
-                                  <Plus className="h-4 w-4 mr-2" />
-                                  Add Default Columns
-                                </Button>
-                              </div>
-                            ) : (
-                              <>
-                                <div className="grid grid-cols-12 gap-4 py-2 px-4 font-medium text-sm text-muted-foreground bg-muted rounded-t-md">
-                                  <div className="col-span-1"></div>
-                                  <div className="col-span-4">Column</div>
-                                  <div className="col-span-2">Format</div>
-                                  <div className="col-span-2">Alignment</div>
-                                  <div className="col-span-2">Width</div>
-                                  <div className="col-span-1 text-right">Actions</div>
-                                </div>
-                                {fields.map((field, index) => (
-                                  <Draggable key={field.id} draggableId={field.id} index={index}>
-                                    {(provided) => (
-                                      <div
-                                        ref={provided.innerRef}
-                                        {...provided.draggableProps}
-                                        className={cn(
-                                          "grid grid-cols-12 gap-4 items-center p-3 rounded-md border",
-                                          !form.watch(`config.columns.${index}.visible`) && "opacity-50 bg-muted"
-                                        )}
-                                      >
-                                        <div className="col-span-1">
-                                          <div {...provided.dragHandleProps} className="cursor-move">
-                                            <GripVertical className="h-5 w-5 text-muted-foreground" />
-                                          </div>
-                                        </div>
-                                        <div className="col-span-4">
-                                          <div className="flex items-center gap-3">
-                                            <Controller
-                                              control={form.control}
-                                              name={`config.columns.${index}.visible`}
-                                              render={({ field: visibleField }) => (
-                                                <Switch
-                                                  checked={visibleField.value}
-                                                  onCheckedChange={visibleField.onChange}
-                                                />
-                                              )}
-                                            />
-                                            <div>
-                                              <p className="font-medium text-sm">
-                                                {field.title}
-                                              </p>
-                                              <p className="text-xs text-muted-foreground">
-                                                {field.key}
-                                              </p>
-                                            </div>
-                                          </div>
-                                        </div>
-                                        <div className="col-span-2">
-                                          <Controller
-                                            control={form.control}
-                                            name={`config.columns.${index}.format`}
-                                            render={({ field: formatField }) => (
-                                              <Select
-                                                value={formatField.value}
-                                                onValueChange={formatField.onChange}
-                                              >
-                                                <SelectTrigger className="h-8">
-                                                  <SelectValue placeholder="Format" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                  <SelectItem value="text">Text</SelectItem>
-                                                  <SelectItem value="number">Number</SelectItem>
-                                                  <SelectItem value="date">Date</SelectItem>
-                                                  <SelectItem value="currency">Currency</SelectItem>
-                                                  <SelectItem value="percentage">Percentage</SelectItem>
-                                                </SelectContent>
-                                              </Select>
-                                            )}
-                                          />
-                                        </div>
-                                        <div className="col-span-2">
-                                          <Controller
-                                            control={form.control}
-                                            name={`config.columns.${index}.align`}
-                                            render={({ field: alignField }) => (
-                                              <Select
-                                                value={alignField.value}
-                                                onValueChange={alignField.onChange}
-                                              >
-                                                <SelectTrigger className="h-8">
-                                                  <SelectValue placeholder="Align" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                  <SelectItem value="left">Left</SelectItem>
-                                                  <SelectItem value="center">Center</SelectItem>
-                                                  <SelectItem value="right">Right</SelectItem>
-                                                </SelectContent>
-                                              </Select>
-                                            )}
-                                          />
-                                        </div>
-                                        <div className="col-span-2">
-                                          <Controller
-                                            control={form.control}
-                                            name={`config.columns.${index}.width`}
-                                            render={({ field: widthField }) => (
-                                              <Input
-                                                type="number"
-                                                className="h-8"
-                                                value={widthField.value}
-                                                onChange={widthField.onChange}
-                                              />
-                                            )}
-                                          />
-                                        </div>
-                                        <div className="col-span-1 text-right">
-                                          <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => remove(index)}
-                                          >
-                                            <Trash2 className="h-4 w-4" />
-                                          </Button>
-                                        </div>
-                                        {form.watch(`config.columns.${index}.format`) === 'number' || 
-                                         form.watch(`config.columns.${index}.format`) === 'currency' ? (
-                                          <div className="col-span-12 -mt-1 pt-2 border-t flex items-center gap-2">
-                                            <Controller
-                                              control={form.control}
-                                              name={`config.columns.${index}.computeTotal`}
-                                              render={({ field: totalField }) => (
-                                                <Checkbox
-                                                  id={`compute-total-${index}`}
-                                                  checked={totalField.value}
-                                                  onCheckedChange={totalField.onChange}
-                                                />
-                                              )}
-                                            />
-                                            <Label htmlFor={`compute-total-${index}`} className="text-sm">
-                                              Include in totals calculation
-                                            </Label>
-                                          </div>
-                                        ) : null}
-                                      </div>
-                                    )}
-                                  </Draggable>
-                                ))}
-                                {provided.placeholder}
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </Droppable>
-                    </DragDropContext>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              <TabsContent value="preview" className="space-y-4 pt-4">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle>Preview</CardTitle>
-                    <CardDescription>
-                      This is how your report will look with the selected columns and settings
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="bg-muted">
-                          {fields
-                            .filter(field => form.watch(`config.columns.${fields.indexOf(field)}.visible`))
-                            .map((field, index) => (
-                              <th
-                                key={index}
-                                className="border px-4 py-2 text-sm font-medium"
-                                style={{
-                                  width: `${field.width}px`,
-                                  textAlign: field.align === 'left' ? 'left' : 
-                                             field.align === 'right' ? 'right' : 'center'
-                                }}
-                              >
-                                {field.title}
-                              </th>
-                            ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {previewData[selectedReportType]?.map((row, rowIndex) => (
-                          <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-muted/30'}>
-                            {fields
-                              .filter(field => form.watch(`config.columns.${fields.indexOf(field)}.visible`))
-                              .map((field, colIndex) => {
-                                const value = row[field.key];
-                                const format = form.watch(`config.columns.${fields.indexOf(field)}.format`);
-                                const align = form.watch(`config.columns.${fields.indexOf(field)}.align`);
-                                
-                                let displayValue = value;
-                                
-                                // Format the value based on column format
-                                if (format === 'date' && value) {
-                                  displayValue = new Date(value).toLocaleDateString();
-                                } else if (format === 'currency' && value != null) {
-                                  displayValue = new Intl.NumberFormat('en-US', { 
-                                    style: 'currency', 
-                                    currency: 'USD' 
-                                  }).format(value);
-                                } else if (format === 'number' && value != null) {
-                                  displayValue = new Intl.NumberFormat('en-US').format(value);
-                                } else if (format === 'percentage' && value != null) {
-                                  displayValue = new Intl.NumberFormat('en-US', { 
-                                    style: 'percent', 
-                                    minimumFractionDigits: 2 
-                                  }).format(value / 100);
-                                }
-                                
-                                return (
-                                  <td
-                                    key={colIndex}
-                                    className="border px-4 py-2 text-sm"
-                                    style={{
-                                      textAlign: align === 'left' ? 'left' : 
-                                                align === 'right' ? 'right' : 'center'
-                                    }}
-                                  >
-                                    {displayValue}
-                                  </td>
-                                );
-                              })}
-                          </tr>
-                        ))}
-                        {form.watch('config.showTotals') && (
-                          <tr className="bg-muted font-medium">
-                            {fields
-                              .filter(field => form.watch(`config.columns.${fields.indexOf(field)}.visible`))
-                              .map((field, colIndex) => {
-                                const format = form.watch(`config.columns.${fields.indexOf(field)}.format`);
-                                const align = form.watch(`config.columns.${fields.indexOf(field)}.align`);
-                                const computeTotal = form.watch(`config.columns.${fields.indexOf(field)}.computeTotal`);
-                                
-                                if (colIndex === 0) {
-                                  return (
-                                    <td
-                                      key={colIndex}
-                                      className="border px-4 py-2 text-sm"
-                                      style={{ textAlign: 'left' }}
-                                    >
-                                      Total
-                                    </td>
-                                  );
-                                }
-                                
-                                if (computeTotal && (format === 'number' || format === 'currency')) {
-                                  // Calculate total for this column
-                                  const total = previewData[selectedReportType]?.reduce((sum, row) => {
-                                    const value = parseFloat(row[field.key]) || 0;
-                                    return sum + value;
-                                  }, 0);
-                                  
-                                  let displayTotal = total;
-                                  if (format === 'currency') {
-                                    displayTotal = new Intl.NumberFormat('en-US', { 
-                                      style: 'currency', 
-                                      currency: 'USD' 
-                                    }).format(total);
-                                  } else if (format === 'number') {
-                                    displayTotal = new Intl.NumberFormat('en-US').format(total);
-                                  }
-                                  
-                                  return (
-                                    <td
-                                      key={colIndex}
-                                      className="border px-4 py-2 text-sm"
-                                      style={{
-                                        textAlign: align === 'left' ? 'left' : 
-                                                  align === 'right' ? 'right' : 'center'
-                                      }}
-                                    >
-                                      {displayTotal}
-                                    </td>
-                                  );
-                                }
-                                
-                                return <td key={colIndex} className="border px-4 py-2 text-sm"></td>;
-                              })}
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-
-            <div className="flex justify-between items-center">
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="config.includeDateRange"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-base">Include Date Range</FormLabel>
+                          <FormDescription>
+                            Show the date range in the report header
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+          
+          <div className="flex justify-between items-center">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handlePreview}
+              disabled={watchColumns.length === 0}
+              className="flex items-center gap-2"
+            >
+              <Eye size={16} />
+              Preview
+            </Button>
+            
+            <div className="flex gap-2">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => navigate("/reports/templates")}
+                onClick={() => navigate('/reports')}
               >
                 Cancel
               </Button>
-              <div className="space-x-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setActiveTab(activeTab === "design" ? "preview" : "design")}
-                >
-                  {activeTab === "design" ? (
-                    <>
-                      <Eye className="mr-2 h-4 w-4" />
-                      Preview
-                    </>
-                  ) : (
-                    <>
-                      <LayoutGrid className="mr-2 h-4 w-4" />
-                      Edit Design
-                    </>
-                  )}
-                </Button>
-                <Button type="submit" disabled={saveMutation.isPending}>
-                  {saveMutation.isPending ? (
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
-                  ) : (
-                    <Save className="mr-2 h-4 w-4" />
-                  )}
-                  Save Template
-                </Button>
-              </div>
+              
+              <Button 
+                type="submit" 
+                disabled={!form.formState.isDirty || watchColumns.length === 0 || saveMutation.isPending}
+                className="flex items-center gap-2"
+              >
+                {saveMutation.isPending && (
+                  <div className="animate-spin w-4 h-4 border-2 border-background border-t-transparent rounded-full mr-2" />
+                )}
+                <Save size={16} className="mr-2" />
+                {isEditing ? 'Update Template' : 'Save Template'}
+              </Button>
             </div>
           </div>
-        </div>
-      </form>
+        </form>
+      </Form>
     </div>
   );
 }

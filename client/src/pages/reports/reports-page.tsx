@@ -1,51 +1,32 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import React, { useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { 
-  Table, 
-  TableBody, 
-  TableCaption, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { DatePicker } from "@/components/ui/date-picker";
-import { MoreHorizontal, FileText, Download, Edit, Trash2, PlusCircle, Filter } from "lucide-react";
+import { useLocation } from 'wouter';
+import { FileText, Download, Pencil, Trash2, Plus, Filter, FileDown, RefreshCw, Copy } from 'lucide-react';
+import { DatePicker } from '@/components/ui/date-picker';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from '@/components/ui/label';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Separator } from '@/components/ui/separator';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,418 +38,667 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-  SheetFooter,
-  SheetClose
-} from "@/components/ui/sheet";
-import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from '@/lib/queryClient';
+
+// Report template interface
+interface ColumnConfig {
+  key: string;
+  title: string;
+  format?: 'text' | 'number' | 'date' | 'currency' | 'percentage';
+  align?: 'left' | 'center' | 'right';
+  width?: number;
+  visible?: boolean;
+  computeTotal?: boolean;
+}
+
+interface ReportConfig {
+  columns: ColumnConfig[];
+  filters: string[];
+  showTotals: boolean;
+  orientation: 'portrait' | 'landscape';
+  pageSize: 'A4' | 'A3' | 'Letter' | 'Legal';
+  pageMargin?: {
+    top: number;
+    right: number;
+    bottom: number;
+    left: number;
+  };
+  fontSize?: number;
+  fontFamily?: string;
+  headerImageUrl?: string;
+  footerText?: string;
+  includeDateRange?: boolean;
+}
+
+interface ReportTemplate {
+  id: string;
+  name: string;
+  description: string;
+  type: 'attendance' | 'payroll' | 'employee' | 'project' | 'expenditure' | 'income';
+  config: ReportConfig;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Type filter options
+const typeOptions = [
+  { value: 'attendance', label: 'Attendance' },
+  { value: 'payroll', label: 'Payroll' },
+  { value: 'employee', label: 'Employee' },
+  { value: 'project', label: 'Project' },
+  { value: 'expenditure', label: 'Expenditure' },
+  { value: 'income', label: 'Income' }
+];
+
+// Format options
+const formatOptions = [
+  { value: 'html', label: 'HTML' },
+  { value: 'pdf', label: 'PDF' },
+  { value: 'excel', label: 'Excel' }
+];
 
 export default function ReportsPage() {
-  const [activeTab, setActiveTab] = useState("templates");
-  const [selectedReportType, setSelectedReportType] = useState<string>("");
-  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
-  const [filterFromDate, setFilterFromDate] = useState<Date | undefined>(undefined);
-  const [filterToDate, setFilterToDate] = useState<Date | undefined>(undefined);
-  const [selectedOutput, setSelectedOutput] = useState<string>("html");
   const { toast } = useToast();
-
-  // Fetch all templates
-  const { data: templates, isLoading: templatesLoading } = useQuery({
+  const [, navigate] = useLocation();
+  const [activeTab, setActiveTab] = useState('templates');
+  const [selectedType, setSelectedType] = useState<string | undefined>();
+  const [selectedTemplate, setSelectedTemplate] = useState<ReportTemplate | null>(null);
+  const [selectedFormat, setSelectedFormat] = useState('html');
+  const [filters, setFilters] = useState<Record<string, any>>({});
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  
+  // Fetch templates
+  const { data: templates = [], isLoading, isError, error } = useQuery({
     queryKey: ['/api/reports/templates'],
     queryFn: async () => {
-      const res = await fetch('/api/reports/templates');
-      if (!res.ok) throw new Error('Failed to fetch templates');
-      return res.json();
+      const response = await fetch('/api/reports/templates');
+      if (!response.ok) {
+        throw new Error('Failed to fetch report templates');
+      }
+      return response.json();
     }
   });
-
-  // Generate report
-  const handleGenerateReport = async () => {
-    if (!selectedTemplate) {
+  
+  // Delete template mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (templateId: string) => {
+      const response = await apiRequest('DELETE', `/api/reports/templates/${templateId}`);
+      if (!response.ok) {
+        throw new Error('Failed to delete template');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
       toast({
-        title: "Error",
-        description: "Please select a report template",
-        variant: "destructive",
+        title: 'Template deleted',
+        description: 'The report template has been deleted successfully.',
       });
-      return;
-    }
-
-    try {
-      // Prepare filters based on date range
-      const filters: any = {};
-      if (filterFromDate) {
-        filters.fromDate = filterFromDate.toISOString();
-      }
-      if (filterToDate) {
-        filters.toDate = filterToDate.toISOString();
-      }
-
-      // Determine data type from template
-      const dataType = selectedTemplate.type;
-
-      // Make the request to generate the report
-      const response = await apiRequest('POST', '/api/reports/generate', {
-        templateId: selectedTemplate.id,
-        dataType,
-        filters,
-        format: selectedOutput
-      });
-
-      if (selectedOutput === 'html') {
-        // For HTML reports, open the response in a new window
-        const html = await response.text();
-        const newWindow = window.open('', '_blank');
-        if (newWindow) {
-          newWindow.document.write(html);
-          newWindow.document.close();
-        } else {
-          toast({
-            title: "Warning",
-            description: "Pop-up blocker may be preventing the report from opening. Please allow pop-ups for this site.",
-            variant: "warning",
-          });
-        }
-      } else if (selectedOutput === 'excel') {
-        // For Excel, we would normally handle a file download
-        const result = await response.json();
-        toast({
-          title: "Success",
-          description: `Excel report would be downloaded with ${result.dataCount} records.`,
-        });
-      }
-    } catch (error) {
-      console.error('Error generating report:', error);
+      queryClient.invalidateQueries({ queryKey: ['/api/reports/templates'] });
+      setIsDeleteDialogOpen(false);
+    },
+    onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: "Failed to generate report. Please try again.",
-        variant: "destructive",
+        title: 'Failed to delete template',
+        description: error.message,
+        variant: 'destructive',
       });
     }
-  };
-
-  const handleDeleteTemplate = async (templateId: string) => {
-    try {
-      await apiRequest('DELETE', `/api/reports/templates/${templateId}`);
+  });
+  
+  // Clone template mutation
+  const cloneMutation = useMutation({
+    mutationFn: async (template: ReportTemplate) => {
+      // Create a clone with a new ID and name
+      const clonedTemplate = {
+        ...template,
+        id: `cloned-${template.type}-${Date.now()}`,
+        name: `Copy of ${template.name}`,
+        isDefault: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
       
-      toast({
-        title: "Success",
-        description: "Report template deleted successfully",
-      });
+      const response = await apiRequest('POST', '/api/reports/templates', clonedTemplate);
       
-      // Invalidate the templates query to refresh the list
-      // queryClient.invalidateQueries(['/api/reports/templates']);
-    } catch (error) {
-      console.error('Error deleting template:', error);
+      if (!response.ok) {
+        throw new Error('Failed to clone template');
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
       toast({
-        title: "Error",
-        description: "Failed to delete template. It may be a default template that cannot be deleted.",
-        variant: "destructive",
+        title: 'Template cloned',
+        description: 'A copy of the template has been created successfully.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/reports/templates'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Failed to clone template',
+        description: error.message,
+        variant: 'destructive',
       });
     }
-  };
-
-  const groupTemplatesByType = (templates: any[] = []) => {
-    const grouped: { [key: string]: any[] } = {};
+  });
+  
+  // Filter templates by type
+  const filteredTemplates = selectedType 
+    ? templates.filter((template: ReportTemplate) => template.type === selectedType)
+    : templates;
+  
+  // Handle generating a report
+  const handleGenerateReport = (template: ReportTemplate) => {
+    // Get filter query parameters
+    const queryParams = new URLSearchParams();
+    queryParams.append('templateId', template.id);
+    queryParams.append('format', selectedFormat);
+    queryParams.append('dataType', template.type);
     
-    templates?.forEach(template => {
-      const type = template.type;
-      if (!grouped[type]) {
-        grouped[type] = [];
+    // Add filters
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        queryParams.append(key, value.toString());
       }
-      grouped[type].push(template);
     });
     
-    return grouped;
+    // Open in new window
+    window.open(`/api/reports/generate?${queryParams.toString()}`, '_blank');
   };
-
-  const getTemplatesByType = (type: string) => {
-    return templates?.filter(t => t.type === type) || [];
+  
+  // Handle deleting a template
+  const handleDeleteTemplate = () => {
+    if (selectedTemplate) {
+      deleteMutation.mutate(selectedTemplate.id);
+    }
   };
-
-  const renderTemplateCards = () => {
-    if (templatesLoading) {
-      return (
-        <div className="flex justify-center items-center h-40">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+  
+  // Handle cloning a template
+  const handleCloneTemplate = (template: ReportTemplate) => {
+    cloneMutation.mutate(template);
+  };
+  
+  return (
+    <div className="container py-6">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Reports</h1>
+          <p className="text-muted-foreground">
+            Create, manage, and generate reports from templates
+          </p>
         </div>
-      );
-    }
-
-    const groupedTemplates = groupTemplatesByType(templates);
-    
-    if (!templates || templates.length === 0) {
-      return (
-        <div className="text-center py-8">
-          <p className="text-muted-foreground">No report templates found</p>
-          <Button className="mt-4" asChild>
-            <Link href="/reports/create">Create New Template</Link>
-          </Button>
-        </div>
-      );
-    }
-
-    return (
-      <div>
-        {Object.entries(groupedTemplates).map(([type, typeTemplates]) => (
-          <div key={type} className="mb-8">
-            <h3 className="text-lg font-semibold mb-3 capitalize">{type} Reports</h3>
+      </div>
+      
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="templates">Report Templates</TabsTrigger>
+          <TabsTrigger value="generate">Generate Reports</TabsTrigger>
+        </TabsList>
+        
+        {/* Templates Tab */}
+        <TabsContent value="templates" className="space-y-4">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <Select value={selectedType} onValueChange={setSelectedType}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter by type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Types</SelectItem>
+                  {typeOptions.map(option => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              {selectedType && (
+                <Button 
+                  variant="ghost" 
+                  onClick={() => setSelectedType(undefined)}
+                  size="sm"
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
+            
+            <Button onClick={() => navigate('/reports/template-editor')} className="flex items-center gap-2">
+              <Plus size={16} />
+              Create Template
+            </Button>
+          </div>
+          
+          {isLoading ? (
+            <div className="flex justify-center p-8">
+              <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+            </div>
+          ) : isError ? (
+            <Card className="p-6 text-center">
+              <div className="text-destructive mb-2">Error loading templates</div>
+              <p className="text-muted-foreground text-sm mb-4">
+                {error instanceof Error ? error.message : 'Unknown error'}
+              </p>
+              <Button 
+                variant="outline" 
+                onClick={() => queryClient.invalidateQueries({ queryKey: ['/api/reports/templates'] })}
+                className="mx-auto"
+              >
+                <RefreshCw size={16} className="mr-2" />
+                Retry
+              </Button>
+            </Card>
+          ) : filteredTemplates.length === 0 ? (
+            <Card className="p-6 text-center">
+              <p className="text-muted-foreground mb-4">
+                {selectedType
+                  ? `No ${selectedType} templates found`
+                  : 'No templates found'
+                }
+              </p>
+              <Button onClick={() => navigate('/reports/template-editor')}>
+                Create Your First Template
+              </Button>
+            </Card>
+          ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {typeTemplates.map((template) => (
-                <Card key={template.id} className="h-full flex flex-col">
-                  <CardHeader>
+              {filteredTemplates.map((template: ReportTemplate) => (
+                <Card key={template.id} className="overflow-hidden">
+                  <CardHeader className="relative">
                     <div className="flex justify-between items-start">
                       <div>
-                        <CardTitle>{template.name}</CardTitle>
+                        <CardTitle className="mb-1">{template.name}</CardTitle>
                         <CardDescription>{template.description}</CardDescription>
                       </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Options</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onSelect={() => setSelectedTemplate(template)}>Select</DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Link href={`/reports/edit/${template.id}`}>Edit</Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onSelect={() => {
-                            if (template.isDefault) {
-                              toast({
-                                title: "Cannot Delete",
-                                description: "Default templates cannot be deleted",
-                                variant: "destructive",
-                              });
-                            }
-                          }}>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <span className={template.isDefault ? "text-muted-foreground" : "text-destructive"}>
-                                  Delete
-                                </span>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This action cannot be undone. This will permanently delete the
-                                    report template.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction disabled={template.isDefault} onClick={() => handleDeleteTemplate(template.id)}>
-                                    Delete
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex items-center">
+                        {template.isDefault && (
+                          <span className="bg-primary/10 text-primary text-xs px-2 py-1 rounded-md mr-2">
+                            Default
+                          </span>
+                        )}
+                        <Badge
+                          className="capitalize"
+                          variant={typeOptions.find(t => t.value === template.type)?.value || undefined}
+                        >
+                          {template.type}
+                        </Badge>
+                      </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="flex-grow">
-                    <div className="space-y-2 text-sm">
-                      <div>
-                        <span className="font-medium">Created: </span>
-                        <span className="text-muted-foreground">
-                          {new Date(template.createdAt).toLocaleDateString()}
-                        </span>
+                  
+                  <CardContent className="pb-2">
+                    <div className="text-sm text-muted-foreground mb-2">
+                      <span className="font-medium">Created:</span>{' '}
+                      {new Date(template.createdAt).toLocaleDateString()}
+                    </div>
+                    <div className="text-sm text-muted-foreground mb-4">
+                      <span className="font-medium">Last updated:</span>{' '}
+                      {new Date(template.updatedAt).toLocaleDateString()}
+                    </div>
+                    
+                    <div className="bg-muted rounded-md p-3 text-xs">
+                      <div className="font-medium mb-1">Column Preview:</div>
+                      <div className="flex flex-wrap gap-1">
+                        {template.config.columns
+                          .filter(col => col.visible !== false)
+                          .slice(0, 8)
+                          .map((col, idx) => (
+                            <div key={idx} className="bg-background px-2 py-1 rounded-sm">
+                              {col.title}
+                            </div>
+                          ))}
+                        {template.config.columns.length > 8 && (
+                          <div className="bg-background px-2 py-1 rounded-sm">
+                            +{template.config.columns.length - 8} more
+                          </div>
+                        )}
                       </div>
-                      <div>
-                        <span className="font-medium">Columns: </span>
-                        <span className="text-muted-foreground">
-                          {template.config.columns.length} fields
-                        </span>
-                      </div>
-                      {template.isDefault && (
-                        <Badge variant="outline" className="mt-2">Default Template</Badge>
-                      )}
                     </div>
                   </CardContent>
-                  <CardFooter className="border-t pt-4 flex justify-between">
-                    <Button variant="outline" size="sm" onClick={() => setSelectedTemplate(template)}>
-                      <FileText className="h-4 w-4 mr-2" />
-                      View
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <Edit className="h-4 w-4 mr-2" />
-                      <Link href={`/reports/edit/${template.id}`}>Edit</Link>
-                    </Button>
+                  
+                  <CardFooter className="flex justify-between pt-2">
+                    <div className="flex gap-2">
+                      <AlertDialog open={isDeleteDialogOpen && selectedTemplate?.id === template.id}>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            disabled={template.isDefault}
+                            onClick={() => {
+                              setSelectedTemplate(template);
+                              setIsDeleteDialogOpen(true);
+                            }}
+                          >
+                            <Trash2 size={16} />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently delete the "{template.name}" template.
+                              This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel onClick={() => setIsDeleteDialogOpen(false)}>
+                              Cancel
+                            </AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteTemplate}>
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                      
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleCloneTemplate(template)}
+                      >
+                        <Copy size={16} />
+                      </Button>
+                      
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => navigate(`/reports/template-editor?id=${template.id}`)}
+                      >
+                        <Pencil size={16} />
+                      </Button>
+                    </div>
+                    
+                    <Sheet open={isFiltersOpen && selectedTemplate?.id === template.id}>
+                      <SheetTrigger asChild>
+                        <Button 
+                          onClick={() => {
+                            setSelectedTemplate(template);
+                            setIsFiltersOpen(true);
+                            // Reset filters
+                            setFilters({});
+                          }}
+                        >
+                          Generate
+                        </Button>
+                      </SheetTrigger>
+                      <SheetContent className="w-full sm:max-w-md">
+                        <SheetHeader>
+                          <SheetTitle>Generate Report</SheetTitle>
+                          <SheetDescription>
+                            Configure options for {template.name}
+                          </SheetDescription>
+                        </SheetHeader>
+                        
+                        <div className="py-6">
+                          <div className="mb-4">
+                            <Label htmlFor="format">Output Format</Label>
+                            <Select value={selectedFormat} onValueChange={setSelectedFormat}>
+                              <SelectTrigger id="format">
+                                <SelectValue placeholder="Select format" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {formatOptions.map(option => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          
+                          <Separator className="my-4" />
+                          
+                          <div className="mb-4">
+                            <h3 className="text-sm font-medium mb-2">Filters</h3>
+                            
+                            {template.config.filters.includes('dateRange') && (
+                              <div className="space-y-4">
+                                <div>
+                                  <Label htmlFor="startDate">Start Date</Label>
+                                  <DatePicker
+                                    placeholder="Select start date"
+                                    onChange={(date) => 
+                                      setFilters(prev => ({ 
+                                        ...prev, 
+                                        startDate: date?.toISOString().split('T')[0] 
+                                      }))
+                                    }
+                                  />
+                                </div>
+                                
+                                <div>
+                                  <Label htmlFor="endDate">End Date</Label>
+                                  <DatePicker
+                                    placeholder="Select end date"
+                                    onChange={(date) => 
+                                      setFilters(prev => ({ 
+                                        ...prev, 
+                                        endDate: date?.toISOString().split('T')[0] 
+                                      }))
+                                    }
+                                  />
+                                </div>
+                              </div>
+                            )}
+                            
+                            {template.config.filters.includes('employeeId') && (
+                              <div className="mt-4">
+                                <Label htmlFor="employeeId">Employee</Label>
+                                <Input 
+                                  id="employeeId" 
+                                  placeholder="Employee ID"
+                                  onChange={(e) => 
+                                    setFilters(prev => ({ ...prev, employeeId: e.target.value }))
+                                  }
+                                />
+                              </div>
+                            )}
+                            
+                            {template.config.filters.includes('projectId') && (
+                              <div className="mt-4">
+                                <Label htmlFor="projectId">Project</Label>
+                                <Input 
+                                  id="projectId" 
+                                  placeholder="Project ID"
+                                  onChange={(e) => 
+                                    setFilters(prev => ({ ...prev, projectId: e.target.value }))
+                                  }
+                                />
+                              </div>
+                            )}
+                            
+                            {/* Add other filters based on template.config.filters */}
+                          </div>
+                        </div>
+                        
+                        <div className="flex justify-end gap-2 mt-4">
+                          <Button 
+                            variant="outline"
+                            onClick={() => setIsFiltersOpen(false)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button 
+                            onClick={() => {
+                              handleGenerateReport(template);
+                              setIsFiltersOpen(false);
+                            }}
+                          >
+                            <FileDown size={16} className="mr-2" />
+                            Generate
+                          </Button>
+                        </div>
+                      </SheetContent>
+                    </Sheet>
                   </CardFooter>
                 </Card>
               ))}
             </div>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  return (
-    <div className="container mx-auto py-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Reports</h1>
-          <p className="text-muted-foreground">Generate and manage customizable reports</p>
-        </div>
-        <div className="flex space-x-2">
-          <Button asChild>
-            <Link href="/reports/create">
-              <PlusCircle className="h-4 w-4 mr-2" />
-              New Template
-            </Link>
-          </Button>
-        </div>
-      </div>
-
-      <Tabs defaultValue="templates" value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="templates">Report Templates</TabsTrigger>
-          <TabsTrigger value="generate">Generate Report</TabsTrigger>
-        </TabsList>
-        <TabsContent value="templates" className="mt-6">
-          {renderTemplateCards()}
+          )}
         </TabsContent>
-        <TabsContent value="generate" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Generate Custom Report</CardTitle>
+        
+        {/* Generate Tab */}
+        <TabsContent value="generate" className="space-y-4">
+          <Card className="p-6">
+            <CardHeader className="px-0 pt-0">
+              <CardTitle>Generate a Report</CardTitle>
               <CardDescription>
-                Select a template and set parameters to generate your report
+                Select a template and configure options to generate a report
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Template Selection */}
-              <div className="space-y-4">
+            
+            <CardContent className="px-0 space-y-4">
+              <div>
+                <Label htmlFor="report-type">Report Type</Label>
+                <Select value={selectedType} onValueChange={setSelectedType}>
+                  <SelectTrigger id="report-type">
+                    <SelectValue placeholder="Select report type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {typeOptions.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {selectedType && (
                 <div>
-                  <Label htmlFor="reportType">Report Type</Label>
-                  <Select value={selectedReportType} onValueChange={setSelectedReportType}>
-                    <SelectTrigger id="reportType">
-                      <SelectValue placeholder="Select report type" />
+                  <Label htmlFor="template">Template</Label>
+                  <Select 
+                    value={selectedTemplate?.id} 
+                    onValueChange={(value) => {
+                      const template = templates.find((t: ReportTemplate) => t.id === value);
+                      setSelectedTemplate(template || null);
+                    }}
+                  >
+                    <SelectTrigger id="template">
+                      <SelectValue placeholder="Select a template" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectGroup>
-                        <SelectItem value="attendance">Attendance</SelectItem>
-                        <SelectItem value="payroll">Payroll</SelectItem>
-                        <SelectItem value="employee">Employee</SelectItem>
-                        <SelectItem value="project">Project</SelectItem>
-                        <SelectItem value="expenditure">Expenditure</SelectItem>
-                        <SelectItem value="income">Income</SelectItem>
-                      </SelectGroup>
+                      {templates
+                        .filter((template: ReportTemplate) => template.type === selectedType)
+                        .map((template: ReportTemplate) => (
+                          <SelectItem key={template.id} value={template.id}>
+                            {template.name}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
-
-                {selectedReportType && (
+              )}
+              
+              {selectedTemplate && (
+                <>
                   <div>
-                    <Label htmlFor="template">Template</Label>
-                    <Select 
-                      value={selectedTemplate?.id} 
-                      onValueChange={(id) => {
-                        const template = templates?.find(t => t.id === id);
-                        setSelectedTemplate(template);
-                      }}
-                    >
-                      <SelectTrigger id="template">
-                        <SelectValue placeholder="Select a template" />
+                    <Label htmlFor="output-format">Output Format</Label>
+                    <Select value={selectedFormat} onValueChange={setSelectedFormat}>
+                      <SelectTrigger id="output-format">
+                        <SelectValue placeholder="Select format" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectGroup>
-                          <SelectLabel>Available Templates</SelectLabel>
-                          {getTemplatesByType(selectedReportType).map((template) => (
-                            <SelectItem key={template.id} value={template.id}>
-                              {template.name}
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
+                        {formatOptions.map(option => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
-                )}
-
-                {selectedTemplate && (
-                  <div className="bg-muted/50 p-4 rounded-md">
-                    <h4 className="font-medium mb-2">{selectedTemplate.name}</h4>
-                    <p className="text-sm text-muted-foreground mb-3">{selectedTemplate.description}</p>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="font-medium">Columns: </span>
-                        <span className="text-muted-foreground">{selectedTemplate.config.columns.length}</span>
-                      </div>
-                      <div>
-                        <span className="font-medium">Group By: </span>
-                        <span className="text-muted-foreground">{selectedTemplate.config.groupBy || 'None'}</span>
-                      </div>
-                      <div>
-                        <span className="font-medium">Show Totals: </span>
-                        <span className="text-muted-foreground">{selectedTemplate.config.showTotals ? 'Yes' : 'No'}</span>
-                      </div>
-                      <div>
-                        <span className="font-medium">Orientation: </span>
-                        <span className="text-muted-foreground capitalize">{selectedTemplate.config.orientation || 'Portrait'}</span>
-                      </div>
+                  
+                  <Separator />
+                  
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label>Filters</Label>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => setFilters({})}
+                      >
+                        Clear All
+                      </Button>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      {selectedTemplate.config.filters.includes('dateRange') && (
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="startDate2">Start Date</Label>
+                            <DatePicker
+                              placeholder="Select start date"
+                              onChange={(date) => 
+                                setFilters(prev => ({ 
+                                  ...prev, 
+                                  startDate: date?.toISOString().split('T')[0] 
+                                }))
+                              }
+                            />
+                          </div>
+                          
+                          <div>
+                            <Label htmlFor="endDate2">End Date</Label>
+                            <DatePicker
+                              id="endDate2"
+                              onChange={(date) => 
+                                setFilters(prev => ({ 
+                                  ...prev, 
+                                  endDate: date?.toISOString().split('T')[0] 
+                                }))
+                              }
+                            />
+                          </div>
+                        </div>
+                      )}
+                      
+                      {selectedTemplate.config.filters.includes('employeeId') && (
+                        <div>
+                          <Label htmlFor="employeeId2">Employee</Label>
+                          <Input 
+                            id="employeeId2" 
+                            placeholder="Employee ID"
+                            onChange={(e) => 
+                              setFilters(prev => ({ ...prev, employeeId: e.target.value }))
+                            }
+                          />
+                        </div>
+                      )}
+                      
+                      {selectedTemplate.config.filters.includes('projectId') && (
+                        <div>
+                          <Label htmlFor="projectId2">Project</Label>
+                          <Input 
+                            id="projectId2" 
+                            placeholder="Project ID"
+                            onChange={(e) => 
+                              setFilters(prev => ({ ...prev, projectId: e.target.value }))
+                            }
+                          />
+                        </div>
+                      )}
+                      
+                      {/* Add other filters based on selectedTemplate.config.filters */}
                     </div>
                   </div>
-                )}
-              </div>
-
-              {/* Report Parameters */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Report Parameters</h3>
-                <Separator />
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="fromDate">From Date</Label>
-                    <DatePicker 
-                      date={filterFromDate} 
-                      setDate={setFilterFromDate} 
-                      placeholder="Select start date" 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="toDate">To Date</Label>
-                    <DatePicker 
-                      date={filterToDate} 
-                      setDate={setFilterToDate} 
-                      placeholder="Select end date" 
-                    />
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="outputFormat">Output Format</Label>
-                  <Select value={selectedOutput} onValueChange={setSelectedOutput}>
-                    <SelectTrigger id="outputFormat">
-                      <SelectValue placeholder="Select output format" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="html">HTML (View in Browser)</SelectItem>
-                      <SelectItem value="excel">Excel (Download)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+                </>
+              )}
             </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button variant="outline">Reset</Button>
-              <Button 
-                onClick={handleGenerateReport}
+            
+            <CardFooter className="px-0 flex justify-end">
+              <Button
                 disabled={!selectedTemplate}
+                onClick={() => {
+                  if (selectedTemplate) {
+                    handleGenerateReport(selectedTemplate);
+                  }
+                }}
               >
+                <FileDown size={16} className="mr-2" />
                 Generate Report
               </Button>
             </CardFooter>
@@ -476,5 +706,45 @@ export default function ReportsPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+// Badge component with conditional colors based on template type
+function Badge({ 
+  children, 
+  className, 
+  variant 
+}: { 
+  children: React.ReactNode; 
+  className?: string;
+  variant?: string;
+}) {
+  let variantClass = 'bg-gray-100 text-gray-800';
+  
+  switch (variant) {
+    case 'attendance':
+      variantClass = 'bg-blue-100 text-blue-800';
+      break;
+    case 'payroll':
+      variantClass = 'bg-green-100 text-green-800';
+      break;
+    case 'employee':
+      variantClass = 'bg-purple-100 text-purple-800';
+      break;
+    case 'project':
+      variantClass = 'bg-yellow-100 text-yellow-800';
+      break;
+    case 'expenditure':
+      variantClass = 'bg-red-100 text-red-800';
+      break;
+    case 'income':
+      variantClass = 'bg-emerald-100 text-emerald-800';
+      break;
+  }
+  
+  return (
+    <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${variantClass} ${className}`}>
+      {children}
+    </span>
   );
 }
