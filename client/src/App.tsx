@@ -24,6 +24,7 @@ import ProjectsPage from "@/pages/projects/index";
 import AddProjectPage from "@/pages/projects/add";
 import EditProjectPage from "@/pages/projects/edit/[id]";
 import Reports from "@/pages/reports/index";
+import TemplateEditor from "@/pages/reports/template-editor";
 import Settings from "@/pages/settings";
 import AuthPage from "@/pages/auth-page";
 import UsersPage from "@/pages/users";
@@ -65,6 +66,9 @@ function Router() {
       <Route path="/payroll" component={PayrollList} />
       <Route path="/payroll/process" component={ProcessPayroll} />
       <Route path="/reports" component={Reports} />
+      <Route path="/reports/templates" component={Reports} />
+      <Route path="/reports/templates/create" component={TemplateEditor} />
+      <Route path="/reports/templates/edit/:id" component={TemplateEditor} />
       <Route path="/settings" component={Settings} />
       <Route path="/users" component={UsersPage} />
       <Route component={NotFound} />

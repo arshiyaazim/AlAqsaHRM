@@ -26,7 +26,7 @@ const allNavigationItems = [
   { name: "Daily Expenditure", href: "/expenditures", icon: ArrowUpCircle, roles: ["admin", "hr", "viewer"] },
   { name: "Daily Income", href: "/incomes", icon: ArrowDownCircle, roles: ["admin", "hr", "viewer"] },
   { name: "Payroll", href: "/payroll", icon: DollarSign, roles: ["admin", "hr", "viewer"] },
-  { name: "Reports", href: "/reports", icon: FileText, roles: ["admin"] },
+  { name: "Reports", href: "/reports", icon: FileText, roles: ["admin", "hr", "viewer"] },
   { name: "Users", href: "/users", icon: ShieldCheck, roles: ["admin"] },
   { name: "Settings", href: "/settings", icon: Settings, roles: ["admin"] },
 ];
