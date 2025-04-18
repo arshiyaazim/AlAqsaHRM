@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Edit, Trash, Calendar, User, Users, DollarSign, Anchor, Ship, Briefcase, MapPin, Truck, CreditCard } from "lucide-react";
+import { Plus, Edit, Trash, Calendar, User, Users, DollarSign, Anchor, Ship, Briefcase, MapPin, Truck, CreditCard, UserCircle } from "lucide-react";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,8 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 interface Project {
   id: number;
   name: string;
+  employeeId?: string;
+  employeeName?: string;
   clientName?: string;
   vessel?: string;
   lighter?: string;
@@ -119,8 +121,14 @@ export default function ProjectsPage() {
                     {project.active ? "Active" : "Inactive"}
                   </Badge>
                 </div>
-                {project.clientName && (
+                {project.employeeId && project.employeeName && (
                   <p className="text-sm text-muted-foreground flex items-center">
+                    <UserCircle className="h-3.5 w-3.5 mr-1.5 text-muted-foreground/70" />
+                    {project.employeeId}: {project.employeeName}
+                  </p>
+                )}
+                {project.clientName && (
+                  <p className="text-sm text-muted-foreground flex items-center mt-1">
                     <User className="h-3.5 w-3.5 mr-1.5 text-muted-foreground/70" />
                     {project.clientName}
                   </p>

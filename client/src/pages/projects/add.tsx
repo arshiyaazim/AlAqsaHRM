@@ -7,16 +7,28 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+// Type for the employee list
+interface Employee {
+  id: number;
+  employeeId: string;
+  firstName: string;
+  lastName: string;
+}
 
 const projectFormSchema = z.object({
   name: z.string().min(1, "Project name is required"),
+  employeeId: z.string().optional(),
+  employeeName: z.string().optional(),
   clientName: z.string().optional(),
   vessel: z.string().optional(),
   lighter: z.string().optional(),
@@ -37,11 +49,20 @@ export default function AddProjectPage() {
   const [_, navigate] = useLocation();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
+  const [selectedEmployeeName, setSelectedEmployeeName] = useState("");
+  
+  // Fetch employees for dropdown
+  const { data: employees, isLoading: isLoadingEmployees } = useQuery<Employee[]>({
+    queryKey: ["/api/employees"],
+  });
   
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(projectFormSchema),
     defaultValues: {
       name: "",
+      employeeId: "",
+      employeeName: "",
       clientName: "",
       vessel: "",
       lighter: "",
@@ -56,6 +77,24 @@ export default function AddProjectPage() {
       active: true,
     },
   });
+
+  const handleEmployeeChange = (employeeId: string) => {
+    setSelectedEmployeeId(employeeId);
+    
+    if (employeeId) {
+      const selectedEmployee = employees?.find(emp => emp.employeeId === employeeId);
+      if (selectedEmployee) {
+        const fullName = `${selectedEmployee.firstName} ${selectedEmployee.lastName}`;
+        setSelectedEmployeeName(fullName);
+        form.setValue("employeeId", employeeId);
+        form.setValue("employeeName", fullName);
+      }
+    } else {
+      setSelectedEmployeeName("");
+      form.setValue("employeeId", "");
+      form.setValue("employeeName", "");
+    }
+  };
 
   async function onSubmit(data: ProjectFormValues) {
     setIsSubmitting(true);
@@ -98,7 +137,7 @@ export default function AddProjectPage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
         </Link>
-        <h1 className="text-2xl font-bold">Create New Project</h1>
+        <h1 className="text-2xl font-bold">Add New Project</h1>
       </div>
       
       <Card>
@@ -120,6 +159,39 @@ export default function AddProjectPage() {
                 )}
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="employee">Employee ID</Label>
+                <Select 
+                  value={selectedEmployeeId} 
+                  onValueChange={handleEmployeeChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select employee" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {isLoadingEmployees ? (
+                      <SelectItem value="loading" disabled>Loading employees...</SelectItem>
+                    ) : employees?.map(employee => (
+                      <SelectItem key={employee.id} value={employee.employeeId}>
+                        {employee.employeeId}: {employee.firstName} {employee.lastName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="employeeName">Employee Name</Label>
+                <Input
+                  id="employeeName"
+                  placeholder="Employee name (auto-filled)"
+                  value={selectedEmployeeName}
+                  readOnly
+                  disabled
+                />
+              </div>
+              
               <div className="space-y-2">
                 <Label htmlFor="clientName">Client Name</Label>
                 <Input
