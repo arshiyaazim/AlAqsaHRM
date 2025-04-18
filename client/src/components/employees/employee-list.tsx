@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { 
@@ -22,7 +22,17 @@ import {
   EmployeeCardSkeleton,
   TableWithPaginationSkeleton
 } from "@/components/skeletons";
-import { Search, UserPlus, Edit, Eye, Trash2 } from "lucide-react";
+import { 
+  Search, 
+  UserPlus, 
+  Edit, 
+  Eye, 
+  Trash2, 
+  ChevronLeft, 
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
+} from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -53,6 +63,11 @@ export default function EmployeeList() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [useAdvancedSearch, setUseAdvancedSearch] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [selectedColumns, setSelectedColumns] = useState<string[]>([
+    "name", "designation", "project", "joinDate", "dailyWage", "status", "actions"
+  ]);
+  const itemsPerPage = 25;
   const { toast } = useToast();
 
   const { data: employees = [], isLoading: isLoadingEmployees } = useQuery<Employee[]>({
@@ -126,6 +141,32 @@ export default function EmployeeList() {
       handleBasicSearch();
     }
   }, [searchTerm, statusFilter, projectFilter, employees, useAdvancedSearch]);
+
+  // Get current page data
+  const getCurrentPageData = () => {
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    return filteredEmployees.slice(indexOfFirstItem, indexOfLastItem);
+  };
+
+  // Calculate total pages
+  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
+
+  // Handle pagination
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  // Handle column selection
+  const handleColumnToggle = (column: string) => {
+    if (selectedColumns.includes(column)) {
+      if (selectedColumns.length > 1) {
+        setSelectedColumns(selectedColumns.filter(col => col !== column));
+      }
+    } else {
+      setSelectedColumns([...selectedColumns, column]);
+    }
+  };
 
   // Handle delete employee
   const handleDeleteEmployee = async () => {
@@ -286,9 +327,9 @@ export default function EmployeeList() {
                   // Loading state with improved skeleton
                   <EmployeeListSkeleton count={5} />
                 ) : filteredEmployees.length > 0 ? (
-                  filteredEmployees.map((employee: Employee, index: number) => (
+                  getCurrentPageData().map((employee: Employee, index: number) => (
                     <TableRow key={employee.id}>
-                      <TableCell>{index + 1}</TableCell>
+                      <TableCell>{(currentPage - 1) * itemsPerPage + index + 1}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-3">
                           <Avatar>
@@ -358,7 +399,7 @@ export default function EmployeeList() {
               // Loading state with improved skeleton
               <EmployeeCardSkeleton count={3} />
             ) : filteredEmployees.length > 0 ? (
-              filteredEmployees.map((employee: Employee) => (
+              getCurrentPageData().map((employee: Employee) => (
                 <Card key={employee.id}>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-3">
@@ -431,6 +472,81 @@ export default function EmployeeList() {
             )}
           </div>
         </CardContent>
+        
+        {/* Pagination Controls */}
+        {filteredEmployees.length > 0 && (
+          <CardFooter className="flex items-center justify-between border-t pt-4">
+            <div className="text-sm text-muted-foreground">
+              Showing <span className="font-medium">{Math.min(filteredEmployees.length, 1 + (currentPage - 1) * itemsPerPage)}</span> to{" "}
+              <span className="font-medium">{Math.min(currentPage * itemsPerPage, filteredEmployees.length)}</span> of{" "}
+              <span className="font-medium">{filteredEmployees.length}</span> employees
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => handlePageChange(1)}
+                disabled={currentPage === 1}
+                title="First Page"
+              >
+                <ChevronsLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                title="Previous Page"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <div className="flex items-center gap-1 mx-2">
+                {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={currentPage === pageNum ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handlePageChange(pageNum)}
+                      className="h-8 w-8"
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                title="Next Page"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => handlePageChange(totalPages)}
+                disabled={currentPage === totalPages}
+                title="Last Page"
+              >
+                <ChevronsRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </CardFooter>
+        )}
       </Card>
 
       {/* Delete Confirmation Dialog */}
