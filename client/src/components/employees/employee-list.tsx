@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { formatDate, formatCurrency } from "@/lib/utils";
-import { Employee, Project } from "@shared/schema";
+import { Employee, Project, Attendance } from "@shared/schema";
+import { getDaysInMonth } from "date-fns";
 
 import {
   Table,
@@ -151,6 +152,75 @@ export default function EmployeeList() {
 
   // Calculate total pages
   const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
+  
+  // Query attendance data to calculate duty days
+  const { data: attendanceData = [] } = useQuery<Attendance[]>({
+    queryKey: ["/api/attendance"],
+  });
+
+  // Helper functions for calculations
+  const getCurrentMonth = () => {
+    const now = new Date();
+    return now.getMonth(); // 0-11 (January is 0)
+  };
+
+  const getCurrentYear = () => {
+    const now = new Date();
+    return now.getFullYear();
+  };
+
+  // Get the number of days in the current month
+  const getDaysInCurrentMonth = () => {
+    return getDaysInMonth(new Date(getCurrentYear(), getCurrentMonth()));
+  };
+
+  // Calculate start duty, end duty, and total duty days for an employee
+  const calculateDutyInfo = (employeeId: number) => {
+    if (!attendanceData || attendanceData.length === 0) {
+      return { startDuty: "N/A", endDuty: "N/A", totalDuty: 0 };
+    }
+
+    // Filter attendance records for this employee and current month
+    const currentMonthAttendance = attendanceData.filter(record => {
+      const recordDate = new Date(record.date);
+      return (
+        record.employeeId === employeeId && 
+        recordDate.getMonth() === getCurrentMonth() && 
+        recordDate.getFullYear() === getCurrentYear() &&
+        record.status === "Present"
+      );
+    });
+
+    if (currentMonthAttendance.length === 0) {
+      return { startDuty: "N/A", endDuty: "N/A", totalDuty: 0 };
+    }
+
+    // Sort attendance records by date
+    const sortedAttendance = [...currentMonthAttendance].sort((a, b) => 
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+
+    const startDuty = formatDate(sortedAttendance[0].date);
+    const endDuty = formatDate(sortedAttendance[sortedAttendance.length - 1].date);
+    const totalDuty = currentMonthAttendance.length;
+
+    return { startDuty, endDuty, totalDuty };
+  };
+
+  // Calculate earned salary based on daily wage, duty days, and conveyance
+  const calculateEarnedSalary = (dailyWage: number, totalDuty: number, conveyance = 0) => {
+    const daysInMonth = getDaysInCurrentMonth();
+    // Formula: (Daily Wage / days in month) * Total Duty + Conveyance
+    const earned = (Number(dailyWage) / daysInMonth) * totalDuty + conveyance;
+    return Math.round(earned * 100) / 100; // Round to 2 decimal places
+  };
+
+  // Calculate payable salary
+  const calculatePayableSalary = (earnedSalary: number, loanAdvance = 0, fines = 0) => {
+    // Formula: Earned Salary - Loan/Advance - Fines
+    const payable = earnedSalary - loanAdvance - fines;
+    return Math.max(0, Math.round(payable * 100) / 100); // Ensure not negative and round to 2 decimal places
+  };
 
   // Handle pagination
   const handlePageChange = (page: number) => {
@@ -312,12 +382,20 @@ export default function EmployeeList() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[50px]">#</TableHead>
+                  <TableHead className="w-[40px]">#</TableHead>
                   <TableHead>Employee</TableHead>
                   <TableHead>Designation</TableHead>
                   <TableHead>Project</TableHead>
                   <TableHead>Join Date</TableHead>
                   <TableHead>Daily Wage</TableHead>
+                  <TableHead>Start Duty</TableHead>
+                  <TableHead>End Duty</TableHead>
+                  <TableHead>Total Duty</TableHead>
+                  <TableHead>Conveyance</TableHead>
+                  <TableHead>Earned Salary</TableHead>
+                  <TableHead>Loan/Advance</TableHead>
+                  <TableHead>Fines</TableHead>
+                  <TableHead>Payable Salary</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -349,6 +427,44 @@ export default function EmployeeList() {
                       <TableCell>{getProjectName(employee.projectId)}</TableCell>
                       <TableCell>{formatDate(employee.joinDate)}</TableCell>
                       <TableCell>{formatCurrency(employee.dailyWage)}</TableCell>
+                      {(() => {
+                        // Calculate duty-related values
+                        const dutyInfo = calculateDutyInfo(employee.id);
+                        
+                        // Conveyance (placeholder value for now)
+                        const conveyance = 0;
+                        
+                        // Calculate earned salary
+                        const earnedSalary = calculateEarnedSalary(
+                          Number(employee.dailyWage), 
+                          dutyInfo.totalDuty, 
+                          conveyance
+                        );
+                        
+                        // Get loan/advance from employee record
+                        const loanAdvance = Number(employee.loanAdvance) || 0;
+                        
+                        // Fines (placeholder value for now)
+                        const fines = 0;
+                        
+                        // Calculate payable salary
+                        const payableSalary = calculatePayableSalary(earnedSalary, loanAdvance, fines);
+                        
+                        return (
+                          <>
+                            <TableCell>{dutyInfo.startDuty}</TableCell>
+                            <TableCell>{dutyInfo.endDuty}</TableCell>
+                            <TableCell>{dutyInfo.totalDuty}</TableCell>
+                            <TableCell>{formatCurrency(conveyance)}</TableCell>
+                            <TableCell>{formatCurrency(earnedSalary)}</TableCell>
+                            <TableCell>{formatCurrency(loanAdvance)}</TableCell>
+                            <TableCell>{formatCurrency(fines)}</TableCell>
+                            <TableCell className="font-medium">
+                              {formatCurrency(payableSalary)}
+                            </TableCell>
+                          </>
+                        );
+                      })()}
                       <TableCell>
                         <Badge className={employee.isActive ? "bg-green-500 hover:bg-green-600" : ""} variant={employee.isActive ? "outline" : "secondary"}>
                           {employee.isActive ? "Active" : "Inactive"}
@@ -384,7 +500,7 @@ export default function EmployeeList() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-6 text-gray-500">
+                    <TableCell colSpan={16} className="text-center py-6 text-gray-500">
                       No employees found
                     </TableCell>
                   </TableRow>
@@ -437,6 +553,51 @@ export default function EmployeeList() {
                         <div className="text-gray-500">Daily Wage</div>
                         <div>{formatCurrency(employee.dailyWage)}</div>
                       </div>
+                      
+                      {(() => {
+                        // Calculate duty-related values
+                        const dutyInfo = calculateDutyInfo(employee.id);
+                        
+                        // Conveyance (placeholder value for now)
+                        const conveyance = 0;
+                        
+                        // Calculate earned salary
+                        const earnedSalary = calculateEarnedSalary(
+                          Number(employee.dailyWage), 
+                          dutyInfo.totalDuty, 
+                          conveyance
+                        );
+                        
+                        // Get loan/advance from employee record
+                        const loanAdvance = Number(employee.loanAdvance) || 0;
+                        
+                        // Fines (placeholder value for now)
+                        const fines = 0;
+                        
+                        // Calculate payable salary
+                        const payableSalary = calculatePayableSalary(earnedSalary, loanAdvance, fines);
+                        
+                        return (
+                          <>
+                            <div>
+                              <div className="text-gray-500">Total Duty</div>
+                              <div>{dutyInfo.totalDuty} days</div>
+                            </div>
+                            <div>
+                              <div className="text-gray-500">Earned Salary</div>
+                              <div>{formatCurrency(earnedSalary)}</div>
+                            </div>
+                            <div>
+                              <div className="text-gray-500">Loan/Advance</div>
+                              <div>{formatCurrency(loanAdvance)}</div>
+                            </div>
+                            <div>
+                              <div className="text-gray-500">Payable Salary</div>
+                              <div className="font-medium">{formatCurrency(payableSalary)}</div>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                     <div className="flex justify-end gap-2 mt-4">
                       <Link href={`/employees/${employee.id}`}>
