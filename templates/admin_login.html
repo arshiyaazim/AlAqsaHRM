@@ -1,49 +1,110 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
-{% block title %}Admin Login - Field Attendance Tracker{% endblock %}
+{% block title %}Admin Login - Al-Aqsa Security{% endblock %}
+
+{% block body_class %}bg-gradient-primary{% endblock %}
+
+{% block head %}
+<style>
+    body.bg-gradient-primary {
+        background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .card-login {
+        border-radius: 10px;
+        border: none;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+    }
+    
+    .card-header-login {
+        background-color: #4e73df;
+        color: white;
+        font-weight: bold;
+        padding: 20px;
+        text-align: center;
+        border-bottom: none;
+    }
+    
+    .form-floating label {
+        color: #6c757d;
+    }
+    
+    .btn-login {
+        padding: 12px;
+        font-weight: bold;
+        letter-spacing: 0.05em;
+    }
+    
+    .login-icon {
+        font-size: 3rem;
+        color: #4e73df;
+    }
+    
+    .navbar {
+        background-color: transparent !important;
+        box-shadow: none;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6 col-lg-4">
-        <!-- Admin Login Card -->
-        <div class="card shadow">
-            <div class="card-header bg-primary text-white">
-                <h2 class="h4 mb-0"><i class="fas fa-lock"></i> Admin Login</h2>
-            </div>
-            
-            <div class="card-body">
-                <form method="POST" action="{{ url_for('admin_login') }}">
-                    {{ form.csrf_token }}
-                    
-                    <div class="mb-3">
-                        <label for="{{ form.username.id }}" class="form-label">{{ form.username.label.text }}</label>
-                        {{ form.username(class="form-control", placeholder="Enter username") }}
+<div class="row justify-content-center mt-5">
+    <div class="col-xl-10 col-lg-12 col-md-9">
+        <div class="card card-login o-hidden border-0 shadow-lg my-5">
+            <div class="card-body p-0">
+                <div class="row">
+                    <div class="col-lg-6 d-none d-lg-block bg-login-image">
+                        <div class="p-5 h-100 d-flex flex-column justify-content-center align-items-center text-center" style="background-color: #f8f9fc;">
+                            <div class="login-icon mb-4">
+                                <i class="bi bi-shield-lock"></i>
+                            </div>
+                            <h4 class="text-gray-900 mb-4">Admin Dashboard Access</h4>
+                            <p class="text-gray-700 mb-4">
+                                Welcome to the Al-Aqsa Security Services Attendance System. 
+                                Login to access the admin dashboard, view attendance records, and manage projects.
+                            </p>
+                            <div class="text-muted small">
+                                <p>Default credentials:</p>
+                                <p>Username: admin<br>Password: admin123</p>
+                            </div>
+                        </div>
                     </div>
-                    
-                    <div class="mb-4">
-                        <label for="{{ form.password.id }}" class="form-label">{{ form.password.label.text }}</label>
-                        {{ form.password(class="form-control", placeholder="Enter password") }}
+                    <div class="col-lg-6">
+                        <div class="p-5">
+                            <div class="text-center">
+                                <h1 class="h4 text-gray-900 mb-4">Admin Login</h1>
+                            </div>
+                            <form class="user" method="POST" action="{{ url_for('admin_login') }}">
+                                <div class="form-floating mb-3">
+                                    <input type="text" class="form-control" id="username" name="username" placeholder="Username" required autofocus>
+                                    <label for="username">Username</label>
+                                </div>
+                                <div class="form-floating mb-4">
+                                    <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+                                    <label for="password">Password</label>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="rememberMe">
+                                    <label class="form-check-label" for="rememberMe">
+                                        Remember Me
+                                    </label>
+                                </div>
+                                <button type="submit" class="btn btn-primary btn-login btn-block w-100">
+                                    Login
+                                </button>
+                            </form>
+                            <hr>
+                            <div class="text-center">
+                                <a class="small" href="{{ url_for('index') }}">Back to Attendance Page</a>
+                            </div>
+                        </div>
                     </div>
-                    
-                    <div class="d-grid">
-                        {{ form.submit(class="btn btn-primary btn-lg") }}
-                    </div>
-                </form>
+                </div>
             </div>
-            
-            <div class="card-footer text-center">
-                <a href="{{ url_for('index') }}" class="text-decoration-none">
-                    <i class="fas fa-arrow-left me-1"></i> Back to Attendance Form
-                </a>
-            </div>
-        </div>
-        
-        <div class="mt-3 text-center">
-            <small class="text-muted">
-                Default admin credentials: <br>
-                Username: admin <br>
-                Password: admin
-            </small>
         </div>
     </div>
 </div>

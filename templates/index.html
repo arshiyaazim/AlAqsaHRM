@@ -1,356 +1,429 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Employee Data Importer</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <style>
-        body {
-            padding-top: 2rem;
-            padding-bottom: 2rem;
-            background-color: #f8f9fa;
-        }
-        .flash-messages {
-            margin-bottom: 20px;
-        }
-        .table-responsive {
-            margin-top: 20px;
-        }
-        .upload-box {
-            border: 2px dashed #ddd;
-            border-radius: 5px;
-            padding: 20px;
-            text-align: center;
-            margin-bottom: 20px;
-            background-color: #fff;
-            transition: all 0.3s ease;
-        }
-        .upload-box:hover {
-            border-color: #198754;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-        .nav-tabs .nav-link.active {
-            font-weight: bold;
-            border-bottom: 3px solid #198754;
-        }
-        .table th {
-            background-color: #f8f9fa;
-        }
-        .badge-success {
-            background-color: #198754;
-            color: white;
-        }
-        .badge-warning {
-            background-color: #ffc107;
-            color: #212529;
-        }
-        .badge-danger {
-            background-color: #dc3545;
-            color: white;
-        }
-        .card {
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-        .card-header {
-            background-color: #fff;
-            border-bottom: 1px solid rgba(0,0,0,0.125);
-        }
-        .text-muted {
-            color: #6c757d !important;
-        }
-        .page-header {
-            border-bottom: 1px solid #dee2e6;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-        }
-        .instructions {
-            background-color: #f8f9fa;
-            border-left: 4px solid #198754;
-            padding: 10px 15px;
-            margin-bottom: 20px;
-        }
-        .required-column {
-            color: #dc3545;
-            font-weight: bold;
-        }
-        .optional-column {
-            color: #6c757d;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="page-header d-flex justify-content-between align-items-center">
-            <h1 class="mb-0">Employee Data Importer</h1>
-            <span class="text-muted">Al-Aqsa Security Services</span>
-        </div>
-        
-        <!-- Flash Messages -->
-        <div class="flash-messages">
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category if category not in ('error', 'message') else ('danger' if category == 'error' else 'info') }} alert-dismissible fade show" role="alert">
-                            <i class="bi {{ 'bi-check-circle-fill' if category == 'success' else ('bi-exclamation-triangle-fill' if category == 'error' else 'bi-info-circle-fill') }} me-2"></i>
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-        </div>
+{% extends "base.html" %}
 
-        <!-- Navigation Tabs -->
-        <ul class="nav nav-tabs" id="myTab" role="tablist">
-            <li class="nav-item" role="presentation">
-                <button class="nav-link active" id="import-tab" data-bs-toggle="tab" data-bs-target="#import" type="button" role="tab" aria-controls="import" aria-selected="true">
-                    <i class="bi bi-upload me-1"></i> Import Data
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="employees-tab" data-bs-toggle="tab" data-bs-target="#employees" type="button" role="tab" aria-controls="employees" aria-selected="false">
-                    <i class="bi bi-people me-1"></i> Employees 
-                    <span class="badge bg-secondary rounded-pill">{{ employees|length }}</span>
-                </button>
-            </li>
-            <li class="nav-item" role="presentation">
-                <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab" aria-controls="history" aria-selected="false">
-                    <i class="bi bi-clock-history me-1"></i> Import History
-                    <span class="badge bg-secondary rounded-pill">{{ history|length }}</span>
-                </button>
-            </li>
-        </ul>
+{% block title %}Al-Aqsa Security - Attendance Tracker{% endblock %}
 
-        <!-- Tab Content -->
-        <div class="tab-content mt-3" id="myTabContent">
-            <!-- Import Tab -->
-            <div class="tab-pane fade show active" id="import" role="tabpanel" aria-labelledby="import-tab">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title">
-                            <i class="bi bi-file-earmark-excel me-2"></i>
-                            Import Employee Data from Excel File
-                        </h5>
+{% block head %}
+<style>
+    .clock-container {
+        text-align: center;
+        padding: 20px 0;
+    }
+    
+    .current-time {
+        font-size: 3rem;
+        font-weight: bold;
+    }
+    
+    .current-date {
+        font-size: 1.2rem;
+        margin-bottom: 10px;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+    }
+    
+    .action-buttons .btn {
+        flex: 1;
+        padding: 15px;
+        font-size: 1.1rem;
+    }
+    
+    .camera-preview {
+        width: 100%;
+        border-radius: 10px;
+        margin-top: 15px;
+        display: none;
+    }
+    
+    .location-info {
+        margin-top: 15px;
+        font-size: 0.9rem;
+    }
+    
+    .card-attendance {
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border: none;
+        overflow: hidden;
+    }
+    
+    .card-header-attendance {
+        background-color: #4e73df;
+        color: white;
+        font-weight: bold;
+        padding: 15px;
+    }
+    
+    .coordinates {
+        color: #666;
+        font-family: monospace;
+        font-size: 0.85rem;
+    }
+    
+    .btn-clock-in {
+        background-color: #1cc88a;
+        border-color: #1cc88a;
+    }
+    
+    .btn-clock-out {
+        background-color: #e74a3b;
+        border-color: #e74a3b;
+    }
+    
+    .status-indicator {
+        height: 15px;
+        width: 15px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    
+    .status-acquiring {
+        background-color: #f6c23e;
+        animation: blink 1s infinite;
+    }
+    
+    .status-success {
+        background-color: #1cc88a;
+    }
+    
+    .status-error {
+        background-color: #e74a3b;
+    }
+    
+    @keyframes blink {
+        0% { opacity: 0.3; }
+        50% { opacity: 1; }
+        100% { opacity: 0.3; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card card-attendance mb-4">
+            <div class="card-header-attendance">
+                <i class="bi bi-clock"></i> Attendance Tracker
+            </div>
+            <div class="card-body">
+                <div class="clock-container">
+                    <div class="current-date" id="currentDate">Loading date...</div>
+                    <div class="current-time" id="currentTime">00:00:00</div>
+                </div>
+                
+                <form id="attendanceForm" action="{{ url_for('submit') }}" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="employee_id" class="form-label">Employee ID</label>
+                        <input type="text" class="form-control form-control-lg" id="employee_id" name="employee_id" required placeholder="Enter your employee ID">
                     </div>
-                    <div class="card-body">
-                        <div class="instructions">
-                            <h6 class="mb-2">Instructions:</h6>
-                            <p class="mb-1">Upload an Excel file (.xlsx, .xls) containing employee data with the following columns:</p>
-                            <ul class="mb-2">
-                                <li><span class="required-column">Column A → "Employee ID"</span> (Required)</li>
-                                <li><span class="optional-column">Column B → "Name"</span> (Optional)</li>
-                                <li><span class="optional-column">Column C → "Daily Wage"</span> (Optional)</li>
-                                <li><span class="optional-column">Column D → "Mobile Number"</span> (Optional)</li>
-                                <li><span class="optional-column">Column E → "NID / Passport Number"</span> (Optional)</li>
-                                <li><span class="optional-column">Column F → "Designation"</span> (Optional)</li>
-                                <li><span class="optional-column">Column H → "Join Date"</span> (Optional)</li>
-                            </ul>
-                            <p class="mb-0"><strong>Note:</strong> Only rows with a non-empty Employee ID (Column A) will be processed. All other columns are optional.</p>
+                    
+                    <div class="mb-3">
+                        <label for="project_id" class="form-label">Project (Optional)</label>
+                        <select class="form-select form-select-lg" id="project_id" name="project_id">
+                            <option value="">-- Select Project --</option>
+                            {% for project in projects %}
+                            <option value="{{ project.id }}">{{ project.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label d-flex justify-content-between">
+                            <span>Location</span>
+                            <span class="location-status">
+                                <span id="locationStatus" class="status-indicator status-acquiring"></span>
+                                <span id="locationStatusText">Acquiring location...</span>
+                            </span>
+                        </label>
+                        <div class="location-info">
+                            <div id="locationInfo">Please allow location access when prompted.</div>
+                            <div class="coordinates" id="coordinatesInfo"></div>
                         </div>
-                        
-                        <form method="POST" action="{{ url_for('upload_file') }}" enctype="multipart/form-data">
-                            <div class="upload-box">
-                                <i class="bi bi-file-earmark-excel display-4 text-success mb-3"></i>
-                                <h5>Drag and drop an Excel file here</h5>
-                                <p class="text-muted">or click to select a file</p>
-                                <div class="mb-3">
-                                    <input type="file" class="form-control" id="file" name="file" accept=".xlsx,.xls">
-                                </div>
-                                <button type="submit" class="btn btn-success">
-                                    <i class="bi bi-upload me-1"></i> Import Data
+                        <input type="hidden" id="latitude" name="latitude">
+                        <input type="hidden" id="longitude" name="longitude">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label d-flex justify-content-between">
+                            <span>Photo (Optional)</span>
+                            <button type="button" class="btn btn-sm btn-outline-primary" id="toggleCameraBtn">
+                                <i class="bi bi-camera"></i> Take Photo
+                            </button>
+                        </label>
+                        <div id="cameraContainer" style="display: none;">
+                            <video id="cameraPreview" class="camera-preview" autoplay playsinline></video>
+                            <canvas id="captureCanvas" style="display: none;"></canvas>
+                            <div class="d-flex justify-content-center mt-2 mb-3">
+                                <button type="button" class="btn btn-primary" id="captureBtn">
+                                    <i class="bi bi-camera"></i> Capture
                                 </button>
                             </div>
-                        </form>
-                        
-                        <div class="alert alert-info" role="alert">
-                            <i class="bi bi-info-circle-fill me-2"></i>
-                            <strong>Tip:</strong> You can also import by placing the file at <code>attached_assets/EmployeeDetails.xlsx</code> and running the script with <code>python employee_importer.py import --file=attached_assets/EmployeeDetails.xlsx</code>
+                        </div>
+                        <div id="photoPreviewContainer" style="display: none;" class="text-center mt-2">
+                            <img id="photoPreview" class="img-fluid img-thumbnail" style="max-height: 200px;">
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-danger" id="retakePhotoBtn">
+                                    <i class="bi bi-arrow-repeat"></i> Retake
+                                </button>
+                            </div>
+                        </div>
+                        <input type="file" id="photoInput" name="photo" accept="image/*" capture="user" style="display: none;">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Action</label>
+                        <div class="btn-group action-buttons" role="group">
+                            <input type="radio" class="btn-check" name="action" id="clockIn" value="Clock In" autocomplete="off" checked>
+                            <label class="btn btn-clock-in" for="clockIn">
+                                <i class="bi bi-box-arrow-in-right"></i> Clock In
+                            </label>
+                            
+                            <input type="radio" class="btn-check" name="action" id="clockOut" value="Clock Out" autocomplete="off">
+                            <label class="btn btn-clock-out" for="clockOut">
+                                <i class="bi bi-box-arrow-right"></i> Clock Out
+                            </label>
                         </div>
                     </div>
-                </div>
-            </div>
-            
-            <!-- Employees Tab -->
-            <div class="tab-pane fade" id="employees" role="tabpanel" aria-labelledby="employees-tab">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0">
-                            <i class="bi bi-people me-2"></i>
-                            Imported Employees
-                        </h5>
-                        <div>
-                            <span class="badge bg-primary">{{ employees|length }} Records</span>
-                        </div>
+                    
+                    <div class="d-grid gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" disabled>
+                            <i class="bi bi-check-circle"></i> Submit Attendance
+                        </button>
                     </div>
-                    <div class="card-body">
-                        {% if employees %}
-                        <div class="mb-3">
-                            <input type="text" class="form-control" id="employeeSearch" placeholder="Search by ID, Name, or any other field...">
-                        </div>
-                        <div class="table-responsive">
-                            <table class="table table-striped table-hover" id="employeeTable">
-                                <thead>
-                                    <tr>
-                                        <th>Employee ID</th>
-                                        <th>Name</th>
-                                        <th>Daily Wage</th>
-                                        <th>Mobile Number</th>
-                                        <th>NID / Passport</th>
-                                        <th>Designation</th>
-                                        <th>Join Date</th>
-                                        <th>Import Date</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for employee in employees %}
-                                    <tr>
-                                        <td>{{ employee.employee_id }}</td>
-                                        <td>{{ employee.name or '-' }}</td>
-                                        <td>{{ employee.daily_wage or '-' }}</td>
-                                        <td>{{ employee.mobile_number or '-' }}</td>
-                                        <td>{{ employee.nid_passport or '-' }}</td>
-                                        <td>{{ employee.designation or '-' }}</td>
-                                        <td>{{ employee.join_date or '-' }}</td>
-                                        <td>{{ employee.import_date }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        {% else %}
-                        <div class="alert alert-info">
-                            <i class="bi bi-info-circle-fill me-2"></i>
-                            No employees have been imported yet. Upload an Excel file to get started.
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-            
-            <!-- History Tab -->
-            <div class="tab-pane fade" id="history" role="tabpanel" aria-labelledby="history-tab">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="bi bi-clock-history me-2"></i>
-                            Import History
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        {% if history %}
-                        <div class="table-responsive">
-                            <table class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Date & Time</th>
-                                        <th>File Name</th>
-                                        <th>Records Imported</th>
-                                        <th>Records Skipped</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for entry in history %}
-                                    <tr>
-                                        <td>{{ entry.import_date }}</td>
-                                        <td>{{ entry.file_name }}</td>
-                                        <td>{{ entry.records_imported }}</td>
-                                        <td>{{ entry.records_skipped }}</td>
-                                        <td>
-                                            {% if entry.has_errors %}
-                                            <span class="badge bg-warning">
-                                                <i class="bi bi-exclamation-triangle me-1"></i>
-                                                Completed with Errors
-                                            </span>
-                                            {% else %}
-                                            <span class="badge bg-success">
-                                                <i class="bi bi-check-circle me-1"></i>
-                                                Success
-                                            </span>
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        {% else %}
-                        <div class="alert alert-info">
-                            <i class="bi bi-info-circle-fill me-2"></i>
-                            No import history found. Upload an Excel file to get started.
-                        </div>
-                        {% endif %}
-                    </div>
-                </div>
+                </form>
             </div>
         </div>
-        
-        <footer class="mt-5 text-center text-muted">
-            <p>Employee Data Importer | &copy; 2025 Al-Aqsa Security Services</p>
-        </footer>
     </div>
+</div>
+{% endblock %}
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Employee search functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            // Auto-dismiss alerts after 5 seconds
-            setTimeout(function() {
-                const alerts = document.querySelectorAll('.alert:not(.alert-info)');
-                alerts.forEach(function(alert) {
-                    const bsAlert = new bootstrap.Alert(alert);
-                    bsAlert.close();
-                });
-            }, 5000);
-            
-            // Employee search functionality
-            const searchInput = document.getElementById('employeeSearch');
-            if (searchInput) {
-                searchInput.addEventListener('keyup', function() {
-                    const searchValue = this.value.toLowerCase();
-                    const table = document.getElementById('employeeTable');
-                    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
-                    
-                    for (let i = 0; i < rows.length; i++) {
-                        let found = false;
-                        const cells = rows[i].getElementsByTagName('td');
-                        
-                        for (let j = 0; j < cells.length; j++) {
-                            const cellText = cells[j].textContent || cells[j].innerText;
-                            
-                            if (cellText.toLowerCase().indexOf(searchValue) > -1) {
-                                found = true;
-                                break;
-                            }
-                        }
-                        
-                        if (found) {
-                            rows[i].style.display = '';
-                        } else {
-                            rows[i].style.display = 'none';
-                        }
-                    }
-                });
-            }
-            
-            // Make file input look better
-            const fileInput = document.getElementById('file');
-            const uploadBox = document.querySelector('.upload-box');
-            
-            if (fileInput && uploadBox) {
-                fileInput.addEventListener('change', function() {
-                    if (this.files.length > 0) {
-                        const fileName = this.files[0].name;
-                        uploadBox.querySelector('h5').textContent = 'Selected file: ' + fileName;
-                    } else {
-                        uploadBox.querySelector('h5').textContent = 'Drag and drop an Excel file here';
-                    }
-                });
-            }
+{% block scripts %}
+<script>
+    // Clock functionality
+    function updateClock() {
+        const now = new Date();
+        
+        // Update time
+        const timeElement = document.getElementById('currentTime');
+        timeElement.textContent = now.toLocaleTimeString('en-US', { 
+            hour12: true,
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
         });
-    </script>
-</body>
-</html>
+        
+        // Update date
+        const dateElement = document.getElementById('currentDate');
+        dateElement.textContent = now.toLocaleDateString('en-US', { 
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+    }
+    
+    // Update clock immediately and then every second
+    updateClock();
+    setInterval(updateClock, 1000);
+    
+    // Location functionality
+    let locationAcquired = false;
+    const locationStatus = document.getElementById('locationStatus');
+    const locationStatusText = document.getElementById('locationStatusText');
+    const locationInfo = document.getElementById('locationInfo');
+    const coordinatesInfo = document.getElementById('coordinatesInfo');
+    const latitudeInput = document.getElementById('latitude');
+    const longitudeInput = document.getElementById('longitude');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    function getLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                // Success callback
+                function(position) {
+                    const latitude = position.coords.latitude;
+                    const longitude = position.coords.longitude;
+                    const accuracy = position.coords.accuracy;
+                    
+                    // Update UI
+                    locationStatus.className = 'status-indicator status-success';
+                    locationStatusText.textContent = 'Location acquired';
+                    locationInfo.innerHTML = `
+                        <strong>Location acquired</strong> with accuracy of ${accuracy.toFixed(1)} meters.
+                    `;
+                    coordinatesInfo.textContent = `Lat: ${latitude.toFixed(6)}, Long: ${longitude.toFixed(6)}`;
+                    
+                    // Update form values
+                    latitudeInput.value = latitude;
+                    longitudeInput.value = longitude;
+                    
+                    // Enable submit button once location is acquired
+                    locationAcquired = true;
+                    submitBtn.disabled = false;
+                },
+                // Error callback
+                function(error) {
+                    locationStatus.className = 'status-indicator status-error';
+                    
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            locationStatusText.textContent = 'Permission denied';
+                            locationInfo.innerHTML = '<strong class="text-danger">Error:</strong> Location permission denied. Please enable location services to clock in/out.';
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            locationStatusText.textContent = 'Position unavailable';
+                            locationInfo.innerHTML = '<strong class="text-danger">Error:</strong> Location information is unavailable.';
+                            break;
+                        case error.TIMEOUT:
+                            locationStatusText.textContent = 'Timeout';
+                            locationInfo.innerHTML = '<strong class="text-danger">Error:</strong> Location request timed out.';
+                            break;
+                        case error.UNKNOWN_ERROR:
+                            locationStatusText.textContent = 'Unknown error';
+                            locationInfo.innerHTML = '<strong class="text-danger">Error:</strong> An unknown error occurred.';
+                            break;
+                    }
+                    
+                    // Allow submission even if location is not available
+                    submitBtn.disabled = false;
+                },
+                // Options
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        } else {
+            locationStatus.className = 'status-indicator status-error';
+            locationStatusText.textContent = 'Not supported';
+            locationInfo.innerHTML = '<strong class="text-danger">Error:</strong> Geolocation is not supported by this browser.';
+            
+            // Allow submission even if geolocation is not supported
+            submitBtn.disabled = false;
+        }
+    }
+    
+    // Initialize location tracking
+    getLocation();
+    
+    // Camera functionality
+    const toggleCameraBtn = document.getElementById('toggleCameraBtn');
+    const cameraContainer = document.getElementById('cameraContainer');
+    const cameraPreview = document.getElementById('cameraPreview');
+    const captureCanvas = document.getElementById('captureCanvas');
+    const captureBtn = document.getElementById('captureBtn');
+    const photoPreviewContainer = document.getElementById('photoPreviewContainer');
+    const photoPreview = document.getElementById('photoPreview');
+    const retakePhotoBtn = document.getElementById('retakePhotoBtn');
+    const photoInput = document.getElementById('photoInput');
+    
+    let stream = null;
+    
+    toggleCameraBtn.addEventListener('click', function() {
+        if (cameraContainer.style.display === 'none') {
+            // Start camera
+            startCamera();
+            cameraContainer.style.display = 'block';
+            photoPreviewContainer.style.display = 'none';
+            toggleCameraBtn.innerHTML = '<i class="bi bi-x-circle"></i> Cancel';
+        } else {
+            // Stop camera
+            stopCamera();
+            cameraContainer.style.display = 'none';
+            toggleCameraBtn.innerHTML = '<i class="bi bi-camera"></i> Take Photo';
+        }
+    });
+    
+    captureBtn.addEventListener('click', function() {
+        // Get the canvas context and draw the current video frame
+        const context = captureCanvas.getContext('2d');
+        
+        // Set canvas dimensions to match video
+        captureCanvas.width = cameraPreview.videoWidth;
+        captureCanvas.height = cameraPreview.videoHeight;
+        
+        // Draw the video frame on the canvas
+        context.drawImage(cameraPreview, 0, 0, captureCanvas.width, captureCanvas.height);
+        
+        // Convert canvas to blob and create a file
+        captureCanvas.toBlob(function(blob) {
+            // Create a File object
+            const capturedImage = new File([blob], "captured-photo.jpg", { type: "image/jpeg" });
+            
+            // Create a FileList-like object
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(capturedImage);
+            
+            // Set the files property of the file input
+            photoInput.files = dataTransfer.files;
+            
+            // Display preview
+            const imageUrl = URL.createObjectURL(blob);
+            photoPreview.src = imageUrl;
+            photoPreviewContainer.style.display = 'block';
+            cameraContainer.style.display = 'none';
+            
+            // Stop camera
+            stopCamera();
+            
+            // Change button text back
+            toggleCameraBtn.innerHTML = '<i class="bi bi-camera"></i> Change Photo';
+        }, 'image/jpeg', 0.9);
+    });
+    
+    retakePhotoBtn.addEventListener('click', function() {
+        photoPreviewContainer.style.display = 'none';
+        startCamera();
+        cameraContainer.style.display = 'block';
+    });
+    
+    function startCamera() {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+                .then(function(mediaStream) {
+                    stream = mediaStream;
+                    cameraPreview.srcObject = mediaStream;
+                    cameraPreview.style.display = 'block';
+                })
+                .catch(function(error) {
+                    console.error("Error accessing the camera: ", error);
+                    alert("Error accessing the camera. Please make sure you've granted camera permissions.");
+                    cameraContainer.style.display = 'none';
+                    toggleCameraBtn.innerHTML = '<i class="bi bi-camera"></i> Take Photo';
+                });
+        } else {
+            alert("Your browser doesn't support camera access.");
+            cameraContainer.style.display = 'none';
+        }
+    }
+    
+    function stopCamera() {
+        if (stream) {
+            stream.getTracks().forEach(track => {
+                track.stop();
+            });
+            stream = null;
+        }
+    }
+    
+    // Form validation
+    const attendanceForm = document.getElementById('attendanceForm');
+    const employeeIdInput = document.getElementById('employee_id');
+    
+    attendanceForm.addEventListener('submit', function(event) {
+        // Basic validation
+        if (!employeeIdInput.value.trim()) {
+            alert('Please enter your Employee ID');
+            event.preventDefault();
+            return false;
+        }
+        
+        // Everything is valid, allow form submission
+        return true;
+    });
+</script>
+{% endblock %}

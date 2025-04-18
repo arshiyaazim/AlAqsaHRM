@@ -1,150 +1,269 @@
-/* Mobile-first responsive CSS */
+/* 
+ * Al-Aqsa Security Services - Attendance System
+ * Main Stylesheet
+ */
 
-/* General styling */
+/* General styles */
+:root {
+    --primary-color: #4e73df;
+    --success-color: #1cc88a;
+    --info-color: #36b9cc;
+    --warning-color: #f6c23e;
+    --danger-color: #e74a3b;
+    --dark-color: #5a5c69;
+    --light-color: #f8f9fc;
+}
+
 body {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    padding-bottom: 60px; /* Space for the footer */
-    position: relative;
+    font-family: 'Nunito', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #f8f9fc;
 }
 
-.footer {
-    position: absolute;
-    bottom: 0;
-    width: 100%;
+/* Form elements */
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.25rem rgba(78, 115, 223, 0.25);
 }
 
-/* Make buttons larger on mobile for easier tapping */
-@media (max-width: 768px) {
-    .btn-lg {
-        padding: 0.75rem 1.5rem;
-        font-size: 1.25rem;
-    }
-    
-    /* Increase form input sizes on mobile */
-    .form-control-lg {
-        height: calc(1.5em + 1rem + 2px);
-        padding: 0.75rem 1rem;
-        font-size: 1.25rem;
-    }
-}
-
-/* Card styling */
+/* Cards */
 .card {
-    border-radius: 10px;
-    overflow: hidden;
+    border: none;
+    border-radius: 0.35rem;
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+    margin-bottom: 1.5rem;
 }
 
 .card-header {
-    border-bottom: none;
-    padding: 1rem 1.5rem;
+    background-color: #f8f9fc;
+    border-bottom: 1px solid #e3e6f0;
+    padding: 0.75rem 1.25rem;
 }
 
-/* Primary color adjustments */
-.bg-primary {
-    background-color: #007bff !important;
-}
-
+/* Buttons */
 .btn-primary {
-    background-color: #007bff;
-    border-color: #007bff;
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
 }
 
-.btn-primary:hover {
-    background-color: #0069d9;
-    border-color: #0062cc;
+.btn-primary:hover, .btn-primary:focus {
+    background-color: #2e59d9;
+    border-color: #2653d4;
 }
 
-/* Success and danger button styling */
 .btn-success {
-    background-color: #28a745;
-    border-color: #28a745;
-}
-
-.btn-success:hover {
-    background-color: #218838;
-    border-color: #1e7e34;
+    background-color: var(--success-color);
+    border-color: var(--success-color);
 }
 
 .btn-danger {
-    background-color: #dc3545;
-    border-color: #dc3545;
+    background-color: var(--danger-color);
+    border-color: var(--danger-color);
 }
 
-.btn-danger:hover {
-    background-color: #c82333;
-    border-color: #bd2130;
+/* Navbar */
+.navbar-dark.bg-primary {
+    background-color: var(--primary-color) !important;
 }
 
-/* Add shadow to form inputs when focused */
-.form-control:focus {
-    box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25);
-    border-color: #80bdff;
+/* Clock in/out specific styles */
+.clock-container {
+    text-align: center;
+    padding: 1.5rem 0;
 }
 
-/* Animation for the clock in/out buttons */
-.btn-success, .btn-danger {
-    transition: all 0.3s ease;
+.current-time {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--dark-color);
 }
 
-.btn-success:active, .btn-danger:active {
-    transform: scale(0.95);
+.current-date {
+    font-size: 1.2rem;
+    color: var(--dark-color);
+    opacity: 0.8;
 }
 
-/* Table adjustments */
-.table {
-    margin-bottom: 0;
-}
-
-.table-responsive {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-/* Badge styling */
-.badge {
-    font-weight: 500;
-    padding: 0.5em 0.75em;
-}
-
-/* Admin dashboard filters */
-@media (max-width: 767.98px) {
-    .col-md-4 {
-        margin-bottom: 1rem;
+/* Mobile optimization */
+@media (max-width: 576px) {
+    .current-time {
+        font-size: 2rem;
+    }
+    
+    .current-date {
+        font-size: 1rem;
+    }
+    
+    h1, .h1 {
+        font-size: 1.75rem;
+    }
+    
+    h2, .h2 {
+        font-size: 1.5rem;
     }
 }
 
-/* Photo preview container */
-#photoPreviewContainer {
-    background-color: #f8f9fa;
-    transition: all 0.3s ease;
+/* Camera preview */
+.camera-preview-container {
+    position: relative;
+    margin: 1rem 0;
 }
 
-/* Prevent text selection for better mobile UX */
-.btn, .nav-link, .navbar-brand {
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -khtml-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
+.camera-preview {
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid #ddd;
 }
 
-/* Status alert styling */
-#locationStatus {
-    transition: all 0.3s ease;
+.camera-controls {
+    margin-top: 0.5rem;
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
 }
 
-/* Better spacing for form elements */
-.form-label {
-    font-weight: 500;
+/* Footer */
+.footer {
+    background-color: #fff;
+    border-top: 1px solid #e3e6f0;
+}
+
+/* Admin Dashboard */
+.admin-container {
+    padding: 1.5rem;
+}
+
+.filter-controls {
+    background-color: var(--light-color);
+    padding: 1rem;
+    border-radius: 0.35rem;
+    margin-bottom: 1.5rem;
+}
+
+.attendance-record {
+    transition: all 0.2s;
+}
+
+.attendance-record:hover {
+    background-color: rgba(78, 115, 223, 0.05);
+}
+
+/* Project styles */
+.project-card {
+    height: 100%;
+    transition: transform 0.2s;
+}
+
+.project-card:hover {
+    transform: translateY(-5px);
+}
+
+.project-header {
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.project-status {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+}
+
+.project-status-active {
+    background-color: var(--success-color);
+}
+
+.project-status-inactive {
+    background-color: var(--danger-color);
+}
+
+/* PWA installation prompt */
+.install-prompt {
+    position: fixed;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1050;
+    background-color: white;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    display: none;
+    width: 90%;
+    max-width: 500px;
+}
+
+.install-prompt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 0.5rem;
 }
 
-/* Make sure the preview doesn't get too large */
-#photoPreview {
-    max-height: 200px;
-    width: auto;
-    object-fit: contain;
+.install-prompt-title {
+    font-weight: 700;
+    margin: 0;
+}
+
+.install-prompt-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    line-height: 1;
+    padding: 0;
+    color: var(--dark-color);
+    cursor: pointer;
+}
+
+.install-prompt-content {
+    margin-bottom: 1rem;
+}
+
+.install-prompt-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+/* Custom scrollbar (WebKit browsers only) */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Offline indicator */
+.offline-indicator {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    background-color: var(--danger-color);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    z-index: 1050;
+    display: none;
+}
+
+.offline-indicator.visible {
+    display: block;
+    animation: fadeInOut 2s ease-in-out infinite;
+}
+
+@keyframes fadeInOut {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 1; }
 }

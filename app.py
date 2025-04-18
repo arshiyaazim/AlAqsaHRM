@@ -1,320 +1,283 @@
+#!/usr/bin/env python3
 import os
+import sqlite3
 import datetime
 import json
+import uuid
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from flask import Flask, render_template, request, redirect, url_for, flash, session, send_from_directory, jsonify
-from flask_sqlalchemy import SQLAlchemy
-from flask_wtf import FlaskForm
-from flask_wtf.file import FileField, FileAllowed
-from wtforms import StringField, PasswordField, SubmitField, SelectField, TextAreaField, DateField, BooleanField
-from wtforms.validators import DataRequired, Length, Optional
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, send_from_directory, abort
 
-# App configuration
+# Initialize Flask app
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-change-in-production')
-# Use SQLite by default
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///attendance.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['UPLOAD_FOLDER'] = 'uploads'
+app.secret_key = 'al-aqsa-security-attendance-123'
+
+# Configure file uploads
+UPLOAD_FOLDER = 'static/uploads'
+ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png'}
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload size
 
+# Database path
+DB_PATH = 'attendance.db'
+
 # Ensure upload directory exists
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Initialize database
-db = SQLAlchemy(app)
-
-# Define models
-class Admin(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(50), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
+# Database Initialization
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
     
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
+    # Create Admin table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS admin (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL
+    )
+    ''')
     
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
+    # Create Project table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS project (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        location TEXT,
+        start_date DATE,
+        end_date DATE,
+        active BOOLEAN DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        custom_fields TEXT
+    )
+    ''')
     
-    def __repr__(self):
-        return f'<Admin {self.username}>'
-
-class Project(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.Text, nullable=True)
-    location = db.Column(db.String(200), nullable=True)
-    start_date = db.Column(db.Date, nullable=True)
-    end_date = db.Column(db.Date, nullable=True)
-    active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    # Create Attendance table
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS attendance (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        employee_id TEXT NOT NULL,
+        project_id INTEGER,
+        action TEXT NOT NULL,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        latitude REAL,
+        longitude REAL,
+        photo_path TEXT,
+        FOREIGN KEY (project_id) REFERENCES project (id)
+    )
+    ''')
     
-    # Custom fields stored as JSON
-    custom_fields = db.Column(db.Text, nullable=True)  # JSON string
+    # Check if admin already exists, if not create default admin
+    cursor.execute("SELECT COUNT(*) FROM admin")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute(
+            "INSERT INTO admin (username, password_hash) VALUES (?, ?)",
+            ("admin", generate_password_hash("admin123"))
+        )
     
-    def __repr__(self):
-        return f'<Project {self.name}>'
-        
-    def get_custom_fields(self):
-        """Return custom fields as a dictionary"""
-        if not self.custom_fields:
-            return {}
-        try:
-            return json.loads(self.custom_fields)
-        except:
-            return {}
-    
-    def set_custom_fields(self, fields_dict):
-        """Set custom fields from a dictionary"""
-        self.custom_fields = json.dumps(fields_dict)
-
-class Attendance(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    employee_id = db.Column(db.String(50), nullable=False)
-    project_id = db.Column(db.Integer, db.ForeignKey('project.id'), nullable=True)
-    action = db.Column(db.String(10), nullable=False)  # 'Clock In' or 'Clock Out'
-    timestamp = db.Column(db.DateTime, default=datetime.datetime.utcnow)
-    latitude = db.Column(db.Float, nullable=True)
-    longitude = db.Column(db.Float, nullable=True)
-    photo_path = db.Column(db.String(255), nullable=True)
-    
-    # Relationship
-    project = db.relationship('Project', backref=db.backref('attendances', lazy=True))
-    
-    def __repr__(self):
-        return f'<Attendance {self.employee_id} {self.action} at {self.timestamp}>'
-
-# Define forms
-class AttendanceForm(FlaskForm):
-    employee_id = StringField('Employee ID', validators=[DataRequired()])
-    project_id = SelectField('Project', validators=[Optional()], coerce=int)
-    action = SelectField('Action', choices=[('Clock In', 'Clock In'), ('Clock Out', 'Clock Out')], validators=[DataRequired()])
-    photo = FileField('Photo (Optional)', validators=[FileAllowed(['jpg', 'jpeg', 'png'], 'Images only!')])
-    submit = SubmitField('Submit')
-
-class AdminLoginForm(FlaskForm):
-    username = StringField('Username', validators=[DataRequired()])
-    password = PasswordField('Password', validators=[DataRequired()])
-    submit = SubmitField('Login')
-    
-class ProjectForm(FlaskForm):
-    name = StringField('Project Name', validators=[DataRequired(), Length(min=2, max=100)])
-    description = TextAreaField('Description', validators=[Optional()])
-    location = StringField('Location', validators=[Optional(), Length(max=200)])
-    start_date = DateField('Start Date', validators=[Optional()], format='%Y-%m-%d')
-    end_date = DateField('End Date', validators=[Optional()], format='%Y-%m-%d')
-    active = BooleanField('Active', default=True)
-    custom_fields = TextAreaField('Custom Fields (JSON)', validators=[Optional()])
-    submit = SubmitField('Save Project')
-    
-class CustomFieldForm(FlaskForm):
-    field_name = StringField('Field Name', validators=[DataRequired(), Length(min=1, max=50)])
-    field_type = SelectField('Field Type', choices=[
-        ('text', 'Text'), 
-        ('number', 'Number'), 
-        ('date', 'Date'),
-        ('boolean', 'Yes/No'),
-        ('select', 'Selection')
-    ], validators=[DataRequired()])
-    field_options = TextAreaField('Options (comma separated, for Selection type)', validators=[Optional()])
-    submit = SubmitField('Add Field')
+    conn.commit()
+    conn.close()
 
 # Helper functions
 def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {'png', 'jpg', 'jpeg'}
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# Decorator for admin routes
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'admin_id' not in session:
-            flash('Please log in to access this page.', 'danger')
+            flash('Please log in first.', 'error')
             return redirect(url_for('admin_login'))
         return f(*args, **kwargs)
     return decorated_function
 
-# Create database if it doesn't exist
-with app.app_context():
-    db.create_all()
-    # Create an admin user if none exists
-    if not Admin.query.first():
-        admin = Admin(username='admin')
-        admin.set_password('admin')  # Change this in production!
-        db.session.add(admin)
-        db.session.commit()
+def get_projects():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM project WHERE active = 1 ORDER BY name")
+    projects = cursor.fetchall()
+    conn.close()
+    return projects
 
-# Pass current date to all templates
-@app.context_processor
 def inject_now():
     return {'now': datetime.datetime.utcnow()}
+
+app.jinja_env.globals.update(now=inject_now)
 
 # Routes
 @app.route('/')
 def index():
     """Main page with clock in/out form"""
-    form = AttendanceForm()
-    
-    # Populate project dropdown with active projects
-    active_projects = Project.query.filter_by(active=True).order_by(Project.name).all()
-    form.project_id.choices = [(0, '-- Select Project --')] + [(p.id, p.name) for p in active_projects]
-    
-    # Get project list for display
-    projects = Project.query.order_by(Project.name).all()
-    
-    return render_template('index.html', form=form, projects=projects)
+    projects = get_projects()
+    return render_template('index.html', projects=projects)
 
 @app.route('/submit', methods=['POST'])
 def submit():
     """Handle attendance form submission"""
-    form = AttendanceForm()
+    employee_id = request.form.get('employee_id')
+    project_id = request.form.get('project_id')
+    action = request.form.get('action')
+    latitude = request.form.get('latitude')
+    longitude = request.form.get('longitude')
     
-    # Populate project dropdown for validation
-    active_projects = Project.query.filter_by(active=True).order_by(Project.name).all()
-    form.project_id.choices = [(0, '-- Select Project --')] + [(p.id, p.name) for p in active_projects]
-    
-    if form.validate_on_submit():
-        employee_id = form.employee_id.data
-        project_id = form.project_id.data if form.project_id.data != 0 else None
-        action = form.action.data
-        latitude = request.form.get('latitude', type=float)
-        longitude = request.form.get('longitude', type=float)
-        
-        # Check for duplicate entries (same employee, same action within 15 minutes)
-        recent_record = Attendance.query.filter_by(
-            employee_id=employee_id, 
-            action=action
-        ).order_by(Attendance.timestamp.desc()).first()
-        
-        if recent_record and (datetime.datetime.utcnow() - recent_record.timestamp).total_seconds() < 900:  # 15 minutes
-            flash(f'You already {action.lower()}ed recently. Please try again later.', 'warning')
-            return redirect(url_for('index'))
-        
-        # Handle photo upload
-        photo_path = None
-        if form.photo.data:
-            photo = form.photo.data
-            if photo and allowed_file(photo.filename):
-                filename = secure_filename(f"{employee_id}_{action.replace(' ', '')}_{datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')}.{photo.filename.rsplit('.', 1)[1].lower()}")
-                photo_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                photo.save(photo_path)
-        
-        # Create new attendance record
-        attendance = Attendance(
-            employee_id=employee_id,
-            project_id=project_id,
-            action=action,
-            latitude=latitude,
-            longitude=longitude,
-            photo_path=photo_path
-        )
-        db.session.add(attendance)
-        db.session.commit()
-        
-        # Get project name for the message
-        project_name = ''
-        if project_id:
-            project = Project.query.get(project_id)
-            if project:
-                project_name = f" at project '{project.name}'"
-        
-        flash(f'Successfully recorded {action}{project_name} for Employee ID: {employee_id}', 'success')
+    # Validate required fields
+    if not employee_id:
+        flash('Employee ID is required', 'error')
         return redirect(url_for('index'))
     
-    # If we get here, there was a form validation error
-    for field, errors in form.errors.items():
-        for error in errors:
-            flash(f"{getattr(form, field).label.text}: {error}", 'danger')
+    if not action or action not in ['Clock In', 'Clock Out']:
+        flash('Valid action is required', 'error')
+        return redirect(url_for('index'))
     
+    # Check for duplicate entries (same employee, same action, within 5 minutes)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    # Get timestamp 5 minutes ago
+    five_min_ago = (datetime.datetime.utcnow() - datetime.timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
+    
+    cursor.execute(
+        "SELECT * FROM attendance WHERE employee_id = ? AND action = ? AND timestamp > ? ORDER BY timestamp DESC LIMIT 1",
+        (employee_id, action, five_min_ago)
+    )
+    recent_attendance = cursor.fetchone()
+    
+    if recent_attendance:
+        flash(f'You have already {action.lower()}ed recently. Please try again later.', 'error')
+        conn.close()
+        return redirect(url_for('index'))
+    
+    # Process photo if uploaded
+    photo_path = None
+    if 'photo' in request.files:
+        photo_file = request.files['photo']
+        if photo_file and photo_file.filename and allowed_file(photo_file.filename):
+            # Generate unique filename with uuid
+            _, ext = os.path.splitext(photo_file.filename)
+            filename = f"{uuid.uuid4().hex}{ext}"
+            photo_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            photo_file.save(photo_path)
+            photo_path = filename  # Store only the filename in the database
+    
+    # Save attendance record
+    cursor.execute(
+        "INSERT INTO attendance (employee_id, project_id, action, latitude, longitude, photo_path) VALUES (?, ?, ?, ?, ?, ?)",
+        (employee_id, project_id if project_id else None, action, latitude, longitude, photo_path)
+    )
+    
+    conn.commit()
+    conn.close()
+    
+    flash(f'Successfully {action.lower()}ed!', 'success')
     return redirect(url_for('index'))
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
     """Admin login page"""
-    # Redirect if already logged in
-    if 'admin_id' in session:
-        return redirect(url_for('admin_dashboard'))
-    
-    form = AdminLoginForm()
-    if form.validate_on_submit():
-        admin = Admin.query.filter_by(username=form.username.data).first()
-        if admin and admin.check_password(form.password.data):
-            session['admin_id'] = admin.id
-            flash('Login successful!', 'success')
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        if not username or not password:
+            flash('Username and password are required', 'error')
+            return redirect(url_for('admin_login'))
+        
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM admin WHERE username = ?", (username,))
+        admin = cursor.fetchone()
+        conn.close()
+        
+        if admin and check_password_hash(admin['password_hash'], password):
+            session['admin_id'] = admin['id']
+            session['admin_username'] = admin['username']
+            flash('Successfully logged in!', 'success')
             return redirect(url_for('admin_dashboard'))
-        else:
-            flash('Invalid username or password', 'danger')
+        
+        flash('Invalid username or password', 'error')
     
-    return render_template('admin_login.html', form=form)
+    return render_template('admin_login.html')
 
 @app.route('/admin/logout')
 def admin_logout():
     """Admin logout"""
     session.pop('admin_id', None)
-    flash('You have been logged out.', 'success')
+    session.pop('admin_username', None)
+    flash('You have been logged out', 'success')
     return redirect(url_for('admin_login'))
 
 @app.route('/admin/dashboard')
 @admin_required
 def admin_dashboard():
     """Admin dashboard to view attendance records"""
-    page = request.args.get('page', 1, type=int)
-    per_page = 10  # Records per page
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
     
-    # Get filters
-    date_filter = request.args.get('date')
-    employee_filter = request.args.get('employee_id')
-    project_filter = request.args.get('project_id', type=int)
+    # Get parameters for filtering
+    date_filter = request.args.get('date', datetime.datetime.now().strftime('%Y-%m-%d'))
+    employee_filter = request.args.get('employee_id', '')
+    project_filter = request.args.get('project_id', '')
     
-    # Base query
-    query = Attendance.query
+    # Build query
+    query = "SELECT a.*, p.name as project_name FROM attendance a LEFT JOIN project p ON a.project_id = p.id WHERE 1=1"
+    params = []
     
-    # Apply filters
     if date_filter:
-        date_obj = datetime.datetime.strptime(date_filter, '%Y-%m-%d').date()
-        next_day = date_obj + datetime.timedelta(days=1)
-        query = query.filter(
-            Attendance.timestamp >= date_obj,
-            Attendance.timestamp < next_day
-        )
+        query += " AND date(a.timestamp) = ?"
+        params.append(date_filter)
     
     if employee_filter:
-        query = query.filter_by(employee_id=employee_filter)
-        
+        query += " AND a.employee_id = ?"
+        params.append(employee_filter)
+    
     if project_filter:
-        query = query.filter_by(project_id=project_filter)
+        query += " AND a.project_id = ?"
+        params.append(project_filter)
     
-    # Get paginated records
-    records = query.order_by(Attendance.timestamp.desc()).paginate(page=page, per_page=per_page)
+    query += " ORDER BY a.timestamp DESC"
     
-    # Get unique employee IDs for filter dropdown
-    employee_ids = db.session.query(Attendance.employee_id).distinct().order_by(Attendance.employee_id).all()
-    employee_ids = [emp[0] for emp in employee_ids]  # Convert from tuples to strings
+    cursor.execute(query, params)
+    attendances = cursor.fetchall()
     
-    # Get projects for filter dropdown
-    projects = Project.query.order_by(Project.name).all()
+    # Get projects for the filter dropdown
+    projects = get_projects()
     
-    return render_template('admin_dashboard.html', 
-                           records=records, 
-                           employee_ids=employee_ids,
-                           projects=projects,
-                           current_filters={
-                               'date': date_filter,
-                               'employee_id': employee_filter,
-                               'project_id': project_filter
-                           })
+    # Get unique employee IDs
+    cursor.execute("SELECT DISTINCT employee_id FROM attendance ORDER BY employee_id")
+    employees = cursor.fetchall()
+    
+    conn.close()
+    
+    return render_template(
+        'admin_dashboard.html', 
+        attendances=attendances, 
+        projects=projects,
+        employees=employees,
+        date_filter=date_filter,
+        employee_filter=employee_filter,
+        project_filter=project_filter
+    )
 
 @app.route('/admin/projects')
 @admin_required
 def admin_projects():
     """Projects management page"""
-    page = request.args.get('page', 1, type=int)
-    per_page = 10  # Projects per page
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
     
-    # Get all projects with pagination
-    projects = Project.query.order_by(Project.created_at.desc()).paginate(page=page, per_page=per_page)
+    cursor.execute("SELECT * FROM project ORDER BY name")
+    projects = cursor.fetchall()
+    
+    conn.close()
     
     return render_template('admin_projects.html', projects=projects)
 
@@ -322,207 +285,302 @@ def admin_projects():
 @admin_required
 def add_project():
     """Add a new project"""
-    form = ProjectForm()
-    
-    if form.validate_on_submit():
-        # Create new project
-        project = Project(
-            name=form.name.data,
-            description=form.description.data,
-            location=form.location.data,
-            start_date=form.start_date.data,
-            end_date=form.end_date.data,
-            active=form.active.data
+    if request.method == 'POST':
+        name = request.form.get('name')
+        description = request.form.get('description', '')
+        location = request.form.get('location', '')
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+        active = 'active' in request.form
+        custom_fields = request.form.get('custom_fields', '{}')
+        
+        # Validate required fields
+        if not name:
+            flash('Project name is required', 'error')
+            return redirect(url_for('add_project'))
+        
+        # Validate JSON format of custom fields if provided
+        if custom_fields.strip():
+            try:
+                json.loads(custom_fields)
+            except json.JSONDecodeError:
+                flash('Custom fields must be valid JSON', 'error')
+                return redirect(url_for('add_project'))
+        
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        
+        cursor.execute(
+            """
+            INSERT INTO project 
+            (name, description, location, start_date, end_date, active, custom_fields) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (name, description, location, start_date, end_date, active, custom_fields)
         )
         
-        # Parse custom fields if provided
-        if form.custom_fields.data:
-            try:
-                custom_fields = json.loads(form.custom_fields.data)
-                project.set_custom_fields(custom_fields)
-            except json.JSONDecodeError:
-                flash('Invalid JSON format for custom fields', 'danger')
-                return render_template('project_form.html', form=form, title='Add Project')
+        conn.commit()
+        conn.close()
         
-        db.session.add(project)
-        db.session.commit()
-        
-        flash(f'Project "{project.name}" added successfully!', 'success')
+        flash('Project added successfully!', 'success')
         return redirect(url_for('admin_projects'))
     
-    return render_template('project_form.html', form=form, title='Add Project')
+    return render_template('project_form.html', project=None)
 
 @app.route('/admin/projects/<int:project_id>/edit', methods=['GET', 'POST'])
 @admin_required
 def edit_project(project_id):
     """Edit an existing project"""
-    project = Project.query.get_or_404(project_id)
-    form = ProjectForm(obj=project)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
     
-    if request.method == 'GET':
-        # For GET requests, populate the custom fields from the database
-        form.custom_fields.data = json.dumps(project.get_custom_fields(), indent=2)
+    cursor.execute("SELECT * FROM project WHERE id = ?", (project_id,))
+    project = cursor.fetchone()
     
-    if form.validate_on_submit():
-        # Update project details
-        project.name = form.name.data
-        project.description = form.description.data
-        project.location = form.location.data
-        project.start_date = form.start_date.data
-        project.end_date = form.end_date.data
-        project.active = form.active.data
-        
-        # Parse custom fields if provided
-        if form.custom_fields.data:
-            try:
-                custom_fields = json.loads(form.custom_fields.data)
-                project.set_custom_fields(custom_fields)
-            except json.JSONDecodeError:
-                flash('Invalid JSON format for custom fields', 'danger')
-                return render_template('project_form.html', form=form, project=project, title='Edit Project')
-        else:
-            project.custom_fields = None
-        
-        db.session.commit()
-        
-        flash(f'Project "{project.name}" updated successfully!', 'success')
+    if not project:
+        conn.close()
+        flash('Project not found', 'error')
         return redirect(url_for('admin_projects'))
     
-    return render_template('project_form.html', form=form, project=project, title='Edit Project')
+    if request.method == 'POST':
+        name = request.form.get('name')
+        description = request.form.get('description', '')
+        location = request.form.get('location', '')
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+        active = 'active' in request.form
+        custom_fields = request.form.get('custom_fields', '{}')
+        
+        # Validate required fields
+        if not name:
+            flash('Project name is required', 'error')
+            return redirect(url_for('edit_project', project_id=project_id))
+        
+        # Validate JSON format of custom fields if provided
+        if custom_fields.strip():
+            try:
+                json.loads(custom_fields)
+            except json.JSONDecodeError:
+                flash('Custom fields must be valid JSON', 'error')
+                return redirect(url_for('edit_project', project_id=project_id))
+        
+        cursor.execute(
+            """
+            UPDATE project 
+            SET name = ?, description = ?, location = ?, start_date = ?, end_date = ?, 
+                active = ?, custom_fields = ?, updated_at = CURRENT_TIMESTAMP 
+            WHERE id = ?
+            """,
+            (name, description, location, start_date, end_date, active, custom_fields, project_id)
+        )
+        
+        conn.commit()
+        conn.close()
+        
+        flash('Project updated successfully!', 'success')
+        return redirect(url_for('admin_projects'))
+    
+    conn.close()
+    return render_template('project_form.html', project=project)
 
 @app.route('/admin/projects/<int:project_id>/delete', methods=['POST'])
 @admin_required
 def delete_project(project_id):
     """Delete a project"""
-    project = Project.query.get_or_404(project_id)
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
     
-    # Check if any attendance records reference this project
-    attendance_count = Attendance.query.filter_by(project_id=project.id).count()
-    if attendance_count > 0:
-        flash(f'Cannot delete project "{project.name}" because it has {attendance_count} attendance records.', 'danger')
+    # Check if the project exists
+    cursor.execute("SELECT id FROM project WHERE id = ?", (project_id,))
+    project = cursor.fetchone()
+    
+    if not project:
+        conn.close()
+        flash('Project not found', 'error')
         return redirect(url_for('admin_projects'))
     
-    project_name = project.name
-    db.session.delete(project)
-    db.session.commit()
+    # Check if the project is used in attendance records
+    cursor.execute("SELECT COUNT(*) FROM attendance WHERE project_id = ?", (project_id,))
+    if cursor.fetchone()[0] > 0:
+        # Project is in use, so just mark as inactive instead of deleting
+        cursor.execute(
+            "UPDATE project SET active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (project_id,)
+        )
+        conn.commit()
+        conn.close()
+        flash('Project marked as inactive because it has attendance records', 'warning')
+    else:
+        # Project not in use, safe to delete
+        cursor.execute("DELETE FROM project WHERE id = ?", (project_id,))
+        conn.commit()
+        conn.close()
+        flash('Project deleted successfully!', 'success')
     
-    flash(f'Project "{project_name}" deleted successfully!', 'success')
     return redirect(url_for('admin_projects'))
 
 @app.route('/admin/projects/<int:project_id>/fields', methods=['GET', 'POST'])
 @admin_required
 def manage_custom_fields(project_id):
     """Manage custom fields for a project"""
-    project = Project.query.get_or_404(project_id)
-    form = CustomFieldForm()
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
     
-    if form.validate_on_submit():
-        field_name = form.field_name.data
-        field_type = form.field_type.data
+    cursor.execute("SELECT * FROM project WHERE id = ?", (project_id,))
+    project = cursor.fetchone()
+    
+    if not project:
+        conn.close()
+        flash('Project not found', 'error')
+        return redirect(url_for('admin_projects'))
+    
+    if request.method == 'POST':
+        field_name = request.form.get('field_name')
+        field_type = request.form.get('field_type')
+        field_options = request.form.get('field_options', '')
+        
+        if not field_name or not field_type:
+            flash('Field name and type are required', 'error')
+            return redirect(url_for('manage_custom_fields', project_id=project_id))
         
         # Get current custom fields
-        custom_fields = project.get_custom_fields()
+        custom_fields = json.loads(project['custom_fields'] or '{}')
         
-        # Create field definition
-        field_def = {
-            'type': field_type
+        # Add new field
+        custom_fields[field_name] = {
+            'type': field_type,
+            'options': field_options.split(',') if field_type == 'select' and field_options else None
         }
         
-        # Add options for select type
-        if field_type == 'select' and form.field_options.data:
-            options = [option.strip() for option in form.field_options.data.split(',') if option.strip()]
-            field_def['options'] = options
+        # Update project with new fields
+        cursor.execute(
+            "UPDATE project SET custom_fields = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (json.dumps(custom_fields), project_id)
+        )
         
-        # Add the new field
-        custom_fields[field_name] = field_def
+        conn.commit()
+        conn.close()
         
-        # Save back to the project
-        project.set_custom_fields(custom_fields)
-        db.session.commit()
-        
-        flash(f'Field "{field_name}" added to project "{project.name}"', 'success')
-        return redirect(url_for('manage_custom_fields', project_id=project.id))
+        flash('Custom field added successfully!', 'success')
+        return redirect(url_for('manage_custom_fields', project_id=project_id))
     
-    # Get current fields for display
-    current_fields = project.get_custom_fields()
+    # Get current custom fields
+    custom_fields = json.loads(project['custom_fields'] or '{}')
     
-    return render_template('project_fields.html', 
-                          project=project, 
-                          form=form, 
-                          current_fields=current_fields)
+    conn.close()
+    return render_template('project_fields.html', project=project, custom_fields=custom_fields)
 
 @app.route('/admin/projects/<int:project_id>/fields/<field_name>/delete', methods=['POST'])
 @admin_required
 def delete_custom_field(project_id, field_name):
     """Delete a custom field from a project"""
-    project = Project.query.get_or_404(project_id)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT * FROM project WHERE id = ?", (project_id,))
+    project = cursor.fetchone()
+    
+    if not project:
+        conn.close()
+        flash('Project not found', 'error')
+        return redirect(url_for('admin_projects'))
     
     # Get current custom fields
-    custom_fields = project.get_custom_fields()
+    custom_fields = json.loads(project['custom_fields'] or '{}')
     
+    # Remove field if it exists
     if field_name in custom_fields:
-        # Remove the field
         del custom_fields[field_name]
         
-        # Save back to the project
-        project.set_custom_fields(custom_fields)
-        db.session.commit()
+        # Update project with new fields
+        cursor.execute(
+            "UPDATE project SET custom_fields = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            (json.dumps(custom_fields), project_id)
+        )
         
-        flash(f'Field "{field_name}" removed from project "{project.name}"', 'success')
+        conn.commit()
+        flash('Custom field deleted successfully!', 'success')
     else:
-        flash(f'Field "{field_name}" not found', 'danger')
+        flash('Custom field not found', 'error')
     
-    return redirect(url_for('manage_custom_fields', project_id=project.id))
+    conn.close()
+    return redirect(url_for('manage_custom_fields', project_id=project_id))
 
 @app.route('/uploads/<filename>')
-@admin_required
 def uploaded_file(filename):
     """Serve uploaded files"""
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-# API Endpoints for mobile app
+# API Endpoints
 @app.route('/api/submit', methods=['POST'])
 def api_submit():
     """API endpoint for submitting attendance records"""
-    # Get data from request
-    data = request.get_json()
-    if not data:
-        return jsonify({"success": False, "message": "No data provided"}), 400
-    
-    employee_id = data.get('employee_id')
-    action = data.get('action')
-    latitude = data.get('latitude')
-    longitude = data.get('longitude')
-    
-    if not employee_id or not action:
-        return jsonify({"success": False, "message": "Missing required fields"}), 400
-    
-    # Check for duplicate entries
-    recent_record = Attendance.query.filter_by(
-        employee_id=employee_id, 
-        action=action
-    ).order_by(Attendance.timestamp.desc()).first()
-    
-    if recent_record and (datetime.datetime.utcnow() - recent_record.timestamp).total_seconds() < 900:  # 15 minutes
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        if not data or 'employee_id' not in data or 'action' not in data:
+            return jsonify({'success': False, 'message': 'Employee ID and action are required'}), 400
+        
+        employee_id = data['employee_id']
+        action = data['action']
+        project_id = data.get('project_id')
+        latitude = data.get('latitude')
+        longitude = data.get('longitude')
+        
+        if action not in ['Clock In', 'Clock Out']:
+            return jsonify({'success': False, 'message': 'Action must be either "Clock In" or "Clock Out"'}), 400
+        
+        # Check for duplicate entries (same employee, same action, within 5 minutes)
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+        
+        # Get timestamp 5 minutes ago
+        five_min_ago = (datetime.datetime.utcnow() - datetime.timedelta(minutes=5)).strftime("%Y-%m-%d %H:%M:%S")
+        
+        cursor.execute(
+            "SELECT * FROM attendance WHERE employee_id = ? AND action = ? AND timestamp > ? ORDER BY timestamp DESC LIMIT 1",
+            (employee_id, action, five_min_ago)
+        )
+        recent_attendance = cursor.fetchone()
+        
+        if recent_attendance:
+            conn.close()
+            return jsonify({
+                'success': False, 
+                'message': f'You have already {action.lower()}ed recently. Please try again later.'
+            }), 429
+        
+        # Save attendance record
+        cursor.execute(
+            "INSERT INTO attendance (employee_id, project_id, action, latitude, longitude) VALUES (?, ?, ?, ?, ?)",
+            (employee_id, project_id, action, latitude, longitude)
+        )
+        
+        conn.commit()
+        
+        # Get the inserted record
+        cursor.execute(
+            "SELECT a.*, p.name as project_name FROM attendance a LEFT JOIN project p ON a.project_id = p.id WHERE a.id = last_insert_rowid()"
+        )
+        attendance = dict(cursor.fetchone())
+        
+        conn.close()
+        
         return jsonify({
-            "success": False, 
-            "message": f"You already {action.lower()}ed recently. Please try again later."
-        }), 429
-    
-    # Create new attendance record
-    attendance = Attendance(
-        employee_id=employee_id,
-        action=action,
-        latitude=latitude,
-        longitude=longitude
-    )
-    db.session.add(attendance)
-    db.session.commit()
-    
-    return jsonify({
-        "success": True, 
-        "message": f"Successfully recorded {action} for Employee ID: {employee_id}"
-    })
+            'success': True,
+            'message': f'Successfully {action.lower()}ed!',
+            'attendance': attendance
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
 
+# Initialize the database and run the app if executed directly
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080, debug=True)
+    init_db()
+    app.run(host='0.0.0.0', port=5001, debug=True)

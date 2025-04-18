@@ -1,177 +1,242 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
-{% block title %}Manage Fields - {{ project.name }}{% endblock %}
+{% block title %}Custom Fields - {{ project.name }} - Al-Aqsa Security{% endblock %}
+
+{% block head %}
+<style>
+    .card-fields {
+        border-radius: 8px;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        margin-bottom: 24px;
+    }
+    
+    .card-header-fields {
+        background-color: #f8f9fc;
+        border-bottom: 1px solid #e3e6f0;
+        padding: 1rem 1.25rem;
+        font-weight: bold;
+        color: #4e73df;
+    }
+    
+    .badge-field-type {
+        text-transform: uppercase;
+        font-size: 0.65rem;
+        padding: 0.25em 0.5em;
+        font-weight: 600;
+    }
+    
+    .badge-text {
+        background-color: #4e73df;
+    }
+    
+    .badge-number {
+        background-color: #1cc88a;
+    }
+    
+    .badge-date {
+        background-color: #f6c23e;
+    }
+    
+    .badge-boolean {
+        background-color: #36b9cc;
+    }
+    
+    .badge-select {
+        background-color: #e74a3b;
+    }
+    
+    .field-options {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+    
+    .drag-handle {
+        cursor: move;
+        color: #adb5bd;
+    }
+    
+    .field-item {
+        transition: all 0.2s;
+    }
+    
+    .field-item:hover {
+        background-color: #f8f9fc;
+    }
+    
+    .field-name {
+        font-weight: 500;
+    }
+    
+    .field-options-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+    
+    .field-option {
+        background-color: #e9ecef;
+        border-radius: 4px;
+        padding: 2px 6px;
+        font-size: 0.8rem;
+    }
+</style>
+{% endblock %}
+
+{% block header_content %}
+<ul class="navbar-nav me-auto">
+    <li class="nav-item">
+        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+            <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="{{ url_for('admin_projects') }}">
+            <i class="bi bi-clipboard-check"></i> Projects
+        </a>
+    </li>
+</ul>
+{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="row">
-        <div class="col-md-10 mx-auto">
-            <div class="d-flex justify-content-between align-items-center">
-                <h1>Custom Fields: {{ project.name }}</h1>
-                <a href="{{ url_for('admin_projects') }}" class="btn btn-outline-secondary">Back to Projects</a>
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">
+        <a href="{{ url_for('edit_project', project_id=project.id) }}" class="text-decoration-none">{{ project.name }}</a> - Custom Fields
+    </h1>
+    <a href="{{ url_for('admin_projects') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Projects
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card card-fields">
+            <div class="card-header-fields d-flex justify-content-between align-items-center">
+                <span>
+                    <i class="bi bi-list-check"></i> Current Custom Fields
+                </span>
+                {% if custom_fields %}
+                <span class="badge bg-primary">{{ custom_fields.keys()|list|length }} Fields</span>
+                {% endif %}
             </div>
-            
-            <div class="row mt-4">
-                <div class="col-md-5">
-                    <div class="card">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="card-title mb-0">Add New Field</h5>
-                        </div>
-                        <div class="card-body">
-                            <form method="POST">
-                                {{ form.hidden_tag() }}
-                                
-                                <div class="form-group">
-                                    {{ form.field_name.label }}
-                                    {{ form.field_name(class="form-control", placeholder="Enter field name") }}
-                                    {% if form.field_name.errors %}
-                                    <div class="text-danger">
-                                        {% for error in form.field_name.errors %}
-                                        <small>{{ error }}</small>
-                                        {% endfor %}
-                                    </div>
-                                    {% endif %}
+            <div class="card-body">
+                {% if custom_fields and custom_fields.keys()|list|length > 0 %}
+                <div class="list-group" id="fieldsContainer">
+                    {% for field_name, field_info in custom_fields.items() %}
+                    <div class="list-group-item field-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="drag-handle me-2"><i class="bi bi-grip-vertical"></i></span>
+                            <span class="field-name">{{ field_name }}</span>
+                            <span class="badge badge-field-type badge-{{ field_info.type }}">{{ field_info.type }}</span>
+                            
+                            {% if field_info.type == 'select' and field_info.options %}
+                            <div class="field-options mt-1">
+                                <small>Options:</small>
+                                <div class="field-options-list">
+                                    {% for option in field_info.options %}
+                                    <span class="field-option">{{ option }}</span>
+                                    {% endfor %}
                                 </div>
-                                
-                                <div class="form-group">
-                                    {{ form.field_type.label }}
-                                    {{ form.field_type(class="form-control") }}
-                                    {% if form.field_type.errors %}
-                                    <div class="text-danger">
-                                        {% for error in form.field_type.errors %}
-                                        <small>{{ error }}</small>
-                                        {% endfor %}
-                                    </div>
-                                    {% endif %}
-                                </div>
-                                
-                                <div class="form-group" id="options-group" style="display: none;">
-                                    {{ form.field_options.label }}
-                                    <small class="form-text text-muted">Enter comma-separated options for the selection field.</small>
-                                    {{ form.field_options(class="form-control", rows=3, placeholder="Option 1, Option 2, Option 3") }}
-                                    {% if form.field_options.errors %}
-                                    <div class="text-danger">
-                                        {% for error in form.field_options.errors %}
-                                        <small>{{ error }}</small>
-                                        {% endfor %}
-                                    </div>
-                                    {% endif %}
-                                </div>
-                                
-                                <div class="form-group mt-3">
-                                    {{ form.submit(class="btn btn-primary") }}
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-md-7">
-                    <div class="card">
-                        <div class="card-header bg-info text-white">
-                            <h5 class="card-title mb-0">Existing Fields</h5>
-                        </div>
-                        <div class="card-body">
-                            {% if current_fields %}
-                            <div class="table-responsive">
-                                <table class="table table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>Field Name</th>
-                                            <th>Type</th>
-                                            <th>Options</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for field_name, field_def in current_fields.items() %}
-                                        <tr>
-                                            <td>{{ field_name }}</td>
-                                            <td>
-                                                <span class="badge badge-primary">
-                                                    {{ field_def.type | capitalize }}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                {% if field_def.type == 'select' and field_def.options %}
-                                                <small>{{ field_def.options | join(', ') }}</small>
-                                                {% else %}
-                                                <small class="text-muted">-</small>
-                                                {% endif %}
-                                            </td>
-                                            <td>
-                                                <button type="button" class="btn btn-sm btn-outline-danger" 
-                                                        data-toggle="modal" 
-                                                        data-target="#deleteFieldModal{{ loop.index }}">
-                                                    Delete
-                                                </button>
-                                                
-                                                <!-- Delete Modal -->
-                                                <div class="modal fade" id="deleteFieldModal{{ loop.index }}" tabindex="-1" role="dialog" 
-                                                     aria-labelledby="deleteFieldModalLabel{{ loop.index }}" aria-hidden="true">
-                                                    <div class="modal-dialog" role="document">
-                                                        <div class="modal-content">
-                                                            <div class="modal-header">
-                                                                <h5 class="modal-title" id="deleteFieldModalLabel{{ loop.index }}">Confirm Field Deletion</h5>
-                                                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                                    <span aria-hidden="true">&times;</span>
-                                                                </button>
-                                                            </div>
-                                                            <div class="modal-body">
-                                                                Are you sure you want to delete the field "{{ field_name }}"?
-                                                                <div class="alert alert-warning mt-2">
-                                                                    <strong>Warning:</strong> This action cannot be undone, and any existing data will be lost.
-                                                                </div>
-                                                            </div>
-                                                            <div class="modal-footer">
-                                                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                                                                <form action="{{ url_for('delete_custom_field', project_id=project.id, field_name=field_name) }}" 
-                                                                      method="POST" style="display: inline;">
-                                                                    <button type="submit" class="btn btn-danger">Delete</button>
-                                                                </form>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                            {% else %}
-                            <div class="alert alert-info">
-                                <p class="mb-0">No custom fields defined for this project yet. Add your first field using the form.</p>
                             </div>
                             {% endif %}
                         </div>
+                        <div>
+                            <form action="{{ url_for('delete_custom_field', project_id=project.id, field_name=field_name) }}" method="post" class="d-inline-block">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to delete this field?')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    No custom fields defined yet. Use the form below to add your first field.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="card card-fields">
+            <div class="card-header-fields">
+                <i class="bi bi-plus-circle"></i> Add Custom Field
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ url_for('manage_custom_fields', project_id=project.id) }}">
+                    <div class="mb-3">
+                        <label for="field_name" class="form-label">Field Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="field_name" name="field_name" required>
+                        <div class="form-text">Examples: Client Name, Vessel, Budget Code, etc.</div>
                     </div>
                     
-                    <div class="card mt-3">
-                        <div class="card-header bg-secondary text-white">
-                            <h5 class="card-title mb-0">Field Types Explanation</h5>
-                        </div>
-                        <div class="card-body">
-                            <ul class="list-group list-group-flush">
-                                <li class="list-group-item">
-                                    <strong>Text</strong>: For free text entry (names, descriptions, etc.)
-                                </li>
-                                <li class="list-group-item">
-                                    <strong>Number</strong>: For numerical values (quantities, measurements, etc.)
-                                </li>
-                                <li class="list-group-item">
-                                    <strong>Date</strong>: For date values
-                                </li>
-                                <li class="list-group-item">
-                                    <strong>Yes/No</strong>: For boolean values (checkboxes)
-                                </li>
-                                <li class="list-group-item">
-                                    <strong>Selection</strong>: For dropdown selection from predefined options
-                                </li>
-                            </ul>
-                        </div>
+                    <div class="mb-3">
+                        <label for="field_type" class="form-label">Field Type <span class="text-danger">*</span></label>
+                        <select class="form-select" id="field_type" name="field_type" required>
+                            <option value="text">Text</option>
+                            <option value="number">Number</option>
+                            <option value="date">Date</option>
+                            <option value="boolean">Yes/No</option>
+                            <option value="select">Selection (Dropdown)</option>
+                        </select>
                     </div>
+                    
+                    <div class="mb-3" id="optionsContainer" style="display: none;">
+                        <label for="field_options" class="form-label">Options <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="field_options" name="field_options" rows="3" placeholder="Option 1, Option 2, Option 3"></textarea>
+                        <div class="form-text">Enter comma-separated list of options for the dropdown</div>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> Add Field
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card card-fields">
+            <div class="card-header-fields">
+                <i class="bi bi-info-circle"></i> About Custom Fields
+            </div>
+            <div class="card-body">
+                <h5>What are Custom Fields?</h5>
+                <p>Custom fields allow you to add additional information to projects that is specific to your business needs.</p>
+                
+                <h5>Field Types</h5>
+                <ul>
+                    <li><span class="badge badge-field-type badge-text">text</span> - For text input like names, descriptions</li>
+                    <li><span class="badge badge-field-type badge-number">number</span> - For numerical values like budget</li>
+                    <li><span class="badge badge-field-type badge-date">date</span> - For dates like milestone deadlines</li>
+                    <li><span class="badge badge-field-type badge-boolean">boolean</span> - For yes/no questions</li>
+                    <li><span class="badge badge-field-type badge-select">select</span> - For dropdown selection from predefined options</li>
+                </ul>
+                
+                <h5>Usage</h5>
+                <p>Custom fields defined here can be used in:</p>
+                <ul>
+                    <li>Project details view</li>
+                    <li>Reports and dashboards</li>
+                    <li>Attendance records analysis</li>
+                </ul>
+                
+                <div class="alert alert-warning mt-3">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Note:</strong> Deleting a custom field will remove that data from all attendance records that used this field.
                 </div>
+            </div>
+        </div>
+        
+        <div class="card card-fields">
+            <div class="card-header-fields">
+                <i class="bi bi-code-square"></i> Advanced JSON View
+            </div>
+            <div class="card-body">
+                <p class="text-muted">This is the raw JSON representation of the custom fields:</p>
+                <pre class="bg-light p-3 rounded"><code id="jsonView">{{ custom_fields|tojson(indent=2) }}</code></pre>
             </div>
         </div>
     </div>
@@ -180,31 +245,28 @@
 
 {% block scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Set the active tab
-        try {
-            document.querySelector('#projects-nav').classList.add('active');
-        } catch (e) {
-            console.log('Navigation element not found');
+    // Show/hide options textarea based on field type selection
+    document.getElementById('field_type').addEventListener('change', function() {
+        const optionsContainer = document.getElementById('optionsContainer');
+        if (this.value === 'select') {
+            optionsContainer.style.display = 'block';
+            document.getElementById('field_options').setAttribute('required', 'required');
+        } else {
+            optionsContainer.style.display = 'none';
+            document.getElementById('field_options').removeAttribute('required');
         }
+    });
+    
+    // Form validation
+    document.querySelector('form').addEventListener('submit', function(event) {
+        const fieldType = document.getElementById('field_type').value;
+        const fieldOptions = document.getElementById('field_options');
         
-        // Show/hide options field based on field type selection
-        const fieldTypeSelect = document.getElementById('field_type');
-        const optionsGroup = document.getElementById('options-group');
-        
-        function updateOptionsVisibility() {
-            if (fieldTypeSelect.value === 'select') {
-                optionsGroup.style.display = 'block';
-            } else {
-                optionsGroup.style.display = 'none';
-            }
+        if (fieldType === 'select' && !fieldOptions.value.trim()) {
+            event.preventDefault();
+            alert('Please provide at least one option for the selection field.');
+            fieldOptions.focus();
         }
-        
-        // Initial update
-        updateOptionsVisibility();
-        
-        // Add listener for changes
-        fieldTypeSelect.addEventListener('change', updateOptionsVisibility);
     });
 </script>
 {% endblock %}
