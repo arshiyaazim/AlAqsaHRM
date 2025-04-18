@@ -206,7 +206,7 @@ export default function EditIncome() {
                       <FormLabel>Received From</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Enter source of income"
+                          placeholder="Enter source of cash received"
                           {...field}
                         />
                       </FormControl>
@@ -229,7 +229,7 @@ export default function EditIncome() {
                         />
                       </FormControl>
                       <FormDescription>
-                        Income amount
+                        Cash Receive amount
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

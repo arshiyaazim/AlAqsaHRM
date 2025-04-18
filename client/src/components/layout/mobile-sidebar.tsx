@@ -21,7 +21,7 @@ const navigationItems = [
   { name: "Attendance", href: "/attendance", icon: Calendar },
   { name: "Projects", href: "/projects", icon: FolderKanban },
   { name: "Daily Expenditure", href: "/expenditures", icon: ArrowUpCircle },
-  { name: "Daily Income", href: "/incomes", icon: ArrowDownCircle },
+  { name: "Cash Receive", href: "/incomes", icon: ArrowDownCircle },
   { name: "Payroll", href: "/payroll", icon: DollarSign },
   { name: "Reports", href: "/reports", icon: FileText },
   { name: "Settings", href: "/settings", icon: Settings },

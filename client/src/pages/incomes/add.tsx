@@ -168,7 +168,7 @@ export default function AddIncome() {
                       <FormLabel>Received From</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Enter source of income"
+                          placeholder="Enter source of cash received"
                           {...field}
                         />
                       </FormControl>
