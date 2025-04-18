@@ -28,11 +28,33 @@ export async function readEmployeeExcel(filePath: string): Promise<ImportResult>
 
     // Read the file
     const workbook = read(fs.readFileSync(filePath));
+    
+    console.log('Excel workbook loaded with sheets:', workbook.SheetNames);
+    
+    if (workbook.SheetNames.length === 0) {
+      return {
+        success: false,
+        message: 'No sheets found in Excel file',
+        errors: ['No sheets found in Excel file']
+      };
+    }
+    
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
     
-    // Convert to JSON
-    const rawData = utils.sheet_to_json(worksheet);
+    console.log('Using sheet:', sheetName);
+    console.log('Worksheet structure:', Object.keys(worksheet).filter(k => !k.startsWith('!')));
+    
+    // Convert to JSON with header: 1 option to get raw rows with column values
+    const rawData = utils.sheet_to_json(worksheet, { header: 1 }); 
+    
+    console.log('Raw data rows:', rawData.length);
+    if (rawData.length > 0) {
+      console.log('First row sample:', JSON.stringify(rawData[0]));
+      if (rawData.length > 1) {
+        console.log('Second row sample:', JSON.stringify(rawData[1]));
+      }
+    }
     
     if (!rawData || rawData.length === 0) {
       return {
