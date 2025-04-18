@@ -1,1267 +1,1179 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { useParams, useLocation, Link } from "wouter";
-import { z } from "zod";
+import { useParams, useLocation } from "wouter";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, useFieldArray } from "react-hook-form";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { z } from "zod";
+import { ChevronLeft, Plus, Trash2, Eye, Save, LayoutGrid, GripVertical, Check, X } from "lucide-react";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { ColorPicker } from "@/components/ui/color-picker";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, Trash2, MoveUp, MoveDown, Save, Copy } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
-// Define the form schema
-const templateFormSchema = z.object({
-  id: z.string().optional(),
-  name: z.string().min(3, { message: "Name must be at least 3 characters" }),
-  description: z.string().min(5, { message: "Description must be at least 5 characters" }),
-  type: z.enum(["attendance", "payroll", "employee", "project", "expenditure", "income", "custom"]),
-  config: z.object({
-    title: z.string().min(1, { message: "Title is required" }),
-    subtitle: z.string().optional(),
-    columns: z.array(z.object({
-      key: z.string().min(1, { message: "Field key is required" }),
-      title: z.string().min(1, { message: "Column title is required" }),
-      width: z.coerce.number().optional(),
-      format: z.enum(["text", "date", "currency", "number", "percentage"]).optional(),
-      visible: z.boolean().optional(),
-      align: z.enum(["left", "center", "right"]).optional(),
-      computeTotal: z.boolean().optional(),
-    })).min(1, { message: "At least one column is required" }),
-    groupBy: z.string().optional(),
-    sortBy: z.string().optional(),
-    sortDirection: z.enum(["asc", "desc"]).optional(),
-    showTotals: z.boolean().optional(),
-    showAverages: z.boolean().optional(),
-    pageSize: z.enum(["a4", "letter", "legal"]).optional(),
-    orientation: z.enum(["portrait", "landscape"]).optional(),
-    dateFormat: z.string().optional(),
-    headerLogo: z.boolean().optional(),
-    footerText: z.string().optional(),
-    styles: z.object({
-      headerBgColor: z.string().optional(),
-      headerTextColor: z.string().optional(),
-      rowBgColor: z.string().optional(),
-      rowAltBgColor: z.string().optional(),
-      rowTextColor: z.string().optional(),
-      borderColor: z.string().optional(),
-      footerBgColor: z.string().optional(),
-      footerTextColor: z.string().optional(),
-    }).optional(),
-  }),
+// Define schema for template form
+const columnSchema = z.object({
+  key: z.string(),
+  title: z.string().min(1, "Title is required"),
+  width: z.number().optional(),
+  format: z.enum(["text", "number", "date", "currency", "percentage"]).optional(),
+  align: z.enum(["left", "center", "right"]).optional(),
+  visible: z.boolean().optional(),
+  computeTotal: z.boolean().optional()
 });
 
-type TemplateFormValues = z.infer<typeof templateFormSchema>;
+const templateSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(3, "Name must be at least 3 characters"),
+  description: z.string().min(5, "Description must be at least 5 characters"),
+  type: z.enum(["attendance", "payroll", "employee", "project", "expenditure", "income"]),
+  isDefault: z.boolean().default(false),
+  config: z.object({
+    columns: z.array(columnSchema),
+    filters: z.array(z.string()),
+    showTotals: z.boolean().default(true),
+    orientation: z.enum(["portrait", "landscape"]).default("landscape"),
+    pageSize: z.enum(["A4", "A3", "Letter", "Legal"]).default("A4"),
+    pageMargin: z.object({
+      top: z.number(),
+      right: z.number(),
+      bottom: z.number(),
+      left: z.number()
+    }).optional(),
+    fontSize: z.number().min(8).max(16).optional(),
+    fontFamily: z.string().optional(),
+    includeDateRange: z.boolean().default(true)
+  })
+});
 
-// Default values for new templates
-const defaultValues: TemplateFormValues = {
-  name: "",
-  description: "",
-  type: "attendance",
-  config: {
-    title: "New Report",
-    subtitle: "",
-    columns: [
-      {
-        key: "date",
-        title: "Date",
-        format: "date",
-        width: 15,
-        visible: true,
-        align: "left",
-      },
-    ],
-    groupBy: "",
-    sortBy: "date",
-    sortDirection: "desc",
-    showTotals: true,
-    showAverages: false,
-    pageSize: "a4",
-    orientation: "landscape",
-    dateFormat: "MM/DD/YYYY",
-    headerLogo: true,
-    footerText: "Generated on {currentDate}",
-    styles: {
-      headerBgColor: "#4e73df",
-      headerTextColor: "#ffffff",
-      rowBgColor: "#ffffff",
-      rowAltBgColor: "#f8f9fc",
-      rowTextColor: "#5a5c69",
-      borderColor: "#e3e6f0",
-      footerBgColor: "#f8f9fc",
-      footerTextColor: "#5a5c69",
-    },
-  },
+type TemplateFormValues = z.infer<typeof templateSchema>;
+
+// Available column options for each report type
+const availableColumns: Record<string, Array<{ key: string; title: string; format: string; width: number; visible: boolean; align: string; }>> = {
+  attendance: [
+    { key: "date", title: "Date", format: "date", width: 100, visible: true, align: "center" },
+    { key: "employeeName", title: "Employee Name", format: "text", width: 150, visible: true, align: "left" },
+    { key: "checkIn", title: "Check In", format: "text", width: 100, visible: true, align: "center" },
+    { key: "checkOut", title: "Check Out", format: "text", width: 100, visible: true, align: "center" },
+    { key: "hoursWorked", title: "Hours", format: "number", width: 80, visible: true, align: "center" },
+    { key: "projectName", title: "Project", format: "text", width: 120, visible: true, align: "left" },
+    { key: "status", title: "Status", format: "text", width: 100, visible: true, align: "center" },
+    { key: "remarks", title: "Remarks", format: "text", width: 200, visible: true, align: "left" }
+  ],
+  payroll: [
+    { key: "employeeName", title: "Employee Name", format: "text", width: 150, visible: true, align: "left" },
+    { key: "periodStart", title: "Period Start", format: "date", width: 100, visible: true, align: "center" },
+    { key: "periodEnd", title: "Period End", format: "date", width: 100, visible: true, align: "center" },
+    { key: "basicSalary", title: "Basic Salary", format: "currency", width: 120, visible: true, align: "right" },
+    { key: "allowances", title: "Allowances", format: "currency", width: 120, visible: true, align: "right" },
+    { key: "deductions", title: "Deductions", format: "currency", width: 120, visible: true, align: "right" },
+    { key: "tax", title: "Tax", format: "currency", width: 100, visible: true, align: "right" },
+    { key: "netSalary", title: "Net Salary", format: "currency", width: 120, visible: true, align: "right" },
+    { key: "status", title: "Status", format: "text", width: 100, visible: true, align: "center" },
+    { key: "paymentDate", title: "Payment Date", format: "date", width: 100, visible: true, align: "center" }
+  ],
+  employee: [
+    { key: "employeeId", title: "ID", format: "text", width: 80, visible: true, align: "center" },
+    { key: "fullName", title: "Name", format: "text", width: 150, visible: true, align: "left" },
+    { key: "designation", title: "Designation", format: "text", width: 120, visible: true, align: "left" },
+    { key: "phone", title: "Phone", format: "text", width: 120, visible: true, align: "left" },
+    { key: "email", title: "Email", format: "text", width: 150, visible: true, align: "left" },
+    { key: "dailyWage", title: "Daily Wage", format: "currency", width: 120, visible: true, align: "right" },
+    { key: "joinDate", title: "Join Date", format: "date", width: 100, visible: true, align: "center" },
+    { key: "status", title: "Status", format: "text", width: 100, visible: true, align: "center" }
+  ],
+  project: [
+    { key: "name", title: "Project Name", format: "text", width: 150, visible: true, align: "left" },
+    { key: "clientName", title: "Client", format: "text", width: 150, visible: true, align: "left" },
+    { key: "startDate", title: "Start Date", format: "date", width: 100, visible: true, align: "center" },
+    { key: "endDate", title: "End Date", format: "date", width: 100, visible: true, align: "center" },
+    { key: "status", title: "Status", format: "text", width: 100, visible: true, align: "center" },
+    { key: "budget", title: "Budget", format: "currency", width: 120, visible: true, align: "right" },
+    { key: "description", title: "Description", format: "text", width: 200, visible: true, align: "left" }
+  ],
+  expenditure: [
+    { key: "date", title: "Date", format: "date", width: 100, visible: true, align: "center" },
+    { key: "amount", title: "Amount", format: "currency", width: 120, visible: true, align: "right" },
+    { key: "category", title: "Category", format: "text", width: 120, visible: true, align: "left" },
+    { key: "description", title: "Description", format: "text", width: 200, visible: true, align: "left" },
+    { key: "employeeName", title: "Employee", format: "text", width: 150, visible: true, align: "left" },
+    { key: "projectName", title: "Project", format: "text", width: 150, visible: true, align: "left" }
+  ],
+  income: [
+    { key: "date", title: "Date", format: "date", width: 100, visible: true, align: "center" },
+    { key: "amount", title: "Amount", format: "currency", width: 120, visible: true, align: "right" },
+    { key: "category", title: "Category", format: "text", width: 120, visible: true, align: "left" },
+    { key: "description", title: "Description", format: "text", width: 200, visible: true, align: "left" },
+    { key: "projectName", title: "Project", format: "text", width: 150, visible: true, align: "left" }
+  ]
 };
 
-export default function TemplateEditorPage() {
-  const params = useParams();
-  const templateId = params?.id;
-  const isEditing = Boolean(templateId);
+// Available filter options for each report type
+const availableFilters: Record<string, Array<{ value: string; label: string }>> = {
+  attendance: [
+    { value: "dateRange", label: "Date Range" },
+    { value: "employee", label: "Employee" },
+    { value: "project", label: "Project" },
+    { value: "status", label: "Status" }
+  ],
+  payroll: [
+    { value: "dateRange", label: "Period Range" },
+    { value: "employee", label: "Employee" },
+    { value: "status", label: "Status" }
+  ],
+  employee: [
+    { value: "designation", label: "Designation" },
+    { value: "status", label: "Status" }
+  ],
+  project: [
+    { value: "status", label: "Status" },
+    { value: "clientName", label: "Client" }
+  ],
+  expenditure: [
+    { value: "dateRange", label: "Date Range" },
+    { value: "category", label: "Category" },
+    { value: "employee", label: "Employee" },
+    { value: "project", label: "Project" }
+  ],
+  income: [
+    { value: "dateRange", label: "Date Range" },
+    { value: "category", label: "Category" },
+    { value: "project", label: "Project" }
+  ]
+};
+
+// Mock data for preview table
+const previewData: Record<string, any[]> = {
+  attendance: [
+    { 
+      date: new Date().toISOString(), 
+      employeeName: "John Doe", 
+      checkIn: "09:00 AM", 
+      checkOut: "05:00 PM", 
+      hoursWorked: 8, 
+      projectName: "Site A Construction", 
+      status: "Present", 
+      remarks: "On time" 
+    },
+    { 
+      date: new Date().toISOString(), 
+      employeeName: "Jane Smith", 
+      checkIn: "08:45 AM", 
+      checkOut: "04:30 PM", 
+      hoursWorked: 7.75, 
+      projectName: "Site B Maintenance", 
+      status: "Present", 
+      remarks: "Left early - approved" 
+    },
+  ],
+  payroll: [
+    { 
+      employeeName: "John Doe", 
+      periodStart: new Date(new Date().setDate(1)).toISOString(), 
+      periodEnd: new Date().toISOString(), 
+      basicSalary: 5000, 
+      allowances: 500, 
+      deductions: 300, 
+      tax: 425, 
+      netSalary: 4775, 
+      status: "Paid", 
+      paymentDate: new Date().toISOString() 
+    },
+    { 
+      employeeName: "Jane Smith", 
+      periodStart: new Date(new Date().setDate(1)).toISOString(), 
+      periodEnd: new Date().toISOString(), 
+      basicSalary: 6000, 
+      allowances: 600, 
+      deductions: 350, 
+      tax: 510, 
+      netSalary: 5740, 
+      status: "Paid", 
+      paymentDate: new Date().toISOString() 
+    },
+  ],
+  employee: [
+    { 
+      employeeId: "EMP-001", 
+      fullName: "John Doe", 
+      designation: "Supervisor", 
+      phone: "+1234567890", 
+      email: "john@example.com", 
+      dailyWage: 150, 
+      joinDate: new Date().toISOString(), 
+      status: "Active" 
+    },
+    { 
+      employeeId: "EMP-002", 
+      fullName: "Jane Smith", 
+      designation: "Engineer", 
+      phone: "+1987654321", 
+      email: "jane@example.com", 
+      dailyWage: 200, 
+      joinDate: new Date().toISOString(), 
+      status: "Active" 
+    },
+  ],
+  project: [
+    { 
+      name: "Site A Construction", 
+      clientName: "ABC Corporation", 
+      startDate: new Date().toISOString(), 
+      endDate: new Date(new Date().setMonth(new Date().getMonth() + 6)).toISOString(), 
+      status: "Active", 
+      budget: 50000, 
+      description: "Construction of new office building" 
+    },
+    { 
+      name: "Site B Maintenance", 
+      clientName: "XYZ Industries", 
+      startDate: new Date().toISOString(), 
+      endDate: new Date(new Date().setMonth(new Date().getMonth() + 3)).toISOString(), 
+      status: "Active", 
+      budget: 25000, 
+      description: "Regular maintenance and repairs" 
+    },
+  ],
+  expenditure: [
+    { 
+      date: new Date().toISOString(), 
+      amount: 1200, 
+      category: "Materials", 
+      description: "Purchase of construction materials", 
+      employeeName: "John Doe", 
+      projectName: "Site A Construction" 
+    },
+    { 
+      date: new Date().toISOString(), 
+      amount: 850, 
+      category: "Tools", 
+      description: "Equipment rental", 
+      employeeName: "Jane Smith", 
+      projectName: "Site B Maintenance" 
+    },
+  ],
+  income: [
+    { 
+      date: new Date().toISOString(), 
+      amount: 10000, 
+      category: "Advance Payment", 
+      description: "Initial payment for project", 
+      projectName: "Site A Construction" 
+    },
+    { 
+      date: new Date().toISOString(), 
+      amount: 5000, 
+      category: "Monthly Payment", 
+      description: "Regular maintenance payment", 
+      projectName: "Site B Maintenance" 
+    },
+  ]
+};
+
+// Default template configs for new templates
+const defaultTemplates: Record<string, any> = {
+  attendance: {
+    name: "New Attendance Report",
+    description: "Custom attendance report template",
+    type: "attendance",
+    isDefault: false,
+    config: {
+      columns: availableColumns.attendance.map(col => ({ ...col, computeTotal: col.format === "number" || col.format === "currency" })),
+      filters: ["dateRange", "employee", "project", "status"],
+      showTotals: true,
+      orientation: "landscape",
+      pageSize: "A4",
+      pageMargin: { top: 20, right: 20, bottom: 20, left: 20 },
+      fontSize: 10,
+      fontFamily: "Arial",
+      includeDateRange: true
+    }
+  },
+  payroll: {
+    name: "New Payroll Report",
+    description: "Custom payroll report template",
+    type: "payroll",
+    isDefault: false,
+    config: {
+      columns: availableColumns.payroll.map(col => ({ ...col, computeTotal: col.format === "number" || col.format === "currency" })),
+      filters: ["dateRange", "employee", "status"],
+      showTotals: true,
+      orientation: "landscape",
+      pageSize: "A4",
+      pageMargin: { top: 20, right: 20, bottom: 20, left: 20 },
+      fontSize: 10,
+      fontFamily: "Arial",
+      includeDateRange: true
+    }
+  },
+  employee: {
+    name: "New Employee Directory",
+    description: "Custom employee directory template",
+    type: "employee",
+    isDefault: false,
+    config: {
+      columns: availableColumns.employee.map(col => ({ ...col, computeTotal: col.format === "number" || col.format === "currency" })),
+      filters: ["designation", "status"],
+      showTotals: false,
+      orientation: "landscape",
+      pageSize: "A4",
+      pageMargin: { top: 20, right: 20, bottom: 20, left: 20 },
+      fontSize: 10,
+      fontFamily: "Arial",
+      includeDateRange: false
+    }
+  },
+  project: {
+    name: "New Project List",
+    description: "Custom project listing template",
+    type: "project",
+    isDefault: false,
+    config: {
+      columns: availableColumns.project.map(col => ({ ...col, computeTotal: col.format === "number" || col.format === "currency" })),
+      filters: ["status", "clientName"],
+      showTotals: true,
+      orientation: "landscape",
+      pageSize: "A4",
+      pageMargin: { top: 20, right: 20, bottom: 20, left: 20 },
+      fontSize: 10,
+      fontFamily: "Arial",
+      includeDateRange: false
+    }
+  },
+  expenditure: {
+    name: "New Expenditure Report",
+    description: "Custom expenditure report template",
+    type: "expenditure",
+    isDefault: false,
+    config: {
+      columns: availableColumns.expenditure.map(col => ({ ...col, computeTotal: col.format === "number" || col.format === "currency" })),
+      filters: ["dateRange", "category", "employee", "project"],
+      showTotals: true,
+      orientation: "landscape",
+      pageSize: "A4",
+      pageMargin: { top: 20, right: 20, bottom: 20, left: 20 },
+      fontSize: 10,
+      fontFamily: "Arial",
+      includeDateRange: true
+    }
+  },
+  income: {
+    name: "New Income Report",
+    description: "Custom income report template",
+    type: "income",
+    isDefault: false,
+    config: {
+      columns: availableColumns.income.map(col => ({ ...col, computeTotal: col.format === "number" || col.format === "currency" })),
+      filters: ["dateRange", "category", "project"],
+      showTotals: true,
+      orientation: "landscape",
+      pageSize: "A4",
+      pageMargin: { top: 20, right: 20, bottom: 20, left: 20 },
+      fontSize: 10,
+      fontFamily: "Arial",
+      includeDateRange: true
+    }
+  }
+};
+
+export default function TemplateEditor() {
+  const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("general");
-  const [availableFields, setAvailableFields] = useState<{ [key: string]: string[] }>({
-    attendance: ["date", "employeeName", "employeeId", "projectName", "clockIn", "clockOut", "duration", "location", "notes"],
-    payroll: ["period", "employeeName", "employeeId", "totalHours", "regularPay", "overtimePay", "deductions", "netPay", "status"],
-    employee: ["employeeId", "firstName", "lastName", "designation", "dailyWage", "mobileNumber", "joinDate", "status"],
-    project: ["projectId", "projectName", "clientName", "startDate", "endDate", "status", "employeeCount", "totalHours", "totalCost"],
-    expenditure: ["date", "category", "description", "projectName", "employeeName", "amount", "paymentMethod", "status"],
-    income: ["date", "source", "description", "projectName", "amount", "paymentMethod", "status"],
-    custom: ["customField1", "customField2", "customField3"],
-  });
+  const [activeTab, setActiveTab] = useState("design");
+  const [selectedReportType, setSelectedReportType] = useState<string>("attendance");
+  const [isEditing, setIsEditing] = useState(false);
+  const queryClient = useQueryClient();
 
-  // Fetch template data if editing
-  const { data: templateData, isLoading: isTemplateLoading } = useQuery({
-    queryKey: ['/api/reports/templates', templateId],
+  // Fetch template if editing
+  const { data: templateData, isLoading: isLoadingTemplate } = useQuery({
+    queryKey: ['/api/reports/templates', id],
     queryFn: async () => {
-      if (!templateId) return null;
-      const res = await fetch(`/api/reports/templates/${templateId}`);
-      if (!res.ok) throw new Error('Failed to fetch template');
-      return res.json();
+      if (!id) return null;
+      try {
+        const res = await fetch(`/api/reports/templates/${id}`);
+        if (!res.ok) throw new Error("Failed to fetch template");
+        return res.json();
+      } catch (error) {
+        console.error("Error fetching template:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load template data",
+          variant: "destructive",
+        });
+        return null;
+      }
     },
-    enabled: isEditing,
+    enabled: !!id,
   });
 
-  // Form definition
+  // Form setup
   const form = useForm<TemplateFormValues>({
-    resolver: zodResolver(templateFormSchema),
-    defaultValues: isEditing ? undefined : defaultValues,
-  });
-
-  // Set form values when template data is loaded
-  useEffect(() => {
-    if (templateData) {
-      form.reset(templateData);
-      setActiveTab("general");
+    resolver: zodResolver(templateSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      type: "attendance",
+      isDefault: false,
+      config: {
+        columns: [],
+        filters: [],
+        showTotals: true,
+        orientation: "landscape",
+        pageSize: "A4",
+        pageMargin: { top: 20, right: 20, bottom: 20, left: 20 },
+        fontSize: 10,
+        fontFamily: "Arial",
+        includeDateRange: true
+      }
     }
-  }, [templateData, form]);
-
-  // Field array for columns
-  const { fields, append, remove, move } = useFieldArray({
-    control: form.control,
-    name: "config.columns",
   });
 
-  // Create or update mutation
-  const mutation = useMutation({
-    mutationFn: async (values: TemplateFormValues) => {
-      const method = isEditing ? 'PUT' : 'POST';
-      const url = isEditing ? `/api/reports/templates/${templateId}` : '/api/reports/templates';
-      const response = await apiRequest(method, url, values);
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: isEditing ? "Template Updated" : "Template Created",
-        description: isEditing ? "The report template has been updated successfully." : "New report template has been created successfully.",
+  const { fields, append, remove, move, replace } = useFieldArray({
+    control: form.control,
+    name: "config.columns"
+  });
+
+  // Initialize form with template data or default values
+  useEffect(() => {
+    if (id && templateData) {
+      form.reset(templateData);
+      setSelectedReportType(templateData.type);
+      setIsEditing(true);
+    } else if (!id) {
+      // New template - use default for selected type
+      const defaultTemplate = defaultTemplates[selectedReportType];
+      form.reset({
+        ...defaultTemplate,
+        config: {
+          ...defaultTemplate.config,
+          columns: defaultTemplate.config.columns.map((col: any) => ({
+            ...col,
+            computeTotal: ['number', 'currency'].includes(col.format)
+          }))
+        }
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/reports/templates'] });
-      navigate("/reports");
+    }
+  }, [id, templateData, form, selectedReportType]);
+
+  // Handle report type change for new templates
+  useEffect(() => {
+    if (!isEditing && !id) {
+      const defaultTemplate = defaultTemplates[selectedReportType];
+      form.reset({
+        ...defaultTemplate,
+        config: {
+          ...defaultTemplate.config,
+          columns: defaultTemplate.config.columns.map((col: any) => ({
+            ...col,
+            computeTotal: ['number', 'currency'].includes(col.format)
+          }))
+        }
+      });
+    }
+  }, [selectedReportType, form, isEditing, id]);
+
+  // Save template mutation
+  const saveMutation = useMutation({
+    mutationFn: async (templateData: TemplateFormValues) => {
+      const url = id ? `/api/reports/templates/${id}` : '/api/reports/templates';
+      const method = id ? 'PUT' : 'POST';
+      
+      const res = await apiRequest(method, url, templateData);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || 'Failed to save template');
+      }
+      return await res.json();
     },
-    onError: (error) => {
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/reports/templates'] });
       toast({
-        title: "Error",
-        description: `Failed to ${isEditing ? 'update' : 'create'} template: ${error.message}`,
+        title: "Template saved",
+        description: "Report template has been saved successfully",
+      });
+      navigate("/reports/templates");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error saving template",
+        description: error.message,
         variant: "destructive",
       });
-    },
+    }
   });
 
-  const onSubmit = (values: TemplateFormValues) => {
-    // If we're creating a new template, generate an ID
-    if (!isEditing) {
-      values.id = `template-${Date.now()}`;
-    }
+  // Handle form submission
+  const onSubmit = (data: TemplateFormValues) => {
+    // Ensure only visible columns are included in computations
+    const updatedData = {
+      ...data,
+      config: {
+        ...data.config,
+        columns: data.config.columns.map(col => ({
+          ...col,
+          computeTotal: col.visible && ['number', 'currency'].includes(col.format || '') ? col.computeTotal : false
+        }))
+      }
+    };
     
-    // Fix any missing fields with defaults
-    if (!values.config.styles) {
-      values.config.styles = defaultValues.config.styles;
-    }
-    
-    // Submit the form
-    mutation.mutate(values);
+    saveMutation.mutate(updatedData);
   };
 
-  if (isTemplateLoading) {
+  // Handle drag and drop for columns
+  const onDragEnd = (result: any) => {
+    if (!result.destination) return;
+    move(result.source.index, result.destination.index);
+  };
+
+  if (isLoadingTemplate && id) {
     return (
-      <div className="container mx-auto py-6">
-        <div className="space-y-6">
-          <Skeleton className="h-12 w-3/4" />
-          <Skeleton className="h-64 w-full" />
-          <Skeleton className="h-32 w-full" />
-        </div>
+      <div className="container py-8 flex items-center justify-center min-h-[50vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary border-t-transparent"></div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto py-6">
+    <div className="container py-6">
       <div className="flex items-center mb-6">
-        <Button variant="ghost" className="mr-2" onClick={() => navigate("/reports")}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Reports
+        <Button variant="outline" size="sm" className="mr-4" onClick={() => navigate("/reports/templates")}>
+          <ChevronLeft className="h-4 w-4 mr-2" />
+          Back to Templates
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">{isEditing ? "Edit Report Template" : "Create Report Template"}</h1>
-          <p className="text-muted-foreground">
-            {isEditing ? "Modify an existing report template" : "Create a new customized report template"}
+          <h1 className="text-3xl font-bold text-gray-900">
+            {id ? "Edit Report Template" : "Create Report Template"}
+          </h1>
+          <p className="text-gray-600">
+            {id ? "Modify an existing report template" : "Design a new customized report template"}
           </p>
         </div>
       </div>
 
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="general">General</TabsTrigger>
-              <TabsTrigger value="columns">Columns</TabsTrigger>
-              <TabsTrigger value="style">Style & Formatting</TabsTrigger>
-            </TabsList>
-            
-            {/* General Tab */}
-            <TabsContent value="general" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>General Settings</CardTitle>
-                  <CardDescription>Configure basic template information</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Template Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter template name" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          Provide a descriptive name for this report template
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left column - template settings */}
+          <div className="lg:col-span-1">
+            <Card>
+              <CardHeader>
+                <CardTitle>Template Settings</CardTitle>
+                <CardDescription>
+                  Configure the basic settings for your report
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Template Name</Label>
+                  <Input
+                    id="name"
+                    placeholder="Enter template name"
+                    {...form.register("name")}
                   />
-                  
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Enter template description" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          Brief description of what this report will show
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                  {form.formState.errors.name && (
+                    <p className="text-sm text-destructive">
+                      {form.formState.errors.name.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Enter template description"
+                    {...form.register("description")}
                   />
-                  
-                  <FormField
+                  {form.formState.errors.description && (
+                    <p className="text-sm text-destructive">
+                      {form.formState.errors.description.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="type">Report Type</Label>
+                  <Controller
                     control={form.control}
                     name="type"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Report Type</FormLabel>
-                        <Select 
-                          value={field.value} 
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                            // When type changes, update the default columns
-                            if (fields.length === 0 || window.confirm("Changing the report type will reset your columns. Continue?")) {
-                              const defaultColumns = getDefaultColumnsForType(value as any);
-                              form.setValue("config.columns", defaultColumns);
-                            }
-                          }}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select report type" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="attendance">Attendance</SelectItem>
-                            <SelectItem value="payroll">Payroll</SelectItem>
-                            <SelectItem value="employee">Employee</SelectItem>
-                            <SelectItem value="project">Project</SelectItem>
-                            <SelectItem value="expenditure">Expenditure</SelectItem>
-                            <SelectItem value="income">Income</SelectItem>
-                            <SelectItem value="custom">Custom</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormDescription>
-                          The type of data this report will display
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
+                      <Select
+                        disabled={isEditing}
+                        value={field.value}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          if (!isEditing) {
+                            setSelectedReportType(value);
+                          }
+                        }}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select report type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="attendance">Attendance Report</SelectItem>
+                          <SelectItem value="payroll">Payroll Report</SelectItem>
+                          <SelectItem value="employee">Employee Directory</SelectItem>
+                          <SelectItem value="project">Project List</SelectItem>
+                          <SelectItem value="expenditure">Expenditure Report</SelectItem>
+                          <SelectItem value="income">Income Report</SelectItem>
+                        </SelectContent>
+                      </Select>
                     )}
                   />
-                  
-                  <FormField
-                    control={form.control}
-                    name="config.title"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Report Title</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter report title" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          Main title that will appear at the top of the report
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="config.subtitle"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Subtitle (Optional)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter report subtitle" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          Additional subtitle text
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="flex flex-col gap-6 sm:flex-row">
-                    <FormField
-                      control={form.control}
-                      name="config.pageSize"
-                      render={({ field }) => (
-                        <FormItem className="flex-1">
-                          <FormLabel>Page Size</FormLabel>
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select page size" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="a4">A4</SelectItem>
-                              <SelectItem value="letter">Letter</SelectItem>
-                              <SelectItem value="legal">Legal</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
+                </div>
+
+                <Separator className="my-4" />
+
+                <div className="space-y-4">
+                  <h3 className="font-medium">Format Options</h3>
+
+                  <div className="space-y-2">
+                    <Label>Page Orientation</Label>
+                    <Controller
                       control={form.control}
                       name="config.orientation"
                       render={({ field }) => (
-                        <FormItem className="flex-1">
-                          <FormLabel>Orientation</FormLabel>
-                          <Select value={field.value} onValueChange={field.onChange}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select orientation" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="portrait">Portrait</SelectItem>
-                              <SelectItem value="landscape">Landscape</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
+                        <RadioGroup
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          className="flex space-x-4"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="portrait" id="portrait" />
+                            <Label htmlFor="portrait">Portrait</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="landscape" id="landscape" />
+                            <Label htmlFor="landscape">Landscape</Label>
+                          </div>
+                        </RadioGroup>
                       )}
                     />
                   </div>
-                  
-                  <FormField
-                    control={form.control}
-                    name="config.dateFormat"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Date Format</FormLabel>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="pageSize">Page Size</Label>
+                    <Controller
+                      control={form.control}
+                      name="config.pageSize"
+                      render={({ field }) => (
                         <Select value={field.value} onValueChange={field.onChange}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select date format" />
-                            </SelectTrigger>
-                          </FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select page size" />
+                          </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
-                            <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
-                            <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
-                            <SelectItem value="MMM DD, YYYY">MMM DD, YYYY</SelectItem>
+                            <SelectItem value="A4">A4</SelectItem>
+                            <SelectItem value="A3">A3</SelectItem>
+                            <SelectItem value="Letter">Letter</SelectItem>
+                            <SelectItem value="Legal">Legal</SelectItem>
                           </SelectContent>
                         </Select>
-                        <FormDescription>
-                          How dates will be displayed in the report
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="config.footerText"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Footer Text</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter footer text" {...field} />
-                        </FormControl>
-                        <FormDescription>
-                          Text to display in the footer. Use {'{currentDate}'} to insert the current date.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="config.headerLogo"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-base">Show Company Logo</FormLabel>
-                          <FormDescription>
-                            Display the company logo in the report header
-                          </FormDescription>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </CardContent>
-                <CardFooter className="flex justify-between">
-                  <Button type="button" variant="outline" onClick={() => navigate("/reports")}>
-                    Cancel
-                  </Button>
-                  <Button type="button" onClick={() => setActiveTab("columns")}>
-                    Next: Configure Columns
-                  </Button>
-                </CardFooter>
-              </Card>
-            </TabsContent>
-            
-            {/* Columns Tab */}
-            <TabsContent value="columns" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Configure Columns</CardTitle>
-                  <CardDescription>Define the columns that will appear in the report</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-lg font-medium">Report Columns</h3>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          append({
-                            key: "",
-                            title: "",
-                            width: 15,
-                            visible: true,
-                            align: "left",
-                          });
-                        }}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Column
-                      </Button>
-                    </div>
-                    <Separator />
+                      )}
+                    />
                   </div>
-                  
-                  <div className="space-y-4">
-                    {fields.length === 0 ? (
-                      <div className="text-center py-8 border rounded-md bg-muted/20">
-                        <p className="text-muted-foreground">No columns defined</p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="mt-2"
-                          onClick={() => {
-                            const reportType = form.getValues("type");
-                            const defaultColumns = getDefaultColumnsForType(reportType);
-                            defaultColumns.forEach(column => append(column));
-                          }}
-                        >
-                          Add Default Columns
-                        </Button>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="fontSize">Font Size (pt)</Label>
+                    <Controller
+                      control={form.control}
+                      name="config.fontSize"
+                      render={({ field }) => (
+                        <Select value={field.value?.toString()} onValueChange={(value) => field.onChange(parseInt(value))}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select font size" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="8">8pt</SelectItem>
+                            <SelectItem value="9">9pt</SelectItem>
+                            <SelectItem value="10">10pt</SelectItem>
+                            <SelectItem value="11">11pt</SelectItem>
+                            <SelectItem value="12">12pt</SelectItem>
+                            <SelectItem value="14">14pt</SelectItem>
+                            <SelectItem value="16">16pt</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="fontFamily">Font Family</Label>
+                    <Controller
+                      control={form.control}
+                      name="config.fontFamily"
+                      render={({ field }) => (
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select font family" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Arial">Arial</SelectItem>
+                            <SelectItem value="Helvetica">Helvetica</SelectItem>
+                            <SelectItem value="Times New Roman">Times New Roman</SelectItem>
+                            <SelectItem value="Courier New">Courier New</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Controller
+                      control={form.control}
+                      name="config.showTotals"
+                      render={({ field }) => (
+                        <Checkbox
+                          id="showTotals"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      )}
+                    />
+                    <Label htmlFor="showTotals">Show Totals</Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Controller
+                      control={form.control}
+                      name="config.includeDateRange"
+                      render={({ field }) => (
+                        <Checkbox
+                          id="includeDateRange"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      )}
+                    />
+                    <Label htmlFor="includeDateRange">Include Date Range</Label>
+                  </div>
+                </div>
+
+                <Separator className="my-4" />
+
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-medium mb-2">Available Filters</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      {availableFilters[selectedReportType]?.map(filter => (
+                        <div key={filter.value} className="flex items-center space-x-2">
+                          <Controller
+                            control={form.control}
+                            name="config.filters"
+                            render={({ field }) => (
+                              <Checkbox
+                                id={`filter-${filter.value}`}
+                                checked={field.value?.includes(filter.value)}
+                                onCheckedChange={(checked) => {
+                                  const current = [...(field.value || [])];
+                                  if (checked) {
+                                    if (!current.includes(filter.value)) {
+                                      field.onChange([...current, filter.value]);
+                                    }
+                                  } else {
+                                    field.onChange(current.filter(value => value !== filter.value));
+                                  }
+                                }}
+                              />
+                            )}
+                          />
+                          <Label htmlFor={`filter-${filter.value}`}>{filter.label}</Label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right column - Columns & Preview */}
+          <div className="lg:col-span-2 space-y-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="design">Column Design</TabsTrigger>
+                <TabsTrigger value="preview">Preview</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="design" className="space-y-4 pt-4">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-center">
+                      <CardTitle>Report Columns</CardTitle>
+                      <div className="flex items-center space-x-2">
+                        <Label className="text-sm font-normal text-muted-foreground">
+                          {fields.length} column{fields.length !== 1 ? 's' : ''} configured
+                        </Label>
                       </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {fields.map((field, index) => (
-                          <Card key={field.id} className="overflow-hidden">
-                            <div className="bg-muted p-2 flex justify-between items-center">
-                              <h4 className="font-medium">Column {index + 1}</h4>
-                              <div className="flex space-x-1">
+                    </div>
+                    <CardDescription>
+                      Configure the columns to display in your report. Drag to reorder.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <DragDropContext onDragEnd={onDragEnd}>
+                      <Droppable droppableId="report-columns">
+                        {(provided) => (
+                          <div
+                            {...provided.droppableProps}
+                            ref={provided.innerRef}
+                            className="space-y-2"
+                          >
+                            {fields.length === 0 ? (
+                              <div className="text-center py-8 border rounded-md border-dashed">
+                                <p className="text-gray-500 mb-4">No columns configured</p>
                                 <Button
                                   type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => index > 0 && move(index, index - 1)}
-                                  disabled={index === 0}
-                                >
-                                  <MoveUp className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => index < fields.length - 1 && move(index, index + 1)}
-                                  disabled={index === fields.length - 1}
-                                >
-                                  <MoveDown className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
+                                  variant="outline"
                                   size="sm"
                                   onClick={() => {
-                                    if (fields.length > 1) {
-                                      remove(index);
-                                    } else {
-                                      toast({
-                                        title: "Error",
-                                        description: "You must have at least one column",
-                                        variant: "destructive",
-                                      });
-                                    }
+                                    const defaultColumns = availableColumns[selectedReportType];
+                                    replace(defaultColumns.map(col => ({
+                                      ...col,
+                                      computeTotal: ['number', 'currency'].includes(col.format)
+                                    })));
                                   }}
                                 >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                  <Plus className="h-4 w-4 mr-2" />
+                                  Add Default Columns
                                 </Button>
                               </div>
-                            </div>
-                            <CardContent className="p-4 pt-0 grid gap-4 md:grid-cols-2">
-                              <div className="space-y-2 pt-4">
-                                <FormField
-                                  control={form.control}
-                                  name={`config.columns.${index}.key`}
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Field Key</FormLabel>
-                                      <Select value={field.value} onValueChange={field.onChange}>
-                                        <FormControl>
-                                          <SelectTrigger>
-                                            <SelectValue placeholder="Select field key" />
-                                          </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                          {availableFields[form.getValues("type") || "attendance"].map((key) => (
-                                            <SelectItem key={key} value={key}>
-                                              {key}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                      <FormDescription>
-                                        The data field this column will display
-                                      </FormDescription>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                
-                                <FormField
-                                  control={form.control}
-                                  name={`config.columns.${index}.format`}
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Format</FormLabel>
-                                      <Select 
-                                        value={field.value || "text"} 
-                                        onValueChange={field.onChange}
-                                      >
-                                        <FormControl>
-                                          <SelectTrigger>
-                                            <SelectValue placeholder="Select format" />
-                                          </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                          <SelectItem value="text">Text</SelectItem>
-                                          <SelectItem value="date">Date</SelectItem>
-                                          <SelectItem value="currency">Currency</SelectItem>
-                                          <SelectItem value="number">Number</SelectItem>
-                                          <SelectItem value="percentage">Percentage</SelectItem>
-                                        </SelectContent>
-                                      </Select>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              </div>
-                              
-                              <div className="space-y-2 pt-4">
-                                <FormField
-                                  control={form.control}
-                                  name={`config.columns.${index}.title`}
-                                  render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Column Title</FormLabel>
-                                      <FormControl>
-                                        <Input placeholder="Enter column title" {...field} />
-                                      </FormControl>
-                                      <FormDescription>
-                                        The heading displayed for this column
-                                      </FormDescription>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                                
-                                <div className="flex items-center gap-4">
-                                  <FormField
-                                    control={form.control}
-                                    name={`config.columns.${index}.width`}
-                                    render={({ field }) => (
-                                      <FormItem className="flex-1">
-                                        <FormLabel>Width (%)</FormLabel>
-                                        <FormControl>
-                                          <Input
-                                            type="number"
-                                            min={5}
-                                            max={50}
-                                            {...field}
-                                          />
-                                        </FormControl>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
-                                  
-                                  <FormField
-                                    control={form.control}
-                                    name={`config.columns.${index}.align`}
-                                    render={({ field }) => (
-                                      <FormItem className="flex-1">
-                                        <FormLabel>Alignment</FormLabel>
-                                        <Select value={field.value || "left"} onValueChange={field.onChange}>
-                                          <FormControl>
-                                            <SelectTrigger>
-                                              <SelectValue placeholder="Align" />
-                                            </SelectTrigger>
-                                          </FormControl>
-                                          <SelectContent>
-                                            <SelectItem value="left">Left</SelectItem>
-                                            <SelectItem value="center">Center</SelectItem>
-                                            <SelectItem value="right">Right</SelectItem>
-                                          </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )}
-                                  />
+                            ) : (
+                              <>
+                                <div className="grid grid-cols-12 gap-4 py-2 px-4 font-medium text-sm text-muted-foreground bg-muted rounded-t-md">
+                                  <div className="col-span-1"></div>
+                                  <div className="col-span-4">Column</div>
+                                  <div className="col-span-2">Format</div>
+                                  <div className="col-span-2">Alignment</div>
+                                  <div className="col-span-2">Width</div>
+                                  <div className="col-span-1 text-right">Actions</div>
                                 </div>
-                              </div>
-                              
-                              <div className="md:col-span-2 flex items-center space-x-6">
-                                <FormField
-                                  control={form.control}
-                                  name={`config.columns.${index}.visible`}
-                                  render={({ field }) => (
-                                    <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                                      <FormControl>
-                                        <Checkbox
-                                          checked={field.value}
-                                          onCheckedChange={field.onChange}
-                                        />
-                                      </FormControl>
-                                      <FormLabel className="font-normal">
-                                        Visible
-                                      </FormLabel>
-                                    </FormItem>
-                                  )}
-                                />
-                                
-                                <FormField
-                                  control={form.control}
-                                  name={`config.columns.${index}.computeTotal`}
-                                  render={({ field }) => (
-                                    <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                                      <FormControl>
-                                        <Checkbox
-                                          checked={field.value}
-                                          onCheckedChange={field.onChange}
-                                        />
-                                      </FormControl>
-                                      <FormLabel className="font-normal">
-                                        Calculate Total
-                                      </FormLabel>
-                                    </FormItem>
-                                  )}
-                                />
-                              </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="space-y-2 pt-4">
-                    <h3 className="text-lg font-medium">Data Organization</h3>
-                    <Separator />
-                    
-                    <div className="grid gap-4 md:grid-cols-2 pt-2">
-                      <FormField
-                        control={form.control}
-                        name="config.groupBy"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Group By</FormLabel>
-                            <Select 
-                              value={field.value || ""} 
-                              onValueChange={field.onChange}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select grouping field (optional)" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="">No Grouping</SelectItem>
-                                {availableFields[form.getValues("type") || "attendance"].map((key) => (
-                                  <SelectItem key={key} value={key}>
-                                    {key}
-                                  </SelectItem>
+                                {fields.map((field, index) => (
+                                  <Draggable key={field.id} draggableId={field.id} index={index}>
+                                    {(provided) => (
+                                      <div
+                                        ref={provided.innerRef}
+                                        {...provided.draggableProps}
+                                        className={cn(
+                                          "grid grid-cols-12 gap-4 items-center p-3 rounded-md border",
+                                          !form.watch(`config.columns.${index}.visible`) && "opacity-50 bg-muted"
+                                        )}
+                                      >
+                                        <div className="col-span-1">
+                                          <div {...provided.dragHandleProps} className="cursor-move">
+                                            <GripVertical className="h-5 w-5 text-muted-foreground" />
+                                          </div>
+                                        </div>
+                                        <div className="col-span-4">
+                                          <div className="flex items-center gap-3">
+                                            <Controller
+                                              control={form.control}
+                                              name={`config.columns.${index}.visible`}
+                                              render={({ field: visibleField }) => (
+                                                <Switch
+                                                  checked={visibleField.value}
+                                                  onCheckedChange={visibleField.onChange}
+                                                />
+                                              )}
+                                            />
+                                            <div>
+                                              <p className="font-medium text-sm">
+                                                {field.title}
+                                              </p>
+                                              <p className="text-xs text-muted-foreground">
+                                                {field.key}
+                                              </p>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="col-span-2">
+                                          <Controller
+                                            control={form.control}
+                                            name={`config.columns.${index}.format`}
+                                            render={({ field: formatField }) => (
+                                              <Select
+                                                value={formatField.value}
+                                                onValueChange={formatField.onChange}
+                                              >
+                                                <SelectTrigger className="h-8">
+                                                  <SelectValue placeholder="Format" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                  <SelectItem value="text">Text</SelectItem>
+                                                  <SelectItem value="number">Number</SelectItem>
+                                                  <SelectItem value="date">Date</SelectItem>
+                                                  <SelectItem value="currency">Currency</SelectItem>
+                                                  <SelectItem value="percentage">Percentage</SelectItem>
+                                                </SelectContent>
+                                              </Select>
+                                            )}
+                                          />
+                                        </div>
+                                        <div className="col-span-2">
+                                          <Controller
+                                            control={form.control}
+                                            name={`config.columns.${index}.align`}
+                                            render={({ field: alignField }) => (
+                                              <Select
+                                                value={alignField.value}
+                                                onValueChange={alignField.onChange}
+                                              >
+                                                <SelectTrigger className="h-8">
+                                                  <SelectValue placeholder="Align" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                  <SelectItem value="left">Left</SelectItem>
+                                                  <SelectItem value="center">Center</SelectItem>
+                                                  <SelectItem value="right">Right</SelectItem>
+                                                </SelectContent>
+                                              </Select>
+                                            )}
+                                          />
+                                        </div>
+                                        <div className="col-span-2">
+                                          <Controller
+                                            control={form.control}
+                                            name={`config.columns.${index}.width`}
+                                            render={({ field: widthField }) => (
+                                              <Input
+                                                type="number"
+                                                className="h-8"
+                                                value={widthField.value}
+                                                onChange={widthField.onChange}
+                                              />
+                                            )}
+                                          />
+                                        </div>
+                                        <div className="col-span-1 text-right">
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={() => remove(index)}
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                          </Button>
+                                        </div>
+                                        {form.watch(`config.columns.${index}.format`) === 'number' || 
+                                         form.watch(`config.columns.${index}.format`) === 'currency' ? (
+                                          <div className="col-span-12 -mt-1 pt-2 border-t flex items-center gap-2">
+                                            <Controller
+                                              control={form.control}
+                                              name={`config.columns.${index}.computeTotal`}
+                                              render={({ field: totalField }) => (
+                                                <Checkbox
+                                                  id={`compute-total-${index}`}
+                                                  checked={totalField.value}
+                                                  onCheckedChange={totalField.onChange}
+                                                />
+                                              )}
+                                            />
+                                            <Label htmlFor={`compute-total-${index}`} className="text-sm">
+                                              Include in totals calculation
+                                            </Label>
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    )}
+                                  </Draggable>
                                 ))}
-                              </SelectContent>
-                            </Select>
-                            <FormDescription>
-                              Field to group records by
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
+                                {provided.placeholder}
+                              </>
+                            )}
+                          </div>
                         )}
-                      />
-                      
-                      <div className="space-y-2">
-                        <FormField
-                          control={form.control}
-                          name="config.sortBy"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Sort By</FormLabel>
-                              <Select 
-                                value={field.value || ""} 
-                                onValueChange={field.onChange}
+                      </Droppable>
+                    </DragDropContext>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="preview" className="space-y-4 pt-4">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle>Preview</CardTitle>
+                    <CardDescription>
+                      This is how your report will look with the selected columns and settings
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-muted">
+                          {fields
+                            .filter(field => form.watch(`config.columns.${fields.indexOf(field)}.visible`))
+                            .map((field, index) => (
+                              <th
+                                key={index}
+                                className="border px-4 py-2 text-sm font-medium"
+                                style={{
+                                  width: `${field.width}px`,
+                                  textAlign: field.align === 'left' ? 'left' : 
+                                             field.align === 'right' ? 'right' : 'center'
+                                }}
                               >
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select sorting field" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {availableFields[form.getValues("type") || "attendance"].map((key) => (
-                                    <SelectItem key={key} value={key}>
-                                      {key}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        
-                        <FormField
-                          control={form.control}
-                          name="config.sortDirection"
-                          render={({ field }) => (
-                            <FormItem>
-                              <Select 
-                                value={field.value || "asc"} 
-                                onValueChange={field.onChange}
-                              >
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Sort direction" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  <SelectItem value="asc">Ascending</SelectItem>
-                                  <SelectItem value="desc">Descending</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4 pt-4">
-                      <FormField
-                        control={form.control}
-                        name="config.showTotals"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                            <div className="space-y-0.5">
-                              <FormLabel className="text-base">Show Totals</FormLabel>
-                              <FormDescription>
-                                Display total row for numeric columns
-                              </FormDescription>
-                            </div>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="config.showAverages"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                            <div className="space-y-0.5">
-                              <FormLabel className="text-base">Show Averages</FormLabel>
-                              <FormDescription>
-                                Display average values for numeric columns
-                              </FormDescription>
-                            </div>
-                            <FormControl>
-                              <Switch
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="flex justify-between">
-                  <Button type="button" variant="outline" onClick={() => setActiveTab("general")}>
-                    Back
-                  </Button>
-                  <Button type="button" onClick={() => setActiveTab("style")}>
-                    Next: Style & Formatting
-                  </Button>
-                </CardFooter>
-              </Card>
-            </TabsContent>
-            
-            {/* Style Tab */}
-            <TabsContent value="style" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Style & Formatting</CardTitle>
-                  <CardDescription>Customize the visual appearance of the report</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-6">
-                    <h3 className="text-lg font-medium">Color Scheme</h3>
-                    <Separator />
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <FormField
-                        control={form.control}
-                        name="config.styles.headerBgColor"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Header Background Color</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="color" 
-                                {...field} 
-                                value={field.value || "#4e73df"}
-                                className="h-10 w-full"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="config.styles.headerTextColor"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Header Text Color</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="color" 
-                                {...field} 
-                                value={field.value || "#ffffff"}
-                                className="h-10 w-full"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="config.styles.rowBgColor"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Row Background Color</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="color" 
-                                {...field} 
-                                value={field.value || "#ffffff"}
-                                className="h-10 w-full"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="config.styles.rowAltBgColor"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Alternate Row Background Color</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="color" 
-                                {...field} 
-                                value={field.value || "#f8f9fc"}
-                                className="h-10 w-full"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="config.styles.rowTextColor"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Text Color</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="color" 
-                                {...field} 
-                                value={field.value || "#5a5c69"}
-                                className="h-10 w-full"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="config.styles.borderColor"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Border Color</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="color" 
-                                {...field} 
-                                value={field.value || "#e3e6f0"}
-                                className="h-10 w-full"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="config.styles.footerBgColor"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Footer Background Color</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="color" 
-                                {...field} 
-                                value={field.value || "#f8f9fc"}
-                                className="h-10 w-full"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      
-                      <FormField
-                        control={form.control}
-                        name="config.styles.footerTextColor"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Footer Text Color</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="color" 
-                                {...field} 
-                                value={field.value || "#5a5c69"}
-                                className="h-10 w-full"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="p-4 border rounded-md bg-muted/30 mt-6">
-                    <h3 className="text-lg font-medium mb-4">Preview</h3>
-                    <div className="overflow-hidden rounded-md border">
-                      <table className="w-full" style={{ 
-                        borderCollapse: 'collapse',
-                        border: `1px solid ${form.watch("config.styles.borderColor") || "#e3e6f0"}` 
-                      }}>
-                        <thead>
-                          <tr style={{ 
-                            backgroundColor: form.watch("config.styles.headerBgColor") || "#4e73df", 
-                            color: form.watch("config.styles.headerTextColor") || "#ffffff" 
-                          }}>
-                            <th style={{ padding: '10px', textAlign: 'left', border: `1px solid ${form.watch("config.styles.borderColor") || "#e3e6f0"}` }}>Column 1</th>
-                            <th style={{ padding: '10px', textAlign: 'left', border: `1px solid ${form.watch("config.styles.borderColor") || "#e3e6f0"}` }}>Column 2</th>
-                            <th style={{ padding: '10px', textAlign: 'left', border: `1px solid ${form.watch("config.styles.borderColor") || "#e3e6f0"}` }}>Column 3</th>
+                                {field.title}
+                              </th>
+                            ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {previewData[selectedReportType]?.map((row, rowIndex) => (
+                          <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-muted/30'}>
+                            {fields
+                              .filter(field => form.watch(`config.columns.${fields.indexOf(field)}.visible`))
+                              .map((field, colIndex) => {
+                                const value = row[field.key];
+                                const format = form.watch(`config.columns.${fields.indexOf(field)}.format`);
+                                const align = form.watch(`config.columns.${fields.indexOf(field)}.align`);
+                                
+                                let displayValue = value;
+                                
+                                // Format the value based on column format
+                                if (format === 'date' && value) {
+                                  displayValue = new Date(value).toLocaleDateString();
+                                } else if (format === 'currency' && value != null) {
+                                  displayValue = new Intl.NumberFormat('en-US', { 
+                                    style: 'currency', 
+                                    currency: 'USD' 
+                                  }).format(value);
+                                } else if (format === 'number' && value != null) {
+                                  displayValue = new Intl.NumberFormat('en-US').format(value);
+                                } else if (format === 'percentage' && value != null) {
+                                  displayValue = new Intl.NumberFormat('en-US', { 
+                                    style: 'percent', 
+                                    minimumFractionDigits: 2 
+                                  }).format(value / 100);
+                                }
+                                
+                                return (
+                                  <td
+                                    key={colIndex}
+                                    className="border px-4 py-2 text-sm"
+                                    style={{
+                                      textAlign: align === 'left' ? 'left' : 
+                                                align === 'right' ? 'right' : 'center'
+                                    }}
+                                  >
+                                    {displayValue}
+                                  </td>
+                                );
+                              })}
                           </tr>
-                        </thead>
-                        <tbody>
-                          <tr style={{ 
-                            backgroundColor: form.watch("config.styles.rowBgColor") || "#ffffff", 
-                            color: form.watch("config.styles.rowTextColor") || "#5a5c69" 
-                          }}>
-                            <td style={{ padding: '8px', border: `1px solid ${form.watch("config.styles.borderColor") || "#e3e6f0"}` }}>Data 1</td>
-                            <td style={{ padding: '8px', border: `1px solid ${form.watch("config.styles.borderColor") || "#e3e6f0"}` }}>Data 2</td>
-                            <td style={{ padding: '8px', border: `1px solid ${form.watch("config.styles.borderColor") || "#e3e6f0"}` }}>Data 3</td>
+                        ))}
+                        {form.watch('config.showTotals') && (
+                          <tr className="bg-muted font-medium">
+                            {fields
+                              .filter(field => form.watch(`config.columns.${fields.indexOf(field)}.visible`))
+                              .map((field, colIndex) => {
+                                const format = form.watch(`config.columns.${fields.indexOf(field)}.format`);
+                                const align = form.watch(`config.columns.${fields.indexOf(field)}.align`);
+                                const computeTotal = form.watch(`config.columns.${fields.indexOf(field)}.computeTotal`);
+                                
+                                if (colIndex === 0) {
+                                  return (
+                                    <td
+                                      key={colIndex}
+                                      className="border px-4 py-2 text-sm"
+                                      style={{ textAlign: 'left' }}
+                                    >
+                                      Total
+                                    </td>
+                                  );
+                                }
+                                
+                                if (computeTotal && (format === 'number' || format === 'currency')) {
+                                  // Calculate total for this column
+                                  const total = previewData[selectedReportType]?.reduce((sum, row) => {
+                                    const value = parseFloat(row[field.key]) || 0;
+                                    return sum + value;
+                                  }, 0);
+                                  
+                                  let displayTotal = total;
+                                  if (format === 'currency') {
+                                    displayTotal = new Intl.NumberFormat('en-US', { 
+                                      style: 'currency', 
+                                      currency: 'USD' 
+                                    }).format(total);
+                                  } else if (format === 'number') {
+                                    displayTotal = new Intl.NumberFormat('en-US').format(total);
+                                  }
+                                  
+                                  return (
+                                    <td
+                                      key={colIndex}
+                                      className="border px-4 py-2 text-sm"
+                                      style={{
+                                        textAlign: align === 'left' ? 'left' : 
+                                                  align === 'right' ? 'right' : 'center'
+                                      }}
+                                    >
+                                      {displayTotal}
+                                    </td>
+                                  );
+                                }
+                                
+                                return <td key={colIndex} className="border px-4 py-2 text-sm"></td>;
+                              })}
                           </tr>
-                          <tr style={{ 
-                            backgroundColor: form.watch("config.styles.rowAltBgColor") || "#f8f9fc", 
-                            color: form.watch("config.styles.rowTextColor") || "#5a5c69" 
-                          }}>
-                            <td style={{ padding: '8px', border: `1px solid ${form.watch("config.styles.borderColor") || "#e3e6f0"}` }}>Data 4</td>
-                            <td style={{ padding: '8px', border: `1px solid ${form.watch("config.styles.borderColor") || "#e3e6f0"}` }}>Data 5</td>
-                            <td style={{ padding: '8px', border: `1px solid ${form.watch("config.styles.borderColor") || "#e3e6f0"}` }}>Data 6</td>
-                          </tr>
-                          {form.watch("config.showTotals") && (
-                            <tr style={{ 
-                              backgroundColor: "#f1f1f1", 
-                              color: form.watch("config.styles.rowTextColor") || "#5a5c69",
-                              fontWeight: 'bold' 
-                            }}>
-                              <td style={{ padding: '8px', border: `1px solid ${form.watch("config.styles.borderColor") || "#e3e6f0"}` }}>Total</td>
-                              <td style={{ padding: '8px', border: `1px solid ${form.watch("config.styles.borderColor") || "#e3e6f0"}` }}>-</td>
-                              <td style={{ padding: '8px', border: `1px solid ${form.watch("config.styles.borderColor") || "#e3e6f0"}` }}>100</td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                      
-                      {form.watch("config.footerText") && (
-                        <div style={{ 
-                          padding: '10px', 
-                          borderTop: `1px solid ${form.watch("config.styles.borderColor") || "#e3e6f0"}`,
-                          backgroundColor: form.watch("config.styles.footerBgColor") || "#f8f9fc",
-                          color: form.watch("config.styles.footerTextColor") || "#5a5c69",
-                          fontSize: '14px',
-                          textAlign: 'center'
-                        }}>
-                          {form.watch("config.footerText").replace('{currentDate}', new Date().toLocaleDateString())}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="flex justify-between">
-                  <Button type="button" variant="outline" onClick={() => setActiveTab("columns")}>
-                    Back
-                  </Button>
-                  <div className="flex space-x-2">
-                    <Button type="button" variant="ghost" onClick={() => navigate("/reports")}>
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={mutation.isPending}>
-                      {mutation.isPending ? (
-                        <>
-                          <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="mr-2 h-4 w-4" />
-                          Save Template
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </CardFooter>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </form>
-      </Form>
+                        )}
+                      </tbody>
+                    </table>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+
+            <div className="flex justify-between items-center">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate("/reports/templates")}
+              >
+                Cancel
+              </Button>
+              <div className="space-x-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setActiveTab(activeTab === "design" ? "preview" : "design")}
+                >
+                  {activeTab === "design" ? (
+                    <>
+                      <Eye className="mr-2 h-4 w-4" />
+                      Preview
+                    </>
+                  ) : (
+                    <>
+                      <LayoutGrid className="mr-2 h-4 w-4" />
+                      Edit Design
+                    </>
+                  )}
+                </Button>
+                <Button type="submit" disabled={saveMutation.isPending}>
+                  {saveMutation.isPending ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  Save Template
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </form>
     </div>
   );
-}
-
-// Helper function to get default columns for each report type
-function getDefaultColumnsForType(type: string) {
-  switch (type) {
-    case 'attendance':
-      return [
-        { key: "date", title: "Date", format: "date", width: 15, visible: true, align: "left" },
-        { key: "employeeName", title: "Employee Name", width: 25, visible: true, align: "left" },
-        { key: "employeeId", title: "Employee ID", width: 15, visible: true, align: "left" },
-        { key: "projectName", title: "Project", width: 25, visible: true, align: "left" },
-        { key: "clockIn", title: "Clock In", format: "date", width: 15, visible: true, align: "left" },
-        { key: "clockOut", title: "Clock Out", format: "date", width: 15, visible: true, align: "left" },
-        { key: "duration", title: "Duration (Hours)", format: "number", width: 15, visible: true, align: "right", computeTotal: true },
-      ];
-    case 'payroll':
-      return [
-        { key: "period", title: "Period", width: 15, visible: true, align: "left" },
-        { key: "employeeName", title: "Employee Name", width: 25, visible: true, align: "left" },
-        { key: "employeeId", title: "Employee ID", width: 15, visible: true, align: "left" },
-        { key: "totalHours", title: "Hours Worked", format: "number", width: 15, visible: true, align: "right", computeTotal: true },
-        { key: "regularPay", title: "Regular Pay", format: "currency", width: 15, visible: true, align: "right", computeTotal: true },
-        { key: "overtimePay", title: "Overtime Pay", format: "currency", width: 15, visible: true, align: "right", computeTotal: true },
-        { key: "deductions", title: "Deductions", format: "currency", width: 15, visible: true, align: "right", computeTotal: true },
-        { key: "netPay", title: "Net Pay", format: "currency", width: 15, visible: true, align: "right", computeTotal: true },
-        { key: "status", title: "Status", width: 15, visible: true, align: "left" },
-      ];
-    case 'employee':
-      return [
-        { key: "employeeId", title: "Employee ID", width: 15, visible: true, align: "left" },
-        { key: "firstName", title: "First Name", width: 20, visible: true, align: "left" },
-        { key: "lastName", title: "Last Name", width: 20, visible: true, align: "left" },
-        { key: "designation", title: "Designation", width: 20, visible: true, align: "left" },
-        { key: "dailyWage", title: "Daily Wage", format: "currency", width: 15, visible: true, align: "right" },
-        { key: "mobileNumber", title: "Mobile Number", width: 15, visible: true, align: "left" },
-        { key: "joinDate", title: "Join Date", format: "date", width: 15, visible: true, align: "left" },
-        { key: "status", title: "Status", width: 15, visible: true, align: "left" },
-      ];
-    case 'project':
-      return [
-        { key: "projectId", title: "Project ID", width: 15, visible: true, align: "left" },
-        { key: "projectName", title: "Project Name", width: 25, visible: true, align: "left" },
-        { key: "clientName", title: "Client", width: 20, visible: true, align: "left" },
-        { key: "startDate", title: "Start Date", format: "date", width: 15, visible: true, align: "left" },
-        { key: "endDate", title: "End Date", format: "date", width: 15, visible: true, align: "left" },
-        { key: "status", title: "Status", width: 10, visible: true, align: "left" },
-        { key: "employeeCount", title: "Employees", width: 10, visible: true, align: "center" },
-        { key: "totalHours", title: "Total Hours", format: "number", width: 15, visible: true, align: "right", computeTotal: true },
-        { key: "totalCost", title: "Total Cost", format: "currency", width: 15, visible: true, align: "right", computeTotal: true },
-      ];
-    case 'expenditure':
-      return [
-        { key: "date", title: "Date", format: "date", width: 15, visible: true, align: "left" },
-        { key: "category", title: "Category", width: 20, visible: true, align: "left" },
-        { key: "description", title: "Description", width: 30, visible: true, align: "left" },
-        { key: "projectName", title: "Project", width: 20, visible: true, align: "left" },
-        { key: "employeeName", title: "Employee", width: 20, visible: true, align: "left" },
-        { key: "amount", title: "Amount", format: "currency", width: 15, visible: true, align: "right", computeTotal: true },
-        { key: "paymentMethod", title: "Payment Method", width: 15, visible: true, align: "left" },
-        { key: "status", title: "Status", width: 15, visible: true, align: "left" },
-      ];
-    case 'income':
-      return [
-        { key: "date", title: "Date", format: "date", width: 15, visible: true, align: "left" },
-        { key: "source", title: "Source", width: 20, visible: true, align: "left" },
-        { key: "description", title: "Description", width: 30, visible: true, align: "left" },
-        { key: "projectName", title: "Project", width: 20, visible: true, align: "left" },
-        { key: "amount", title: "Amount", format: "currency", width: 15, visible: true, align: "right", computeTotal: true },
-        { key: "paymentMethod", title: "Payment Method", width: 15, visible: true, align: "left" },
-        { key: "status", title: "Status", width: 15, visible: true, align: "left" },
-      ];
-    case 'custom':
-      return [
-        { key: "customField1", title: "Custom Field 1", width: 20, visible: true, align: "left" },
-        { key: "customField2", title: "Custom Field 2", width: 20, visible: true, align: "left" },
-        { key: "customField3", title: "Custom Field 3", width: 20, visible: true, align: "left" },
-      ];
-    default:
-      return [
-        { key: "", title: "", width: 15, visible: true, align: "left" },
-      ];
-  }
 }
