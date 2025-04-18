@@ -8,7 +8,8 @@ import {
   Payment, InsertPayment,
   DashboardStats, InsertDashboardStats,
   User, InsertUser,
-  employees, projects, attendance, dailyExpenditure, dailyIncome, payroll, payments, dashboardStats, users
+  CompanySettings, InsertCompanySettings,
+  employees, projects, attendance, dailyExpenditure, dailyIncome, payroll, payments, dashboardStats, users, companySettings
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, sql, gte, lte } from "drizzle-orm";
@@ -694,6 +695,125 @@ export class DatabaseStorage implements IStorage {
       // Create new record
       const [newStats] = await db.insert(dashboardStats).values(statsData).returning();
       return newStats;
+    }
+  }
+
+  // Company settings operations
+  async getCompanySettings(): Promise<CompanySettings | undefined> {
+    try {
+      const [settings] = await db
+        .select()
+        .from(companySettings)
+        .limit(1);
+      
+      return settings;
+    } catch (error) {
+      console.error('Error fetching company settings:', error);
+      return undefined;
+    }
+  }
+  
+  async createOrUpdateCompanySettings(settingsData: Partial<InsertCompanySettings>): Promise<CompanySettings> {
+    try {
+      const existingSettings = await this.getCompanySettings();
+      
+      if (existingSettings) {
+        // Update existing settings
+        const [updatedSettings] = await db
+          .update(companySettings)
+          .set({
+            ...settingsData,
+            updatedAt: new Date()
+          })
+          .where(eq(companySettings.id, existingSettings.id))
+          .returning();
+        
+        return updatedSettings;
+      } else {
+        // Create new settings record
+        const [newSettings] = await db
+          .insert(companySettings)
+          .values({
+            ...settingsData,
+            companyName: settingsData.companyName || "HR & Payroll Management",
+            primaryColor: settingsData.primaryColor || "#2C5282",
+          })
+          .returning();
+        
+        return newSettings;
+      }
+    } catch (error) {
+      console.error('Error creating/updating company settings:', error);
+      // Return a default settings object if database operation fails
+      return {
+        id: 0,
+        companyName: settingsData.companyName || "HR & Payroll Management",
+        companyTagline: settingsData.companyTagline || "Manage your workforce efficiently",
+        primaryColor: settingsData.primaryColor || "#2C5282",
+        logoUrl: settingsData.logoUrl,
+        updatedAt: new Date()
+      };
+    }
+  }
+}
+
+
+
+  // Company settings operations
+  async getCompanySettings(): Promise<CompanySettings | undefined> {
+    try {
+      const [settings] = await db
+        .select()
+        .from(companySettings)
+        .limit(1);
+      
+      return settings;
+    } catch (error) {
+      console.error('Error fetching company settings:', error);
+      return undefined;
+    }
+  }
+  
+  async createOrUpdateCompanySettings(settingsData: Partial<InsertCompanySettings>): Promise<CompanySettings> {
+    try {
+      const existingSettings = await this.getCompanySettings();
+      
+      if (existingSettings) {
+        // Update existing settings
+        const [updatedSettings] = await db
+          .update(companySettings)
+          .set({
+            ...settingsData,
+            updatedAt: new Date()
+          })
+          .where(eq(companySettings.id, existingSettings.id))
+          .returning();
+        
+        return updatedSettings;
+      } else {
+        // Create new settings record
+        const [newSettings] = await db
+          .insert(companySettings)
+          .values({
+            ...settingsData,
+            companyName: settingsData.companyName || "HR & Payroll Management",
+            primaryColor: settingsData.primaryColor || "#2C5282",
+          })
+          .returning();
+        
+        return newSettings;
+      }
+    } catch (error) {
+      console.error('Error creating/updating company settings:', error);
+      // Return a default settings object if database operation fails
+      return {
+        id: 0,
+        companyName: settingsData.companyName || "HR & Payroll Management",
+        companyTagline: settingsData.companyTagline || "Manage your workforce efficiently",
+        primaryColor: settingsData.primaryColor || "#2C5282",
+        logoUrl: settingsData.logoUrl,
+        updatedAt: new Date()
+      };
     }
   }
 }

@@ -49,12 +49,7 @@ async function getNextEmployeeId(storage: any): Promise<number> {
 }
 
 // Helper to manage company settings
-let companySettings = {
-  companyName: "HR & Payroll Management",
-  companyTagline: "Manage your workforce efficiently",
-  primaryColor: "#2C5282",
-  logoUrl: ""
-};
+// Default company settings will be loaded from database
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Error handler middleware
@@ -1123,7 +1118,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Company settings API
   app.get("/api/settings/company", async (req: Request, res: Response) => {
     try {
-      res.status(200).json(companySettings);
+      const settings = await storage.getCompanySettings();
+      
+      if (!settings) {
+        // Create default settings if none exist
+        const defaultSettings = await storage.createOrUpdateCompanySettings({
+          companyName: "HR & Payroll Management",
+          companyTagline: "Manage your workforce efficiently",
+          primaryColor: "#2C5282"
+        });
+        return res.status(200).json(defaultSettings);
+      }
+      
+      res.status(200).json(settings);
     } catch (err) {
       handleError(err, res);
     }
@@ -1133,13 +1140,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { companyName, companyTagline, primaryColor, logoUrl } = req.body;
       
-      // Update only the provided fields
-      if (companyName !== undefined) companySettings.companyName = companyName;
-      if (companyTagline !== undefined) companySettings.companyTagline = companyTagline;
-      if (primaryColor !== undefined) companySettings.primaryColor = primaryColor;
-      if (logoUrl !== undefined) companySettings.logoUrl = logoUrl;
+      // Update company settings in the database
+      const updatedSettings = await storage.createOrUpdateCompanySettings({
+        companyName,
+        companyTagline,
+        primaryColor,
+        logoUrl
+      });
       
-      res.status(200).json(companySettings);
+      res.status(200).json(updatedSettings);
     } catch (err) {
       handleError(err, res);
     }
