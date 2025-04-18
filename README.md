@@ -30,7 +30,7 @@ A mobile-friendly web application for tracking employee attendance in the field 
    ```
    python app.py
    ```
-4. Access the application at http://localhost:5000
+4. Access the application at http://localhost:8080
 
 ### Default Admin Credentials
 
