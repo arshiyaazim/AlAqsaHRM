@@ -585,19 +585,29 @@ export default function EmployeeImport({ onComplete }: EmployeeImportProps) {
       <CardFooter className="flex justify-between">
         {activeTab === 'import' ? (
           <>
-            <Button 
-              variant="secondary"
-              onClick={() => {
-                setSelectedFile(null);
-                setImportResults(null);
-                setExcelFilePath("attached_assets/EmployeeDetails.xlsx");
-                if (fileInputRef.current) {
-                  fileInputRef.current.value = "";
-                }
-              }}
-            >
-              Clear
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="secondary"
+                onClick={() => {
+                  setSelectedFile(null);
+                  setImportResults(null);
+                  setExcelFilePath("attached_assets/EmployeeDetails.xlsx");
+                  if (fileInputRef.current) {
+                    fileInputRef.current.value = "";
+                  }
+                }}
+              >
+                Clear
+              </Button>
+              <Button 
+                variant="destructive"
+                onClick={handleDeleteAllEmployees}
+                disabled={deleteAllEmployeesMutation.isPending}
+              >
+                <Database className="h-4 w-4 mr-2" />
+                {deleteAllEmployeesMutation.isPending ? "Deleting..." : "Delete All Employees"}
+              </Button>
+            </div>
             <div className="flex gap-2">
               <Button 
                 onClick={handleImport}
@@ -618,12 +628,22 @@ export default function EmployeeImport({ onComplete }: EmployeeImportProps) {
             </div>
           </>
         ) : (
-          <Button 
-            onClick={() => setActiveTab('import')}
-            variant="secondary"
-          >
-            Back to Import
-          </Button>
+          <>
+            <Button 
+              onClick={() => setActiveTab('import')}
+              variant="secondary"
+            >
+              Back to Import
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={handleDeleteAllEmployees}
+              disabled={deleteAllEmployeesMutation.isPending}
+            >
+              <Database className="h-4 w-4 mr-2" />
+              {deleteAllEmployeesMutation.isPending ? "Deleting..." : "Delete All Employees"}
+            </Button>
+          </>
         )}
       </CardFooter>
     </Card>
