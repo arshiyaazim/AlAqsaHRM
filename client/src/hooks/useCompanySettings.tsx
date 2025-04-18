@@ -34,7 +34,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch company settings
-  const { data, isLoading: queryLoading } = useQuery({
+  const { data, isLoading: queryLoading } = useQuery<CompanySettings>({
     queryKey: ["company-settings"],
     queryFn: async () => {
       try {
@@ -59,7 +59,11 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   }, [data, queryLoading]);
 
   // Update settings
-  const updateSettingsMutation = useMutation({
+  const updateSettingsMutation = useMutation<
+    CompanySettings, 
+    Error, 
+    Partial<CompanySettings>
+  >({
     mutationFn: async (newSettings: Partial<CompanySettings>) => {
       const response = await apiRequest("POST", "/api/settings/company", {
         ...settings,
@@ -78,7 +82,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       });
       queryClient.invalidateQueries({ queryKey: ["company-settings"] });
     },
-    onError: (error: Error) => {
+    onError: (error) => {
       toast({
         title: "Update failed",
         description: error.message,

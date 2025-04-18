@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -13,6 +13,8 @@ import { ColorPicker } from "@/components/ui/color-picker";
 import { Separator } from "@/components/ui/separator";
 import FieldCustomizer from "@/components/settings/field-customizer";
 import EmployeeImport from "@/components/employees/employee-import";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { apiRequest } from "@/lib/queryClient";
 
 // Company settings schema
 const companyFormSchema = z.object({
@@ -49,16 +51,26 @@ type FeatureFormValues = z.infer<typeof featureFormSchema>;
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<string>("company");
   const { toast } = useToast();
+  const { settings, updateSettings } = useCompanySettings();
   
   // Company form
   const companyForm = useForm<CompanyFormValues>({
     resolver: zodResolver(companyFormSchema),
     defaultValues: {
-      companyName: "My Company",
-      companyTagline: "HR & Payroll Management",
-      primaryColor: "#2C5282",
+      companyName: settings.companyName || "My Company",
+      companyTagline: settings.companyTagline || "HR & Payroll Management",
+      primaryColor: settings.primaryColor || "#2C5282",
     },
   });
+  
+  // Update form when settings load
+  useEffect(() => {
+    companyForm.reset({
+      companyName: settings.companyName || "My Company",
+      companyTagline: settings.companyTagline || "HR & Payroll Management",
+      primaryColor: settings.primaryColor || "#2C5282",
+    });
+  }, [settings, companyForm]);
   
   // Login page form
   const loginForm = useForm<LoginFormValues>({
@@ -84,12 +96,44 @@ export default function Settings() {
   });
   
   // Form submission handlers
-  const onCompanySubmit = (data: CompanyFormValues) => {
-    console.log("Company settings:", data);
-    toast({
-      title: "Company settings saved",
-      description: "Your changes have been applied successfully.",
-    });
+  const onCompanySubmit = async (data: CompanyFormValues) => {
+    try {
+      console.log("Company settings:", data);
+      
+      // Prepare form data if logo is a file
+      const formData = new FormData();
+      if (data.logo instanceof File) {
+        formData.append('logo', data.logo);
+      }
+      
+      // Add other fields to the form data
+      formData.append('companyName', data.companyName);
+      formData.append('companyTagline', data.companyTagline || '');
+      formData.append('primaryColor', data.primaryColor);
+      
+      // Save company settings
+      const response = await apiRequest('POST', '/api/settings/company', data);
+      
+      if (!response.ok) {
+        throw new Error('Failed to save company settings');
+      }
+      
+      // Update the settings context
+      const savedSettings = await response.json();
+      updateSettings(savedSettings);
+      
+      toast({
+        title: "Company settings saved",
+        description: "Your changes have been applied successfully.",
+      });
+    } catch (error) {
+      console.error('Error saving company settings:', error);
+      toast({
+        title: "Error saving settings",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive"
+      });
+    }
   };
   
   const onLoginSubmit = (data: LoginFormValues) => {
