@@ -81,7 +81,7 @@ export default function AddProjectPage() {
   const handleEmployeeChange = (employeeId: string) => {
     setSelectedEmployeeId(employeeId);
     
-    if (employeeId) {
+    if (employeeId && employeeId !== "none") {
       const selectedEmployee = employees?.find(emp => emp.employeeId === employeeId);
       if (selectedEmployee) {
         const fullName = `${selectedEmployee.firstName} ${selectedEmployee.lastName}`;
@@ -169,7 +169,7 @@ export default function AddProjectPage() {
                     <SelectValue placeholder="Select employee" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {isLoadingEmployees ? (
                       <SelectItem value="loading" disabled>Loading employees...</SelectItem>
                     ) : employees?.map(employee => (
