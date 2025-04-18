@@ -372,7 +372,7 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-h-[calc(100vh-120px)] overflow-auto pb-8">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-semibold text-[#2D3748]">User Management</h1>
@@ -385,7 +385,7 @@ export default function UsersPage() {
               Add User
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[475px]">
+          <DialogContent className="sm:max-w-[475px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create New User</DialogTitle>
               <DialogDescription>
@@ -512,7 +512,7 @@ export default function UsersPage() {
 
         {/* Permissions Dialog */}
         <Dialog open={isPermissionsOpen} onOpenChange={setIsPermissionsOpen}>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Manage User Permissions</DialogTitle>
               <DialogDescription>
