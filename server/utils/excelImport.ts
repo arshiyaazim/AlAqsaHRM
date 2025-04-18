@@ -69,23 +69,27 @@ export async function readEmployeeExcel(filePath: string): Promise<ImportResult>
     const errors: string[] = [];
     let startEmployeeId = 1001; // Start employee IDs from 1001
     
-    // Process each row in the Excel sheet
-    for (let index = 0; index < rawData.length; index++) {
-      const row: any = rawData[index];
+    // Skip header row (index 0)
+    // Process each row in the Excel sheet starting from index 1 (second row)
+    for (let index = 1; index < rawData.length; index++) {
+      const row: any[] = rawData[index];
+      
+      console.log(`Processing row ${index + 1}:`, JSON.stringify(row));
       
       try {
-        // Get the mobile number from column A
-        const mobileValue = row['__EMPTY'] || row.A || ''; // Excel sometimes uses __EMPTY for the first column
+        // Since we're using header: 1, row is now an array of values
+        // Get the mobile number from column A (index 0)
+        const mobileValue = row[0] || '';
         
         // Stop processing if column A is empty (no more employees)
         if (!mobileValue || mobileValue.toString().trim() === '') {
-          console.log(`Stopping import at row ${index + 2} due to empty mobile number (column A)`);
+          console.log(`Stopping import at row ${index + 1} due to empty mobile number (column A)`);
           break;
         }
         
         // Extract data from specific columns according to requirements
-        // Column B - Employee name (split into first and last name)
-        const fullName = (row['__EMPTY_1'] || row.B || '').toString().trim();
+        // Column B (index 1) - Employee name (split into first and last name)
+        const fullName = (row[1] || '').toString().trim();
         let firstName = fullName;
         let lastName = '';
         
@@ -96,17 +100,17 @@ export async function readEmployeeExcel(filePath: string): Promise<ImportResult>
           lastName = nameParts.slice(1).join(' ');
         }
         
-        // Column C - Salary/Daily Wage
-        const dailyWage = (row['__EMPTY_2'] || row.C || 0).toString();
+        // Column C (index 2) - Salary/Daily Wage
+        const dailyWage = (row[2] || 0).toString();
         
-        // Column E - NID/BRC No.
-        const idNumber = (row['__EMPTY_4'] || row.E || '').toString();
+        // Column E (index 4) - NID/BRC No.
+        const idNumber = (row[4] || '').toString();
         
-        // Column F - Designation
-        const designation = (row['__EMPTY_5'] || row.F || '').toString();
+        // Column F (index 5) - Designation
+        const designation = (row[5] || '').toString();
         
-        // Column H - Date of Join
-        let joinDate = row['__EMPTY_7'] || row.H || new Date().toISOString();
+        // Column H (index 7) - Date of Join
+        let joinDate = row[7] || new Date().toISOString();
         if (joinDate instanceof Date) {
           joinDate = joinDate.toISOString();
         } else if (typeof joinDate === 'number') {
@@ -118,11 +122,11 @@ export async function readEmployeeExcel(filePath: string): Promise<ImportResult>
           joinDate = jsDate.toISOString();
         }
         
-        // Column I - Address
-        const address = (row['__EMPTY_8'] || row.I || '').toString();
+        // Column I (index 8) - Address
+        const address = (row[8] || '').toString();
         
-        // Column M - Loan/Advance (if applicable)
-        const loanAdvance = (row['__EMPTY_12'] || row.M || 0).toString();
+        // Column M (index 12) - Loan/Advance (if applicable)
+        const loanAdvance = (row[12] || 0).toString();
         
         // Auto-generate employee ID (EMP-XXXX)
         const employeeId = `EMP-${startEmployeeId++}`;
