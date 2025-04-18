@@ -1,5 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import {
   Home,
   Users,
@@ -31,6 +32,7 @@ interface MobileSidebarProps {
 
 export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
   const [location] = useLocation();
+  const { settings } = useCompanySettings();
 
   if (!isOpen) return null;
 
@@ -60,7 +62,7 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
           <div className="px-4 flex items-center justify-between">
             <h1 className="text-xl font-bold text-[#2C5282] flex items-center">
               <UserPlus className="h-6 w-6 mr-2" />
-              HR & Payroll
+              {settings.companyName}
             </h1>
           </div>
           

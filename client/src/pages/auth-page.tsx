@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 
 // Login form schema
 const loginSchema = z.object({
@@ -40,6 +41,7 @@ export default function AuthPage() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [_, setLocation] = useLocation();
   const { toast } = useToast();
+  const { settings } = useCompanySettings();
 
   // Login form
   const loginForm = useForm<LoginFormValues>({
@@ -126,10 +128,10 @@ export default function AuthPage() {
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle className="text-2xl font-bold text-center">
-              HR & Payroll Management
+              {settings.companyName}
             </CardTitle>
             <CardDescription className="text-center">
-              Login or create a new account to get started
+              {settings.companyTagline || "Login or create a new account to get started"}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -342,7 +344,7 @@ export default function AuthPage() {
       {/* Right side - Hero section */}
       <div className="flex-1 bg-primary p-6 hidden md:flex flex-col justify-center items-center text-white">
         <div className="max-w-md text-center">
-          <h1 className="text-3xl font-bold mb-6">HR & Payroll Management System</h1>
+          <h1 className="text-3xl font-bold mb-6">{settings.companyName}</h1>
           <p className="mb-8">
             A comprehensive solution for managing daily labor workforce, tracking attendance, calculating wages, and streamlining HR operations.
           </p>
