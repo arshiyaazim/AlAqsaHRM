@@ -57,7 +57,7 @@ export default function EditIncome() {
     queryFn: async () => {
       const response = await fetch(`/api/incomes/${id}`);
       if (!response.ok) {
-        throw new Error("Failed to fetch income");
+        throw new Error("Failed to fetch cash receive record");
       }
       return response.json();
     },
@@ -101,12 +101,12 @@ export default function EditIncome() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to update income");
+        throw new Error(errorData.message || "Failed to update cash receive record");
       }
 
       toast({
-        title: "Income updated",
-        description: "The income record has been updated successfully.",
+        title: "Cash Receive updated",
+        description: "The cash receive record has been updated successfully.",
       });
 
       // Invalidate the incomes query to refresh the list
@@ -117,7 +117,7 @@ export default function EditIncome() {
     } catch (error) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "An error occurred while updating the income",
+        description: error instanceof Error ? error.message : "An error occurred while updating the cash receive record",
         variant: "destructive",
       });
     } finally {
@@ -129,7 +129,7 @@ export default function EditIncome() {
     return (
       <div className="container mx-auto py-6">
         <div className="flex justify-center items-center h-64">
-          <p className="text-lg">Loading income data...</p>
+          <p className="text-lg">Loading cash receive data...</p>
         </div>
       </div>
     );
@@ -143,7 +143,7 @@ export default function EditIncome() {
         onClick={() => navigate("/incomes")}
       >
         <ChevronLeft className="mr-2 h-4 w-4" />
-        Back to Incomes
+        Back to Cash Receive
       </Button>
 
       <Card className="max-w-2xl mx-auto">

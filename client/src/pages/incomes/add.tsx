@@ -105,7 +105,7 @@ export default function AddIncome() {
         onClick={() => navigate("/incomes")}
       >
         <ChevronLeft className="mr-2 h-4 w-4" />
-        Back to Incomes
+        Back to Cash Receive
       </Button>
 
       <Card className="max-w-2xl mx-auto">
@@ -191,7 +191,7 @@ export default function AddIncome() {
                         />
                       </FormControl>
                       <FormDescription>
-                        Income amount
+                        Cash Receive amount
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
