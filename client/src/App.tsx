@@ -24,6 +24,7 @@ import Reports from "@/pages/reports/index";
 import Settings from "@/pages/settings";
 import AuthPage from "@/pages/auth-page";
 import UsersPage from "@/pages/users";
+import { CompanyProvider } from "@/hooks/useCompanySettings";
 
 function Router() {
   const [location] = useLocation();

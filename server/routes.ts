@@ -48,6 +48,14 @@ async function getNextEmployeeId(storage: any): Promise<number> {
   }
 }
 
+// Helper to manage company settings
+let companySettings = {
+  companyName: "HR & Payroll Management",
+  companyTagline: "Manage your workforce efficiently",
+  primaryColor: "#2C5282",
+  logoUrl: ""
+};
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Error handler middleware
   const handleError = (err: any, res: Response) => {
@@ -1107,6 +1115,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.status(204).send();
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  // Company settings API
+  app.get("/api/settings/company", async (req: Request, res: Response) => {
+    try {
+      res.status(200).json(companySettings);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+
+  app.post("/api/settings/company", async (req: Request, res: Response) => {
+    try {
+      const { companyName, companyTagline, primaryColor, logoUrl } = req.body;
+      
+      // Update only the provided fields
+      if (companyName !== undefined) companySettings.companyName = companyName;
+      if (companyTagline !== undefined) companySettings.companyTagline = companyTagline;
+      if (primaryColor !== undefined) companySettings.primaryColor = primaryColor;
+      if (logoUrl !== undefined) companySettings.logoUrl = logoUrl;
+      
+      res.status(200).json(companySettings);
     } catch (err) {
       handleError(err, res);
     }

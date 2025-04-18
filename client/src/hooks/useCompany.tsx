@@ -2,10 +2,20 @@ import { createContext, ReactNode, useContext, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { CompanySettings } from "@shared/schema";
+import type { CompanySettings as DBCompanySettings } from "@shared/schema";
+
+// Define a simpler interface for our context to avoid typing issues
+export interface CompanySettings {
+  id: number;
+  companyName: string;
+  companyTagline: string;
+  primaryColor: string;
+  logoUrl?: string | null;
+}
 
 // Default company settings
 const defaultCompanySettings: CompanySettings = {
+  id: 1,
   companyName: "HR & Payroll Management",
   companyTagline: "Manage your workforce efficiently",
   primaryColor: "#2C5282",
