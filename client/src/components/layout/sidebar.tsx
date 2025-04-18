@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import {
   Home,
   Users,
@@ -30,16 +31,12 @@ const allNavigationItems = [
 
 export default function Sidebar() {
   const [location] = useLocation();
-  const [companyName, setCompanyName] = useState('HR & Payroll');
+  const { settings } = useCompanySettings();
   const [userRole, setUserRole] = useState('admin'); // Default to admin for now
   const [navigationItems, setNavigationItems] = useState(allNavigationItems);
   
-  // Get company name from localStorage
+  // Get user role from JWT
   useEffect(() => {
-    const storedCompanyName = localStorage.getItem('companyName');
-    if (storedCompanyName) {
-      setCompanyName(storedCompanyName);
-    }
     
     // Get user role from localStorage or JWT
     const token = localStorage.getItem('authToken');
@@ -69,7 +66,7 @@ export default function Sidebar() {
       <div className="px-6 py-4 border-b border-gray-200">
         <h1 className="text-xl font-bold text-[#2C5282] flex items-center">
           <UserPlus className="h-6 w-6 mr-2" />
-          {companyName}
+          {settings.companyName}
         </h1>
       </div>
       

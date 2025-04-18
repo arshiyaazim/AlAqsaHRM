@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
+import { useCompanySettings } from "@/hooks/useCompanySettings";
 import {
   Dialog,
   DialogContent,
@@ -136,8 +137,8 @@ export default function Header({ onMenuClick }: HeaderProps) {
     fileInputRef.current?.click();
   };
   
-  // Company name from localStorage (will be implemented in settings)
-  const companyName = localStorage.getItem('companyName') || 'HR & Payroll';
+  // Get company settings from context
+  const { settings } = useCompanySettings();
   
   return (
     <>
@@ -151,7 +152,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
             >
               <Menu className="h-6 w-6" />
             </button>
-            <h1 className="text-lg font-medium md:hidden">{companyName}</h1>
+            <h1 className="text-lg font-medium md:hidden">{settings.companyName}</h1>
             <div className="relative max-w-md w-full md:ml-0 hidden md:block">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Search className="h-5 w-5 text-gray-400" />

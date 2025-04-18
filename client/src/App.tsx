@@ -98,18 +98,20 @@ function App() {
   const isAuthPage = location === "/auth";
 
   return (
-    <>
-      {isAuthPage ? (
-        <main className="min-h-screen">
-          <Router />
-        </main>
-      ) : (
-        <MainLayout>
-          <Router />
-        </MainLayout>
-      )}
-      <Toaster />
-    </>
+    <CompanyProvider>
+      <>
+        {isAuthPage ? (
+          <main className="min-h-screen">
+            <Router />
+          </main>
+        ) : (
+          <MainLayout>
+            <Router />
+          </MainLayout>
+        )}
+        <Toaster />
+      </>
+    </CompanyProvider>
   );
 }
 
