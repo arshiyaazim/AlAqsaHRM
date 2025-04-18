@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import { read, utils } from 'xlsx';
 import { InsertEmployee } from '@shared/schema';
 import path from 'path';
 import fs from 'fs';
@@ -27,12 +27,12 @@ export async function readEmployeeExcel(filePath: string): Promise<ImportResult>
     }
 
     // Read the file
-    const workbook = XLSX.readFile(filePath);
+    const workbook = read(fs.readFileSync(filePath));
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
     
     // Convert to JSON
-    const rawData = XLSX.utils.sheet_to_json(worksheet);
+    const rawData = utils.sheet_to_json(worksheet);
     
     if (!rawData || rawData.length === 0) {
       return {
