@@ -20,6 +20,7 @@ import AddIncome from "@/pages/incomes/add";
 import EditIncome from "@/pages/incomes/edit/[id]";
 import PayrollList from "@/pages/payroll/index";
 import ProcessPayroll from "@/pages/payroll/process";
+import ProjectsPage from "@/pages/projects/index";
 import Reports from "@/pages/reports/index";
 import Settings from "@/pages/settings";
 import AuthPage from "@/pages/auth-page";
@@ -50,6 +51,7 @@ function Router() {
       <Route path="/employees/edit/:id" component={EditEmployee} />
       <Route path="/attendance" component={AttendanceList} />
       <Route path="/attendance/record" component={RecordAttendance} />
+      <Route path="/projects" component={ProjectsPage} />
       <Route path="/expenditures" component={ExpenditureList} />
       <Route path="/expenditures/add" component={AddExpenditure} />
       <Route path="/expenditures/edit/:id" component={EditExpenditure} />
