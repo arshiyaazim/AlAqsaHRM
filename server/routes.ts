@@ -404,6 +404,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       handleError(err, res);
     }
   });
+  
+  // Delete all employees endpoint - special route for admin use only
+  app.delete("/api/employees/delete-all/confirm", async (req: Request, res: Response) => {
+    try {
+      const count = await storage.deleteAllEmployees();
+      res.json({ 
+        message: `Successfully deleted all employees`, 
+        count 
+      });
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
 
   // Project routes
   app.get("/api/projects", async (req: Request, res: Response) => {

@@ -214,6 +214,38 @@ export default function EmployeeImport({ onComplete }: EmployeeImportProps) {
       });
     },
   });
+  
+  // Mutation to delete all employees
+  const deleteAllEmployeesMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch('/api/employees/delete-all/confirm', {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete all employees');
+      }
+      
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "All Employees Deleted",
+        description: `Successfully deleted ${data.count} employees from the database.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/employees'] });
+      if (onComplete) {
+        onComplete();
+      }
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Delete Failed",
+        description: error.message || "There was an error deleting all employees.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -326,6 +358,15 @@ export default function EmployeeImport({ onComplete }: EmployeeImportProps) {
   const handleUseForImport = (filePath: string) => {
     setExcelFilePath(filePath);
     setActiveTab('import');
+  };
+  
+  // Handler for deleting all employees
+  const handleDeleteAllEmployees = () => {
+    if (confirm('WARNING: This will permanently delete ALL employees from the database. This action cannot be undone. Are you sure you want to proceed?')) {
+      if (confirm('FINAL WARNING: All employee records will be permanently deleted. This is your last chance to cancel. Continue?')) {
+        deleteAllEmployeesMutation.mutate();
+      }
+    }
   };
 
   return (

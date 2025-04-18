@@ -52,6 +52,7 @@ export interface IStorage {
   createEmployee(employee: InsertEmployee): Promise<Employee>;
   updateEmployee(id: number, employee: Partial<InsertEmployee>): Promise<Employee | undefined>;
   deleteEmployee(id: number): Promise<boolean>;
+  deleteAllEmployees(): Promise<number>;
   
   // Project operations
   getAllProjects(): Promise<Project[]>;
@@ -433,6 +434,12 @@ export class DatabaseStorage implements IStorage {
   async deleteEmployee(id: number): Promise<boolean> {
     const result = await db.delete(employees).where(eq(employees.id, id));
     return !!result.rowCount;
+  }
+  
+  async deleteAllEmployees(): Promise<number> {
+    // Delete all employees from the database and return the count of deleted rows
+    const result = await db.delete(employees);
+    return result.rowCount || 0;
   }
   
   // Project operations
