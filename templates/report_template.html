@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{REPORT_TITLE}}</title>
+  <style>
+    {{REPORT_STYLE}}
+    /* Print-specific styles */
+    @page {
+      size: {{REPORT_SIZE}} {{REPORT_ORIENTATION}};
+      margin: 1cm;
+    }
+    
+    @media print {
+      .no-print {
+        display: none;
+      }
+      
+      .page-break {
+        page-break-after: always;
+      }
+      
+      /* Ensure background colors print */
+      * {
+        -webkit-print-color-adjust: exact !important;
+        color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="report-container">
+    <!-- Report Controls - only visible on screen -->
+    <div class="no-print report-controls">
+      <button onclick="window.print()">Print Report</button>
+      <button onclick="window.close()">Close</button>
+    </div>
+    
+    <!-- Header Section -->
+    <div class="report-header">
+      <div class="company-info">
+        <h1 class="company-name">{{COMPANY_NAME}}</h1>
+        <p class="company-address">{{COMPANY_ADDRESS}}</p>
+        <p class="company-contact">{{COMPANY_CONTACT}}</p>
+      </div>
+      <div class="logo-container">
+        {{COMPANY_LOGO}}
+      </div>
+    </div>
+    
+    <!-- Title Section -->
+    <div class="report-title-section">
+      <h2 class="report-title">{{REPORT_TITLE}}</h2>
+      <p class="report-subtitle">{{REPORT_SUBTITLE}}</p>
+      <p class="report-date">Generated on {{REPORT_DATE}}</p>
+    </div>
+    
+    <!-- Content Section -->
+    <div class="report-content">
+      {{REPORT_TABLE}}
+    </div>
+    
+    <!-- Footer Section -->
+    <div class="report-footer">
+      <p>{{FOOTER_TEXT}}</p>
+      <p class="page-number">Page <span class="page"></span> of <span class="pages"></span></p>
+    </div>
+  </div>
+  
+  <!-- Add page numbering script -->
+  <script>
+    // Add page numbers when printing
+    window.addEventListener('beforeprint', function() {
+      let pageNum = 1;
+      document.querySelectorAll('.page').forEach(el => {
+        el.textContent = pageNum.toString();
+      });
+      
+      document.querySelectorAll('.pages').forEach(el => {
+        // This is a placeholder - in a real system we'd need to 
+        // calculate actual page count which is tricky in HTML
+        el.textContent = "?";
+      });
+    });
+  </script>
+</body>
+</html>

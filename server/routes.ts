@@ -1274,6 +1274,224 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Report Templates API Endpoints
+  app.get("/api/reports/templates", async (req: Request, res: Response) => {
+    try {
+      const { listReportTemplates, defaultTemplates } = await import('./utils/reportTemplates');
+      
+      // Get all templates from the filesystem
+      const result = await listReportTemplates();
+      
+      if (result.success) {
+        res.status(200).json(result.templates);
+      } else {
+        // If no templates are found, return the default templates
+        res.status(200).json(defaultTemplates);
+      }
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
+  app.get("/api/reports/templates/:id", async (req: Request, res: Response) => {
+    try {
+      const templateId = req.params.id;
+      const { loadReportTemplate, defaultTemplates } = await import('./utils/reportTemplates');
+      
+      // Try to load the template from the filesystem
+      const result = await loadReportTemplate(templateId);
+      
+      if (result.success) {
+        res.status(200).json(result.template);
+      } else {
+        // If the template is not found, check if it's a default template
+        const defaultTemplate = defaultTemplates.find(t => t.id === templateId);
+        if (defaultTemplate) {
+          res.status(200).json(defaultTemplate);
+        } else {
+          res.status(404).json({ message: "Report template not found" });
+        }
+      }
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
+  app.post("/api/reports/templates", async (req: Request, res: Response) => {
+    try {
+      const templateData = req.body;
+      const { saveReportTemplate } = await import('./utils/reportGenerator');
+      
+      // Generate a unique ID if not provided
+      if (!templateData.id) {
+        templateData.id = `template-${Date.now()}`;
+      }
+      
+      // Set created and updated dates
+      templateData.createdAt = new Date();
+      templateData.updatedAt = new Date();
+      
+      const result = await saveReportTemplate(templateData);
+      
+      if (result.success) {
+        res.status(201).json(templateData);
+      } else {
+        res.status(500).json({ message: "Failed to save report template", error: result.error });
+      }
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
+  app.put("/api/reports/templates/:id", async (req: Request, res: Response) => {
+    try {
+      const templateId = req.params.id;
+      const templateData = req.body;
+      const { saveReportTemplate, loadReportTemplate } = await import('./utils/reportGenerator');
+      const { defaultTemplates } = await import('./utils/reportTemplates');
+      
+      // Check if template exists
+      const existing = await loadReportTemplate(templateId);
+      
+      // Check if it's a default template
+      const isDefaultTemplate = defaultTemplates.some(t => t.id === templateId);
+      
+      if (!existing.success && !isDefaultTemplate) {
+        return res.status(404).json({ message: "Report template not found" });
+      }
+      
+      // Update the template data
+      templateData.id = templateId;
+      templateData.updatedAt = new Date();
+      
+      // Keep original creation date if it exists
+      if (existing.success && existing.template.createdAt) {
+        templateData.createdAt = existing.template.createdAt;
+      }
+      
+      const result = await saveReportTemplate(templateData);
+      
+      if (result.success) {
+        res.status(200).json(templateData);
+      } else {
+        res.status(500).json({ message: "Failed to update report template", error: result.error });
+      }
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
+  app.delete("/api/reports/templates/:id", async (req: Request, res: Response) => {
+    try {
+      const templateId = req.params.id;
+      const { deleteReportTemplate } = await import('./utils/reportGenerator');
+      const { defaultTemplates } = await import('./utils/reportTemplates');
+      
+      // Check if it's a default template
+      const isDefaultTemplate = defaultTemplates.some(t => t.id === templateId);
+      
+      if (isDefaultTemplate) {
+        return res.status(400).json({ message: "Cannot delete default templates" });
+      }
+      
+      const result = await deleteReportTemplate(templateId);
+      
+      if (result.success) {
+        res.status(200).json({ message: "Report template deleted successfully" });
+      } else {
+        res.status(500).json({ message: "Failed to delete report template", error: result.error });
+      }
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
+  app.post("/api/reports/generate", async (req: Request, res: Response) => {
+    try {
+      const { templateId, dataType, filters, format = 'html' } = req.body;
+      
+      // Import required modules
+      const { loadReportTemplate, defaultTemplates } = await import('./utils/reportTemplates');
+      const { generateReportHtml, generateReportExcel } = await import('./utils/reportGenerator');
+      
+      // Load template
+      let templateResult = await loadReportTemplate(templateId);
+      let template;
+      
+      if (templateResult.success) {
+        template = templateResult.template;
+      } else {
+        // Check default templates
+        template = defaultTemplates.find(t => t.id === templateId);
+        
+        if (!template) {
+          return res.status(404).json({ message: "Report template not found" });
+        }
+      }
+      
+      // Fetch data based on dataType
+      let data = [];
+      let companyDetails = null;
+      
+      // Get company details
+      try {
+        companyDetails = await storage.getCompanyDetails();
+      } catch (err) {
+        console.log('Company details not found, using defaults');
+      }
+      
+      // Fetch data for the report
+      switch (dataType) {
+        case 'attendance':
+          data = await storage.getAllAttendance(filters);
+          break;
+        case 'payroll':
+          data = await storage.getAllPayroll(filters);
+          break;
+        case 'employee':
+          data = await storage.getAllEmployees(filters);
+          break;
+        case 'project':
+          data = await storage.getAllProjects(filters);
+          break;
+        case 'expenditure':
+          data = await storage.getAllExpenditures(filters);
+          break;
+        case 'income':
+          data = await storage.getAllIncomes(filters);
+          break;
+        default:
+          return res.status(400).json({ message: "Invalid data type" });
+      }
+      
+      // Generate the report in the requested format
+      if (format === 'html') {
+        const html = await generateReportHtml(template, data, companyDetails);
+        res.setHeader('Content-Type', 'text/html');
+        res.status(200).send(html);
+      } else if (format === 'excel') {
+        // For Excel, we'll generate a file and send it as a download
+        const tempFilePath = path.join(uploadsDir, `report-${Date.now()}.xlsx`);
+        const result = await generateReportExcel(template, data, tempFilePath);
+        
+        if (result.success) {
+          // In a real implementation, we would send the file here
+          res.status(200).json({ 
+            message: "Excel export would be generated here",
+            dataCount: data.length,
+            filePath: tempFilePath.replace(/^.*[\\\/]/, '') // Just return the filename part
+          });
+        } else {
+          res.status(500).json({ message: "Failed to generate Excel report" });
+        }
+      } else {
+        res.status(400).json({ message: "Unsupported format. Use 'html' or 'excel'." });
+      }
+    } catch (error) {
+      handleError(error, res);
+    }
+  });
+
   // Create a server instance
   const httpServer = createServer(app);
   return httpServer;
