@@ -1,0 +1,150 @@
+/* Mobile-first responsive CSS */
+
+/* General styling */
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 60px; /* Space for the footer */
+    position: relative;
+}
+
+.footer {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+}
+
+/* Make buttons larger on mobile for easier tapping */
+@media (max-width: 768px) {
+    .btn-lg {
+        padding: 0.75rem 1.5rem;
+        font-size: 1.25rem;
+    }
+    
+    /* Increase form input sizes on mobile */
+    .form-control-lg {
+        height: calc(1.5em + 1rem + 2px);
+        padding: 0.75rem 1rem;
+        font-size: 1.25rem;
+    }
+}
+
+/* Card styling */
+.card {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.card-header {
+    border-bottom: none;
+    padding: 1rem 1.5rem;
+}
+
+/* Primary color adjustments */
+.bg-primary {
+    background-color: #007bff !important;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.btn-primary:hover {
+    background-color: #0069d9;
+    border-color: #0062cc;
+}
+
+/* Success and danger button styling */
+.btn-success {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    border-color: #dc3545;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+    border-color: #bd2130;
+}
+
+/* Add shadow to form inputs when focused */
+.form-control:focus {
+    box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25);
+    border-color: #80bdff;
+}
+
+/* Animation for the clock in/out buttons */
+.btn-success, .btn-danger {
+    transition: all 0.3s ease;
+}
+
+.btn-success:active, .btn-danger:active {
+    transform: scale(0.95);
+}
+
+/* Table adjustments */
+.table {
+    margin-bottom: 0;
+}
+
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Badge styling */
+.badge {
+    font-weight: 500;
+    padding: 0.5em 0.75em;
+}
+
+/* Admin dashboard filters */
+@media (max-width: 767.98px) {
+    .col-md-4 {
+        margin-bottom: 1rem;
+    }
+}
+
+/* Photo preview container */
+#photoPreviewContainer {
+    background-color: #f8f9fa;
+    transition: all 0.3s ease;
+}
+
+/* Prevent text selection for better mobile UX */
+.btn, .nav-link, .navbar-brand {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Status alert styling */
+#locationStatus {
+    transition: all 0.3s ease;
+}
+
+/* Better spacing for form elements */
+.form-label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+/* Make sure the preview doesn't get too large */
+#photoPreview {
+    max-height: 200px;
+    width: auto;
+    object-fit: contain;
+}

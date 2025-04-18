@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard - Field Attendance Tracker{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-0"><i class="fas fa-chart-line"></i> Admin Dashboard</h1>
+    <a href="{{ url_for('admin_logout') }}" class="btn btn-outline-danger">
+        <i class="fas fa-sign-out-alt"></i> Logout
+    </a>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="fas fa-filter"></i> Filter Attendance Records</h5>
+    </div>
+    <div class="card-body">
+        <form action="{{ url_for('admin_dashboard') }}" method="GET" class="row g-3">
+            <div class="col-md-4">
+                <label for="date" class="form-label">Date</label>
+                <input type="date" class="form-control" id="date" name="date" value="{{ request.args.get('date', '') }}">
+            </div>
+            <div class="col-md-4">
+                <label for="employee_id" class="form-label">Employee ID</label>
+                <select class="form-select" id="employee_id" name="employee_id">
+                    <option value="">All Employees</option>
+                    {% for emp_id in employee_ids %}
+                    <option value="{{ emp_id }}" {% if request.args.get('employee_id') == emp_id %}selected{% endif %}>{{ emp_id }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <div class="d-grid gap-2 w-100">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Apply Filters
+                    </button>
+                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-undo"></i> Reset
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Attendance Records Table -->
+<div class="card shadow">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="fas fa-list"></i> Attendance Records</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Employee ID</th>
+                        <th>Action</th>
+                        <th>Timestamp</th>
+                        <th>Location</th>
+                        <th>Photo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if records.items %}
+                        {% for record in records.items %}
+                        <tr>
+                            <td>{{ record.employee_id }}</td>
+                            <td>
+                                {% if record.action == 'Clock In' %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-sign-in-alt"></i> Clock In
+                                </span>
+                                {% else %}
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-sign-out-alt"></i> Clock Out
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>{{ record.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            <td>
+                                {% if record.latitude and record.longitude %}
+                                <a href="https://maps.google.com/?q={{ record.latitude }},{{ record.longitude }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-map-marker-alt"></i> View
+                                </a>
+                                <small class="text-muted d-block">
+                                    {{ record.latitude }}, {{ record.longitude }}
+                                </small>
+                                {% else %}
+                                <span class="badge bg-secondary">No location data</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if record.photo_path %}
+                                <a href="{{ url_for('uploaded_file', filename=record.photo_path) }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-image"></i> View
+                                </a>
+                                {% else %}
+                                <span class="badge bg-secondary">No photo</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-3">No attendance records found.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Pagination -->
+    {% if records.items and records.pages > 1 %}
+    <div class="card-footer">
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center mb-0">
+                <!-- Previous page -->
+                {% if records.has_prev %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('admin_dashboard', page=records.prev_num, date=request.args.get('date'), employee_id=request.args.get('employee_id')) }}">
+                        <i class="fas fa-chevron-left"></i> Previous
+                    </a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link"><i class="fas fa-chevron-left"></i> Previous</span>
+                </li>
+                {% endif %}
+                
+                <!-- Page numbers -->
+                {% for page_num in records.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                    {% if page_num %}
+                        {% if records.page == page_num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ page_num }}</span>
+                        </li>
+                        {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('admin_dashboard', page=page_num, date=request.args.get('date'), employee_id=request.args.get('employee_id')) }}">
+                                {{ page_num }}
+                            </a>
+                        </li>
+                        {% endif %}
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link">...</span>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                
+                <!-- Next page -->
+                {% if records.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="{{ url_for('admin_dashboard', page=records.next_num, date=request.args.get('date'), employee_id=request.args.get('employee_id')) }}">
+                        Next <i class="fas fa-chevron-right"></i>
+                    </a>
+                </li>
+                {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">Next <i class="fas fa-chevron-right"></i></span>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

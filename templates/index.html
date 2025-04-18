@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+
+{% block title %}Field Attendance Tracker - Clock In/Out{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-clock"></i> Attendance Tracker</h4>
+            </div>
+            <div class="card-body">
+                <form id="attendanceForm" action="{{ url_for('submit') }}" method="POST" enctype="multipart/form-data">
+                    <!-- Hidden fields for GPS coordinates -->
+                    <input type="hidden" name="latitude" id="latitude">
+                    <input type="hidden" name="longitude" id="longitude">
+                    
+                    <div class="mb-3">
+                        <label for="employee_id" class="form-label">Employee ID <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control form-control-lg" id="employee_id" name="employee_id" required placeholder="Enter your Employee ID">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="form-label">Take a Selfie (Optional)</label>
+                        <div class="d-flex flex-column">
+                            <div class="p-2 border rounded text-center mb-2" id="photoPreviewContainer" style="display: none;">
+                                <img id="photoPreview" class="img-fluid" style="max-height: 200px;">
+                            </div>
+                            <div class="input-group">
+                                <input type="file" class="form-control" id="photo" name="photo" accept="image/*" capture="user">
+                                <button type="button" class="btn btn-outline-secondary" id="clearPhoto">Clear</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="location-status mb-4">
+                        <div class="alert alert-info" id="locationStatus">
+                            <i class="fas fa-location-dot"></i> Location access: <span id="locationStatusText">Waiting...</span>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-lg" name="action" value="Clock In">
+                            <i class="fas fa-sign-in-alt"></i> Clock In
+                        </button>
+                        <button type="submit" class="btn btn-danger btn-lg" name="action" value="Clock Out">
+                            <i class="fas fa-sign-out-alt"></i> Clock Out
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-muted">
+                <small>Note: Your current location will be recorded when you clock in/out</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const photoInput = document.getElementById('photo');
+        const photoPreview = document.getElementById('photoPreview');
+        const photoPreviewContainer = document.getElementById('photoPreviewContainer');
+        const clearPhotoBtn = document.getElementById('clearPhoto');
+        const locationStatus = document.getElementById('locationStatusText');
+        const attendanceForm = document.getElementById('attendanceForm');
+        const latitudeInput = document.getElementById('latitude');
+        const longitudeInput = document.getElementById('longitude');
+        
+        // Handle photo preview
+        photoInput.addEventListener('change', function(e) {
+            if (e.target.files && e.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    photoPreview.src = e.target.result;
+                    photoPreviewContainer.style.display = 'block';
+                }
+                reader.readAsDataURL(e.target.files[0]);
+            }
+        });
+        
+        // Clear photo
+        clearPhotoBtn.addEventListener('click', function() {
+            photoInput.value = '';
+            photoPreviewContainer.style.display = 'none';
+        });
+        
+        // Request location permission when form is about to be submitted
+        attendanceForm.addEventListener('submit', function(e) {
+            if (!latitudeInput.value || !longitudeInput.value) {
+                e.preventDefault();
+                // Try to get location
+                getLocation(function() {
+                    // After getting location, submit the form
+                    attendanceForm.submit();
+                });
+            }
+        });
+        
+        // Attempt to get location on page load
+        getLocation();
+        
+        // Function to get current location
+        function getLocation(callback) {
+            if (navigator.geolocation) {
+                locationStatus.textContent = "Requesting...";
+                
+                navigator.geolocation.getCurrentPosition(
+                    // Success
+                    function(position) {
+                        latitudeInput.value = position.coords.latitude;
+                        longitudeInput.value = position.coords.longitude;
+                        locationStatus.textContent = "Location acquired";
+                        document.getElementById('locationStatus').classList.remove('alert-info', 'alert-danger');
+                        document.getElementById('locationStatus').classList.add('alert-success');
+                        
+                        if (callback && typeof callback === 'function') {
+                            callback();
+                        }
+                    },
+                    // Error
+                    function(error) {
+                        let errorMessage = "Unable to access your location";
+                        switch(error.code) {
+                            case error.PERMISSION_DENIED:
+                                errorMessage = "Location access denied. Please enable location services.";
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                errorMessage = "Location information unavailable.";
+                                break;
+                            case error.TIMEOUT:
+                                errorMessage = "Location request timed out.";
+                                break;
+                        }
+                        
+                        locationStatus.textContent = errorMessage;
+                        document.getElementById('locationStatus').classList.remove('alert-info', 'alert-success');
+                        document.getElementById('locationStatus').classList.add('alert-danger');
+                        
+                        if (callback && typeof callback === 'function') {
+                            callback();  // Still proceed with form submission
+                        }
+                    },
+                    // Options
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    }
+                );
+            } else {
+                locationStatus.textContent = "Geolocation is not supported by this browser";
+                document.getElementById('locationStatus').classList.remove('alert-info', 'alert-success');
+                document.getElementById('locationStatus').classList.add('alert-danger');
+                
+                if (callback && typeof callback === 'function') {
+                    callback();  // Still proceed with form submission
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
