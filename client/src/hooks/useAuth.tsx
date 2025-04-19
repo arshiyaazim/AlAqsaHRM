@@ -49,7 +49,17 @@ const useLoginMutation = () => {
         const errorData = await response.json();
         throw new Error(errorData.message || "Login failed");
       }
-      return response.json();
+      const data = await response.json();
+      console.log("Login response:", data);
+      
+      // Store the token in localStorage
+      if (data.token) {
+        localStorage.setItem('authToken', data.token);
+        console.log("Login successful, response:", data);
+        console.log("Token stored in localStorage");
+      }
+      
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
@@ -83,6 +93,9 @@ const useLogoutMutation = () => {
         const errorData = await response.json();
         throw new Error(errorData.message || "Logout failed");
       }
+      // Remove token from localStorage
+      localStorage.removeItem('authToken');
+      console.log("Logged out, token removed from localStorage");
       return response.json();
     },
     onSuccess: () => {

@@ -15,7 +15,7 @@ export async function apiRequest(
   const headers: Record<string, string> = data ? { "Content-Type": "application/json" } : {};
   
   // Add Authorization header if token exists
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('authToken');
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
@@ -40,7 +40,7 @@ export const getQueryFn: <T>(options: {
     const headers: Record<string, string> = {};
     
     // Add Authorization header if token exists
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('authToken');
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
@@ -52,8 +52,7 @@ export const getQueryFn: <T>(options: {
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
       // If token is expired or invalid, clear it from storage
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      localStorage.removeItem('authToken');
       return null;
     }
 
