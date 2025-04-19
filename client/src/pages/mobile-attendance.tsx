@@ -440,14 +440,14 @@ export default function MobileAttendancePage() {
           <div className="space-y-2">
             <Label htmlFor="projectId">Project</Label>
             <Select 
-              value={selectedProjectId?.toString() || ''}
-              onValueChange={(value) => setSelectedProjectId(value ? parseInt(value) : null)}
+              value={selectedProjectId?.toString() || 'none'}
+              onValueChange={(value) => setSelectedProjectId(value !== 'none' ? parseInt(value) : null)}
             >
               <SelectTrigger id="projectId">
                 <SelectValue placeholder="Select Project" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No Project</SelectItem>
+                <SelectItem value="none">No Project</SelectItem>
                 {projects.map((project) => (
                   <SelectItem 
                     key={project.id} 
