@@ -136,8 +136,48 @@ export default function UsersPage() {
   });
   
   // Fetch all users
-  const { data: users = [], isLoading } = useQuery<User[]>({
+  const { data: users = [], isLoading, error: usersError } = useQuery<User[]>({
     queryKey: ["/api/users"],
+    queryFn: async () => {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast({
+          title: "Authentication error",
+          description: "No authentication token found. Please log in again.",
+          variant: "destructive"
+        });
+        throw new Error('No authentication token found');
+      }
+      
+      console.log("Fetching users with token:", token.substring(0, 10) + "...");
+      
+      const response = await fetch('/api/users', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Failed to fetch users:", response.status, errorText);
+        toast({
+          title: "Failed to fetch users",
+          description: `Error: ${response.status} - ${errorText || response.statusText}`,
+          variant: "destructive"
+        });
+        throw new Error(`Failed to fetch users: ${response.status} - ${errorText || response.statusText}`);
+      }
+      
+      const userData = await response.json();
+      console.log("Fetched users:", userData);
+      
+      // Check for pending users specifically
+      const pendingCount = userData.filter((user: User) => !user.isActive).length;
+      console.log(`Found ${pendingCount} pending users out of ${userData.length} total users`);
+      
+      return userData;
+    },
+    retry: 1
   });
   
   // Get pending registrations (users with isActive = false)
@@ -375,6 +415,24 @@ export default function UsersPage() {
     return (
       <div className="flex items-center justify-center h-48">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
+  if (usersError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-48 text-center">
+        <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
+        <h3 className="text-xl font-semibold text-red-600">Error Loading Users</h3>
+        <p className="text-gray-600 max-w-md mt-2">
+          {usersError instanceof Error ? usersError.message : 'An unknown error occurred while fetching users'}
+        </p>
+        <Button 
+          onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/users"] })}
+          className="mt-4"
+        >
+          Retry
+        </Button>
       </div>
     );
   }
@@ -753,7 +811,7 @@ export default function UsersPage() {
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.fullName}</TableCell>
                   <TableCell>{user.email}</TableCell>
-                  <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell>{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown'}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                       <Button
@@ -834,7 +892,7 @@ export default function UsersPage() {
                     </Select>
                   </div>
                 </TableCell>
-                <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                <TableCell>{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown'}</TableCell>
                 <TableCell>
                   <div className="flex space-x-2">
                     <Button
