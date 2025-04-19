@@ -13,7 +13,7 @@ export const users = pgTable("users", {
   role: text("role").notNull().default("viewer"), // 'admin', 'hr', or 'viewer'
   employeeId: text("employeeid").notNull(),
   createdAt: timestamp("createdat").defaultNow(),
-  isActive: boolean("isactive").default(true),
+  isActive: boolean("isactive").default(false), // Start inactive to require admin approval
   permissions: jsonb("permissions").default("{}"), // Custom permissions for menu visibility
 });
 

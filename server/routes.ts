@@ -124,11 +124,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(data.password, salt);
       
+      // Combine first and last name to create fullName
+      const fullName = `${data.firstName} ${data.lastName}`;
+      
       // Create user with hashed password
+      // For users created from admin panel, set isActive to true, for regular registrations, default to false
+      // Admins are automatically approved
+      const isActive = req.headers.authorization ? true : false;
+      const role = data.role || "viewer"; // Default role is viewer
+      
+      console.log(`Creating user with isActive=${isActive} and role=${role}`);
+      
       const user = await storage.createUser({
         ...data,
+        fullName,
         password: hashedPassword,
-        role: data.role || "viewer", // Default role is viewer
+        role: role,
+        isActive: role === 'admin' ? true : isActive // Admins are always active
       });
       
       // Generate token for the new user
