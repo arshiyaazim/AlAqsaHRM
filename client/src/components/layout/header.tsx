@@ -14,7 +14,7 @@ import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import useAuth from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Dialog,
   DialogContent,
@@ -44,7 +44,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const handleLogout = async () => {
     try {
       // Remove stored user data
-      localStorage.removeItem('token');
+      localStorage.removeItem('authToken');
       localStorage.removeItem('user');
       
       // Use the logoutMutation from useAuth

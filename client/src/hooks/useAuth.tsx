@@ -197,7 +197,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 };
 
 // Custom Hook to use Auth Context
-const useAuth = () => {
+export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
     console.error("useAuth is being called outside of AuthProvider");
@@ -213,5 +213,3 @@ const useAuth = () => {
   }
   return context;
 };
-
-export default useAuth;

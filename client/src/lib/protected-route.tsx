@@ -1,6 +1,6 @@
 import { ReactNode, useEffect } from 'react';
 import { Route, useLocation } from 'wouter';
-import useAuth from '@/hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
