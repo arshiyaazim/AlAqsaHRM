@@ -52,6 +52,7 @@ export default function AuthPage() {
   const [_, setLocation] = useLocation();
   const { toast } = useToast();
   const { settings } = useCompanySettings();
+  const { loginMutation } = useAuth();
 
   // Login form
   const loginForm = useForm<LoginFormValues>({
@@ -79,8 +80,7 @@ export default function AuthPage() {
   const onLoginSubmit = async (data: LoginFormValues) => {
     setIsLoggingIn(true);
     try {
-      // Use the hook for consistency across the app
-      const { loginMutation } = useAuth();
+      console.log("Login submission started with:", { email: data.email });
       
       await loginMutation.mutateAsync(data);
       

@@ -112,20 +112,46 @@ const useRegisterMutation = () => {
 const useLogoutMutation = () => {
   return useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/auth/logout");
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Logout failed");
+      console.log("Logout mutation started");
+      
+      // Try server logout
+      try {
+        const response = await apiRequest("POST", "/api/auth/logout");
+        if (!response.ok) {
+          console.warn("Server logout failed, continuing with client-side logout");
+        } else {
+          console.log("Server logout succeeded");
+        }
+      } catch (error) {
+        console.warn("Server logout error, continuing with client-side logout:", error);
       }
-      // Remove token from localStorage
-      localStorage.removeItem('authToken');
-      console.log("Logged out, token removed from localStorage");
-      return response.json();
+      
+      // Always clean up local storage regardless of server response
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("user");
+      console.log("Logged out: tokens and user data removed from localStorage");
+      
+      return { success: true };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      // Clear all queries and reset auth state
+      queryClient.clear();
       queryClient.setQueryData(["/api/auth/me"], null);
+      
+      // Force reload to ensure clean state
+      window.location.href = "/auth";
     },
+    onError: (error) => {
+      console.error("Logout error:", error);
+      
+      // Even on error, attempt to clear client state
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("user");
+      queryClient.setQueryData(["/api/auth/me"], null);
+      
+      // Force navigation to login page
+      window.location.href = "/auth";
+    }
   });
 };
 
