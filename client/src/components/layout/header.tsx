@@ -37,8 +37,9 @@ export default function Header({ onMenuClick }: HeaderProps) {
   
   const handleLogout = async () => {
     try {
-      // Remove the auth token
-      localStorage.removeItem('authToken');
+      // Remove the auth token and user data
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
       
       // Call logout API endpoint
       const response = await fetch('/api/auth/logout', {
@@ -70,18 +71,34 @@ export default function Header({ onMenuClick }: HeaderProps) {
   
   // Get user info from API or localStorage
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    if (token) {
+    // First try to get user data from localStorage
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
       try {
-        // Decode JWT token to get user info
-        const tokenPayload = JSON.parse(atob(token.split('.')[1]));
-        if (tokenPayload) {
+        const userData = JSON.parse(userStr);
+        if (userData) {
           setUserInfo({
-            name: tokenPayload.fullName || tokenPayload.email || 'User'
+            name: userData.fullName || userData.firstName + ' ' + userData.lastName || userData.email || 'User'
           });
         }
       } catch (error) {
-        console.error('Error decoding JWT token:', error);
+        console.error('Error parsing user data from localStorage:', error);
+      }
+    } else {
+      // Fallback to token if no user data
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          // Decode JWT token to get user info
+          const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+          if (tokenPayload) {
+            setUserInfo({
+              name: tokenPayload.fullName || tokenPayload.email || 'User'
+            });
+          }
+        } catch (error) {
+          console.error('Error decoding JWT token:', error);
+        }
       }
     }
     

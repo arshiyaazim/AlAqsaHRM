@@ -37,20 +37,34 @@ export default function Sidebar() {
   const [userRole, setUserRole] = useState('admin'); // Default to admin for now
   const [navigationItems, setNavigationItems] = useState(allNavigationItems);
   
-  // Get user role from JWT
+  // Get user role from localStorage
   useEffect(() => {
-    
-    // Get user role from localStorage or JWT
-    const token = localStorage.getItem('authToken');
-    if (token) {
+    // First try to get user data from localStorage
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
       try {
-        // Decode JWT token to get user role
-        const tokenPayload = JSON.parse(atob(token.split('.')[1]));
-        if (tokenPayload && tokenPayload.role) {
-          setUserRole(tokenPayload.role);
+        const userData = JSON.parse(userStr);
+        if (userData && userData.role) {
+          setUserRole(userData.role);
+          console.log("User role set from localStorage user data:", userData.role);
         }
       } catch (error) {
-        console.error('Error decoding JWT token:', error);
+        console.error('Error parsing user data from localStorage:', error);
+      }
+    } else {
+      // Fallback to token if no user data
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          // Decode JWT token to get user role
+          const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+          if (tokenPayload && tokenPayload.role) {
+            setUserRole(tokenPayload.role);
+            console.log("User role set from token:", tokenPayload.role);
+          }
+        } catch (error) {
+          console.error('Error decoding JWT token:', error);
+        }
       }
     }
   }, []);
