@@ -135,13 +135,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Creating user with isActive=${isActive} and role=${role}`);
       
-      const user = await storage.createUser({
+      // We need to handle fullName separately because it's not in the insert schema
+      // but is a required field in the database
+      const userToCreate = {
         ...data,
-        fullName,
         password: hashedPassword,
         role: role,
         isActive: role === 'admin' ? true : isActive // Admins are always active
-      });
+      };
+      
+      // Add fullName field directly to avoid TypeScript errors
+      const userWithFullName = {
+        ...userToCreate,
+        fullName
+      } as any;
+      
+      const user = await storage.createUser(userWithFullName);
       
       // Generate token for the new user
       const token = generateToken(user);
