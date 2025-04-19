@@ -69,10 +69,35 @@ export default function AuthPage() {
   const onLoginSubmit = async (data: LoginFormValues) => {
     setIsLoggingIn(true);
     try {
-      const response = await apiRequest("POST", "/api/auth/login", data);
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      
+      // Get response data first
+      const responseData = await response.json();
+      console.log("Login response:", responseData);
+      
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Login failed");
+        throw new Error(responseData.message || "Login failed");
+      }
+      
+      console.log("Login successful, response:", responseData);
+      
+      // Store token in localStorage
+      if (responseData.token) {
+        localStorage.setItem("token", responseData.token);
+        console.log("Token stored in localStorage");
+        
+        // Store user data if available
+        if (responseData.user) {
+          localStorage.setItem("user", JSON.stringify(responseData.user));
+        }
+      } else {
+        console.error("No token received from server");
       }
       
       toast({
@@ -81,6 +106,7 @@ export default function AuthPage() {
       });
       setLocation("/");
     } catch (error) {
+      console.error("Login error:", error);
       toast({
         title: "Login failed",
         description: error instanceof Error ? error.message : "Please check your credentials and try again",
