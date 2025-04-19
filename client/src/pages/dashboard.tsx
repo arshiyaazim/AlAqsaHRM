@@ -9,6 +9,7 @@ import StatCard from "@/components/dashboard/stat-card";
 import AttendanceChart from "@/components/dashboard/attendance-chart";
 import RecentPayments from "@/components/dashboard/recent-payments";
 import QuickActions from "@/components/dashboard/quick-actions";
+import { QRCodeCard } from "@/components/dashboard/qr-code-card";
 import { formatCurrency } from "@/lib/utils";
 import { 
   DashboardSkeleton, 

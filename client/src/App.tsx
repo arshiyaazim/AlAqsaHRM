@@ -28,16 +28,29 @@ import TemplateEditor from "@/pages/reports/template-editor";
 import Settings from "@/pages/settings";
 import AuthPage from "@/pages/auth-page";
 import UsersPage from "@/pages/users";
+import MobileAttendance from "@/pages/mobile-attendance";
 import { CompanyProvider } from "@/hooks/useCompanySettings";
 
 function Router() {
   const [location] = useLocation();
   const isAuthPage = location === "/auth";
+  const isMobileAttendance = location === "/mobile-attendance";
 
   if (isAuthPage) {
     return (
       <Switch>
         <Route path="/auth" component={AuthPage} />
+        <Route path="*">
+          <div>Page not found</div>
+        </Route>
+      </Switch>
+    );
+  }
+
+  if (isMobileAttendance) {
+    return (
+      <Switch>
+        <Route path="/mobile-attendance" component={MobileAttendance} />
         <Route path="*">
           <div>Page not found</div>
         </Route>
@@ -106,11 +119,12 @@ function MainLayout({ children }: { children: React.ReactNode }) {
 function App() {
   const [location] = useLocation();
   const isAuthPage = location === "/auth";
+  const isMobileAttendance = location === "/mobile-attendance";
 
   return (
     <CompanyProvider>
       <>
-        {isAuthPage ? (
+        {isAuthPage || isMobileAttendance ? (
           <main className="min-h-screen">
             <Router />
           </main>
