@@ -19,6 +19,11 @@ const loginSchema = z.object({
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
 });
 
+// Forgot Password form schema
+const forgotPasswordSchema = z.object({
+  email: z.string().email({ message: "Please enter a valid email address" }),
+});
+
 // Register form schema
 const registerSchema = z.object({
   firstName: z.string().min(2, { message: "First name must be at least 2 characters" }),
@@ -35,10 +40,14 @@ const registerSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
+type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
+
 export default function AuthPage() {
   const [activeTab, setActiveTab] = useState<string>("login");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [isRequestingReset, setIsRequestingReset] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [_, setLocation] = useLocation();
   const { toast } = useToast();
   const { settings } = useCompanySettings();
@@ -197,9 +206,19 @@ export default function AuthPage() {
                         </FormItem>
                       )}
                     />
+                    <div className="text-right">
+                      <Button 
+                        variant="link" 
+                        className="p-0 h-auto font-normal text-xs text-primary"
+                        type="button"
+                        onClick={() => setShowForgotPassword(true)}
+                      >
+                        Forgot password?
+                      </Button>
+                    </div>
                     <Button 
                       type="submit" 
-                      className="w-full mt-6" 
+                      className="w-full mt-4" 
                       disabled={isLoggingIn}
                     >
                       {isLoggingIn ? (
@@ -213,6 +232,75 @@ export default function AuthPage() {
                     </Button>
                   </form>
                 </Form>
+                
+                {/* Forgot Password Dialog */}
+                {showForgotPassword && (
+                  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
+                      <h3 className="text-lg font-semibold mb-4">Reset Password</h3>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Enter your email address and we'll send you instructions to reset your password.
+                      </p>
+                      <form onSubmit={(e) => {
+                        e.preventDefault();
+                        const email = (e.target as HTMLFormElement).email.value;
+                        
+                        // Form validation
+                        if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+                          toast({
+                            title: "Invalid email",
+                            description: "Please enter a valid email address",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                        
+                        setIsRequestingReset(true);
+                        
+                        // Simulate API call - in a real app, this would call your backend
+                        setTimeout(() => {
+                          toast({
+                            title: "Password reset email sent",
+                            description: "Check your email for instructions to reset your password",
+                          });
+                          setShowForgotPassword(false);
+                          setIsRequestingReset(false);
+                        }, 1500);
+                      }}>
+                        <Input 
+                          type="email" 
+                          name="email" 
+                          placeholder="your.email@example.com" 
+                          className="mb-4" 
+                          required 
+                        />
+                        <div className="flex justify-end space-x-2">
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={() => setShowForgotPassword(false)}
+                            disabled={isRequestingReset}
+                          >
+                            Cancel
+                          </Button>
+                          <Button 
+                            type="submit" 
+                            disabled={isRequestingReset}
+                          >
+                            {isRequestingReset ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Sending...
+                              </>
+                            ) : (
+                              "Send Reset Link"
+                            )}
+                          </Button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                )}
               </TabsContent>
 
               {/* Register Form */}

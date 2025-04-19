@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import useAuth from "@/hooks/useAuth";
 import {
   Home,
   Users,
@@ -34,47 +35,18 @@ const allNavigationItems = [
 export default function Sidebar() {
   const [location] = useLocation();
   const { settings } = useCompanySettings();
-  const [userRole, setUserRole] = useState('admin'); // Default to admin for now
-  const [navigationItems, setNavigationItems] = useState(allNavigationItems);
-  
-  // Get user role from JWT or user object
-  useEffect(() => {
-    // Try to get user from localStorage first
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        if (user && user.role) {
-          setUserRole(user.role);
-          return;
-        }
-      } catch (error) {
-        console.error('Error parsing user from localStorage:', error);
-      }
-    }
-    
-    // Fall back to JWT token if user object not found
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        // Decode JWT token to get user role
-        const tokenPayload = JSON.parse(atob(token.split('.')[1]));
-        if (tokenPayload && tokenPayload.role) {
-          setUserRole(tokenPayload.role);
-        }
-      } catch (error) {
-        console.error('Error decoding JWT token:', error);
-      }
-    }
-  }, []);
+  const { user } = useAuth();
+  const [navigationItems, setNavigationItems] = useState<typeof allNavigationItems>([]);
   
   // Filter navigation items based on user role
   useEffect(() => {
+    if (!user) return;
+    
     const filteredItems = allNavigationItems.filter(item => 
-      item.roles.includes(userRole)
+      item.roles.includes(user.role)
     );
     setNavigationItems(filteredItems);
-  }, [userRole]);
+  }, [user]);
 
   return (
     <div className="hidden md:block w-64 bg-white shadow-md overflow-y-auto">

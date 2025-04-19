@@ -14,6 +14,7 @@ import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import useAuth from "@/hooks/useAuth";
 import {
   Dialog,
   DialogContent,
@@ -30,10 +31,15 @@ interface HeaderProps {
 export default function Header({ onMenuClick }: HeaderProps) {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [userInfo, setUserInfo] = useState<{ name: string; firstName?: string; lastName?: string; email?: string; role?: string }>({ name: 'User' });
+  const { user, logoutMutation } = useAuth();
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Prepare user display name
+  const userDisplayName = user 
+    ? user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'User'
+    : 'User';
   
   const handleLogout = async () => {
     try {
@@ -41,25 +47,16 @@ export default function Header({ onMenuClick }: HeaderProps) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       
-      // Call logout API endpoint
-      const response = await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        }
+      // Use the logoutMutation from useAuth
+      await logoutMutation.mutateAsync();
+      
+      toast({
+        title: "Logged out successfully",
+        description: "You have been logged out of the system",
       });
       
-      if (response.ok) {
-        toast({
-          title: "Logged out successfully",
-          description: "You have been logged out of the system",
-        });
-        
-        // Redirect to login page
-        setLocation('/auth');
-      } else {
-        throw new Error('Logout failed');
-      }
+      // Redirect to login page
+      setLocation('/auth');
     } catch (error) {
       console.error('Logout error:', error);
       toast({
@@ -73,47 +70,8 @@ export default function Header({ onMenuClick }: HeaderProps) {
     }
   };
   
-  // Get user info from localStorage
+  // Get saved profile photo URL
   useEffect(() => {
-    // Try to get user from localStorage first (most reliable)
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        if (user) {
-          setUserInfo({
-            name: user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'User',
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email,
-            role: user.role
-          });
-          return;
-        }
-      } catch (error) {
-        console.error('Error parsing user from localStorage:', error);
-      }
-    }
-    
-    // Fall back to JWT token if user object not found
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        // Decode JWT token to get user info
-        const tokenPayload = JSON.parse(atob(token.split('.')[1]));
-        if (tokenPayload) {
-          setUserInfo({
-            name: tokenPayload.fullName || tokenPayload.email || 'User',
-            email: tokenPayload.email,
-            role: tokenPayload.role
-          });
-        }
-      } catch (error) {
-        console.error('Error decoding JWT token:', error);
-      }
-    }
-    
-    // Try to get saved profile photo URL
     const savedProfilePhoto = localStorage.getItem('profilePhotoUrl');
     if (savedProfilePhoto) {
       setProfilePhotoUrl(savedProfilePhoto);
@@ -213,10 +171,10 @@ export default function Header({ onMenuClick }: HeaderProps) {
               >
                 <Avatar className="h-8 w-8 relative">
                   <AvatarImage 
-                    src={profilePhotoUrl || "https://ui-avatars.com/api/?name=" + encodeURIComponent(userInfo.name) + "&background=random"} 
+                    src={profilePhotoUrl || "https://ui-avatars.com/api/?name=" + encodeURIComponent(userDisplayName) + "&background=random"} 
                     alt="User profile" 
                   />
-                  <AvatarFallback>{userInfo.name.charAt(0)}</AvatarFallback>
+                  <AvatarFallback>{userDisplayName.charAt(0)}</AvatarFallback>
                   
                   {/* Camera Icon Overlay */}
                   <div className="absolute inset-0 bg-black bg-opacity-20 rounded-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
@@ -228,7 +186,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <div className="flex items-center cursor-pointer">
-                    <span className="ml-2 text-sm font-medium text-gray-700 hidden md:block">{userInfo.name}</span>
+                    <span className="ml-2 text-sm font-medium text-gray-700 hidden md:block">{userDisplayName}</span>
                   </div>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
@@ -277,10 +235,10 @@ export default function Header({ onMenuClick }: HeaderProps) {
             {/* Current Profile Photo */}
             <Avatar className="h-24 w-24 mb-4">
               <AvatarImage 
-                src={profilePhotoUrl || "https://ui-avatars.com/api/?name=" + encodeURIComponent(userInfo.name) + "&background=random&size=96"} 
+                src={profilePhotoUrl || "https://ui-avatars.com/api/?name=" + encodeURIComponent(userDisplayName) + "&background=random&size=96"} 
                 alt="User profile" 
               />
-              <AvatarFallback className="text-xl">{userInfo.name.charAt(0)}</AvatarFallback>
+              <AvatarFallback className="text-xl">{userDisplayName.charAt(0)}</AvatarFallback>
             </Avatar>
             
             {/* Hidden File Input */}

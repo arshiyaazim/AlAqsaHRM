@@ -30,7 +30,7 @@ import AuthPage from "@/pages/auth-page";
 import UsersPage from "@/pages/users";
 import MobileAttendance from "@/pages/mobile-attendance";
 import { CompanyProvider } from "@/hooks/useCompanySettings";
-
+import { AuthProvider } from "@/hooks/useAuth";
 import { RouteGuard } from "@/lib/protected-route";
 
 function Router() {
@@ -251,18 +251,20 @@ function App() {
 
   return (
     <CompanyProvider>
-      <>
-        {isAuthPage || isMobileAttendance ? (
-          <main className="min-h-screen">
-            <Router />
-          </main>
-        ) : (
-          <MainLayout>
-            <Router />
-          </MainLayout>
-        )}
-        <Toaster />
-      </>
+      <AuthProvider>
+        <>
+          {isAuthPage || isMobileAttendance ? (
+            <main className="min-h-screen">
+              <Router />
+            </main>
+          ) : (
+            <MainLayout>
+              <Router />
+            </MainLayout>
+          )}
+          <Toaster />
+        </>
+      </AuthProvider>
     </CompanyProvider>
   );
 }
