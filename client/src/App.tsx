@@ -31,6 +31,8 @@ import UsersPage from "@/pages/users";
 import MobileAttendance from "@/pages/mobile-attendance";
 import { CompanyProvider } from "@/hooks/useCompanySettings";
 
+import { RouteGuard } from "@/lib/protected-route";
+
 function Router() {
   const [location] = useLocation();
   const isAuthPage = location === "/auth";
@@ -71,30 +73,145 @@ function Router() {
 
   return (
     <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/employees" component={EmployeeList} />
-      <Route path="/employees/add" component={AddEmployee} />
-      <Route path="/employees/:id" component={EmployeeDetails} />
-      <Route path="/employees/edit/:id" component={EditEmployee} />
-      <Route path="/attendance" component={AttendanceList} />
-      <Route path="/attendance/record" component={RecordAttendance} />
-      <Route path="/projects" component={ProjectsPage} />
-      <Route path="/projects/add" component={AddProjectPage} />
-      <Route path="/projects/edit/:id" component={EditProjectPage} />
-      <Route path="/expenditures" component={ExpenditureList} />
-      <Route path="/expenditures/add" component={AddExpenditure} />
-      <Route path="/expenditures/edit/:id" component={EditExpenditure} />
-      <Route path="/incomes" component={IncomeList} />
-      <Route path="/incomes/add" component={AddIncome} />
-      <Route path="/incomes/edit/:id" component={EditIncome} />
-      <Route path="/payroll" component={PayrollList} />
-      <Route path="/payroll/process" component={ProcessPayroll} />
-      <Route path="/reports" component={Reports} />
-      <Route path="/reports/templates" component={Reports} />
-      <Route path="/reports/templates/create" component={TemplateEditor} />
-      <Route path="/reports/templates/edit/:id" component={TemplateEditor} />
-      <Route path="/settings" component={Settings} />
-      <Route path="/users" component={UsersPage} />
+      {/* Common routes for all authenticated users */}
+      <Route path="/">
+        <RouteGuard requiredRoles={["admin", "hr", "viewer"]}>
+          <Dashboard />
+        </RouteGuard>
+      </Route>
+      
+      {/* Employee routes - accessible by all users */}
+      <Route path="/employees">
+        <RouteGuard requiredRoles={["admin", "hr", "viewer"]}>
+          <EmployeeList />
+        </RouteGuard>
+      </Route>
+      <Route path="/employees/add">
+        <RouteGuard requiredRoles={["admin", "hr"]}>
+          <AddEmployee />
+        </RouteGuard>
+      </Route>
+      <Route path="/employees/:id">
+        <RouteGuard requiredRoles={["admin", "hr", "viewer"]}>
+          <EmployeeDetails />
+        </RouteGuard>
+      </Route>
+      <Route path="/employees/edit/:id">
+        <RouteGuard requiredRoles={["admin", "hr"]}>
+          <EditEmployee />
+        </RouteGuard>
+      </Route>
+      
+      {/* Attendance routes */}
+      <Route path="/attendance">
+        <RouteGuard requiredRoles={["admin", "hr", "viewer"]}>
+          <AttendanceList />
+        </RouteGuard>
+      </Route>
+      <Route path="/attendance/record">
+        <RouteGuard requiredRoles={["admin", "hr"]}>
+          <RecordAttendance />
+        </RouteGuard>
+      </Route>
+      
+      {/* Projects routes */}
+      <Route path="/projects">
+        <RouteGuard requiredRoles={["admin", "hr", "viewer"]}>
+          <ProjectsPage />
+        </RouteGuard>
+      </Route>
+      <Route path="/projects/add">
+        <RouteGuard requiredRoles={["admin", "hr"]}>
+          <AddProjectPage />
+        </RouteGuard>
+      </Route>
+      <Route path="/projects/edit/:id">
+        <RouteGuard requiredRoles={["admin", "hr"]}>
+          <EditProjectPage />
+        </RouteGuard>
+      </Route>
+      
+      {/* Expenditures routes */}
+      <Route path="/expenditures">
+        <RouteGuard requiredRoles={["admin", "hr", "viewer"]}>
+          <ExpenditureList />
+        </RouteGuard>
+      </Route>
+      <Route path="/expenditures/add">
+        <RouteGuard requiredRoles={["admin", "hr"]}>
+          <AddExpenditure />
+        </RouteGuard>
+      </Route>
+      <Route path="/expenditures/edit/:id">
+        <RouteGuard requiredRoles={["admin", "hr"]}>
+          <EditExpenditure />
+        </RouteGuard>
+      </Route>
+      
+      {/* Incomes routes */}
+      <Route path="/incomes">
+        <RouteGuard requiredRoles={["admin", "hr", "viewer"]}>
+          <IncomeList />
+        </RouteGuard>
+      </Route>
+      <Route path="/incomes/add">
+        <RouteGuard requiredRoles={["admin", "hr"]}>
+          <AddIncome />
+        </RouteGuard>
+      </Route>
+      <Route path="/incomes/edit/:id">
+        <RouteGuard requiredRoles={["admin", "hr"]}>
+          <EditIncome />
+        </RouteGuard>
+      </Route>
+      
+      {/* Payroll routes */}
+      <Route path="/payroll">
+        <RouteGuard requiredRoles={["admin", "hr", "viewer"]}>
+          <PayrollList />
+        </RouteGuard>
+      </Route>
+      <Route path="/payroll/process">
+        <RouteGuard requiredRoles={["admin", "hr"]}>
+          <ProcessPayroll />
+        </RouteGuard>
+      </Route>
+      
+      {/* Reports routes - all users can view reports */}
+      <Route path="/reports">
+        <RouteGuard requiredRoles={["admin", "hr", "viewer"]}>
+          <Reports />
+        </RouteGuard>
+      </Route>
+      <Route path="/reports/templates">
+        <RouteGuard requiredRoles={["admin", "hr", "viewer"]}>
+          <Reports />
+        </RouteGuard>
+      </Route>
+      <Route path="/reports/templates/create">
+        <RouteGuard requiredRoles={["admin", "hr"]}>
+          <TemplateEditor />
+        </RouteGuard>
+      </Route>
+      <Route path="/reports/templates/edit/:id">
+        <RouteGuard requiredRoles={["admin", "hr"]}>
+          <TemplateEditor />
+        </RouteGuard>
+      </Route>
+      
+      {/* Admin-only routes */}
+      <Route path="/settings">
+        <RouteGuard requiredRoles={["admin"]}>
+          <Settings />
+        </RouteGuard>
+      </Route>
+      <Route path="/users">
+        <RouteGuard requiredRoles={["admin"]}>
+          <UsersPage />
+        </RouteGuard>
+      </Route>
+      
+      {/* Fallback for not found routes */}
       <Route component={NotFound} />
     </Switch>
   );

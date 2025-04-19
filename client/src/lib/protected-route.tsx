@@ -64,6 +64,13 @@ interface RouteGuardProps {
 export const RouteGuard = ({ children, requiredRoles }: RouteGuardProps) => {
   const { user, isAuthenticated, isLoading } = useAuth();
   const [, setLocation] = useLocation();
+  
+  // Use useEffect to handle redirects to avoid setState during render
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      setLocation('/auth');
+    }
+  }, [isLoading, isAuthenticated, setLocation]);
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -74,9 +81,8 @@ export const RouteGuard = ({ children, requiredRoles }: RouteGuardProps) => {
     );
   }
 
-  // Redirect to login if not authenticated
+  // Wait for authentication check before rendering anything
   if (!isAuthenticated) {
-    setLocation('/auth');
     return null;
   }
 

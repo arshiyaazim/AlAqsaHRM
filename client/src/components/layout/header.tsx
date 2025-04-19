@@ -30,15 +30,16 @@ interface HeaderProps {
 export default function Header({ onMenuClick }: HeaderProps) {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const [userInfo, setUserInfo] = useState({ name: 'Admin User' });
+  const [userInfo, setUserInfo] = useState<{ name: string; firstName?: string; lastName?: string; email?: string; role?: string }>({ name: 'User' });
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const handleLogout = async () => {
     try {
-      // Remove the auth token
-      localStorage.removeItem('authToken');
+      // Remove stored user data
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
       
       // Call logout API endpoint
       const response = await fetch('/api/auth/logout', {
@@ -60,24 +61,51 @@ export default function Header({ onMenuClick }: HeaderProps) {
         throw new Error('Logout failed');
       }
     } catch (error) {
+      console.error('Logout error:', error);
       toast({
         title: "Logout failed",
         description: "There was a problem logging out",
         variant: "destructive",
       });
+      
+      // Force redirect to login page even if API fails
+      setLocation('/auth');
     }
   };
   
-  // Get user info from API or localStorage
+  // Get user info from localStorage
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
+    // Try to get user from localStorage first (most reliable)
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user) {
+          setUserInfo({
+            name: user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'User',
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            role: user.role
+          });
+          return;
+        }
+      } catch (error) {
+        console.error('Error parsing user from localStorage:', error);
+      }
+    }
+    
+    // Fall back to JWT token if user object not found
+    const token = localStorage.getItem('token');
     if (token) {
       try {
         // Decode JWT token to get user info
         const tokenPayload = JSON.parse(atob(token.split('.')[1]));
         if (tokenPayload) {
           setUserInfo({
-            name: tokenPayload.fullName || tokenPayload.email || 'User'
+            name: tokenPayload.fullName || tokenPayload.email || 'User',
+            email: tokenPayload.email,
+            role: tokenPayload.role
           });
         }
       } catch (error) {

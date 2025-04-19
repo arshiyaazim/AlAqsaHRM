@@ -37,11 +37,24 @@ export default function Sidebar() {
   const [userRole, setUserRole] = useState('admin'); // Default to admin for now
   const [navigationItems, setNavigationItems] = useState(allNavigationItems);
   
-  // Get user role from JWT
+  // Get user role from JWT or user object
   useEffect(() => {
+    // Try to get user from localStorage first
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        if (user && user.role) {
+          setUserRole(user.role);
+          return;
+        }
+      } catch (error) {
+        console.error('Error parsing user from localStorage:', error);
+      }
+    }
     
-    // Get user role from localStorage or JWT
-    const token = localStorage.getItem('authToken');
+    // Fall back to JWT token if user object not found
+    const token = localStorage.getItem('token');
     if (token) {
       try {
         // Decode JWT token to get user role
