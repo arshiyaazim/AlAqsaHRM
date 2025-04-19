@@ -43,6 +43,9 @@ export const getQueryFn: <T>(options: {
     const token = localStorage.getItem('authToken');
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+      console.log(`Adding auth token to request: ${queryKey[0]}`);
+    } else {
+      console.log(`No auth token available for request: ${queryKey[0]}`);
     }
 
     const res = await fetch(queryKey[0] as string, {

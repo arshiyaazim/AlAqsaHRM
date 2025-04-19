@@ -123,18 +123,38 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     queryKey: ["/api/auth/me"],
     queryFn: async () => {
       try {
-        const response = await apiRequest("GET", "/api/auth/me");
-        if (response.status === 401) {
+        // First check if we have a token
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+          console.log("No auth token found in localStorage");
           setIsAuthenticated(false);
           return null;
         }
+        
+        console.log("Found auth token, fetching user data");
+        const response = await fetch("/api/auth/me", {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.status === 401) {
+          console.log("Auth token invalid or expired");
+          localStorage.removeItem('authToken');
+          setIsAuthenticated(false);
+          return null;
+        }
+        
         if (!response.ok) {
           throw new Error("Failed to fetch user data");
         }
+        
         const userData = await response.json();
+        console.log("User data fetched successfully:", userData);
         setIsAuthenticated(true);
         return userData;
       } catch (error) {
+        console.error("Error fetching user data:", error);
         setIsAuthenticated(false);
         return null;
       }

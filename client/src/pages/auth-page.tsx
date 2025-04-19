@@ -98,8 +98,8 @@ export default function AuthPage() {
       
       // Store token in localStorage
       if (responseData.token) {
-        localStorage.setItem("token", responseData.token);
-        console.log("Token stored in localStorage");
+        localStorage.setItem("authToken", responseData.token);
+        console.log("Token stored in localStorage as authToken");
         
         // Store user data if available
         if (responseData.user) {
