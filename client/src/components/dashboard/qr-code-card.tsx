@@ -10,11 +10,11 @@ export function QRCodeCard() {
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
 
-  // Create the mobile attendance URL - adjust this based on your actual routing
+  // Create the mobile attendance URL using the current base URL
   const getMobileUrl = () => {
-    const protocol = window.location.protocol;
-    const host = window.location.host;
-    return `${protocol}//${host}/mobile-attendance`;
+    // Use the current location to build the URL
+    const baseUrl = window.location.href.split('/').slice(0, 3).join('/');
+    return `${baseUrl}/mobile-attendance`;
   };
 
   const generateQRCode = async () => {

@@ -59,7 +59,20 @@ export default function MobileAttendancePage() {
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [offlineRecords, setOfflineRecords] = useState<AttendanceRecord[]>([]);
+  const [apiError, setApiError] = useState<boolean>(false);
   const { toast } = useToast();
+  
+  // Error handling helper for API errors
+  const handleApiError = () => {
+    if (!apiError) {
+      setApiError(true);
+      toast({
+        title: "Connection Issue",
+        description: "Having trouble connecting to the server. You can still record attendance offline.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Handle online/offline status
   useEffect(() => {
@@ -152,8 +165,8 @@ export default function MobileAttendancePage() {
     }
   }, []);
 
-  // Fetch employees with error handling - keeping it simple to avoid TypeScript errors
-  const { data: employees = [] } = useQuery<Employee[]>({
+  // Fetch employees with error handling
+  const { data: employees = [], isError: isEmployeesError } = useQuery<Employee[]>({
     queryKey: ['/api/employees'],
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1, // Only retry once
@@ -161,14 +174,22 @@ export default function MobileAttendancePage() {
     enabled: navigator.onLine // Only fetch when online
   });
 
-  // Fetch projects with error handling - keeping it simple to avoid TypeScript errors
-  const { data: projects = [] } = useQuery<Project[]>({
+  // Fetch projects with error handling
+  const { data: projects = [], isError: isProjectsError } = useQuery<Project[]>({
     queryKey: ['/api/projects'],
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1, // Only retry once
     refetchOnWindowFocus: false,
     enabled: navigator.onLine // Only fetch when online
   });
+  
+  // Handle any API errors
+  useEffect(() => {
+    if (isEmployeesError || isProjectsError) {
+      handleApiError();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEmployeesError, isProjectsError]);
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {

@@ -49,12 +49,23 @@ function Router() {
 
   if (isMobileAttendance) {
     return (
-      <Switch>
-        <Route path="/mobile-attendance" component={MobileAttendance} />
-        <Route path="*">
-          <div>Page not found</div>
-        </Route>
-      </Switch>
+      <>
+        <style>{`
+          /* Hide any non-application elements when in mobile attendance mode */
+          #runtime-error-popup, .replit-ui-theme-root {
+            display: none !important;
+          }
+          body {
+            overflow: auto !important;
+          }
+        `}</style>
+        <Switch>
+          <Route path="/mobile-attendance" component={MobileAttendance} />
+          <Route path="*">
+            <div>Page not found</div>
+          </Route>
+        </Switch>
+      </>
     );
   }
 
