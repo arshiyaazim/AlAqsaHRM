@@ -152,16 +152,22 @@ export default function MobileAttendancePage() {
     }
   }, []);
 
-  // Fetch employees
+  // Fetch employees with error handling - keeping it simple to avoid TypeScript errors
   const { data: employees = [] } = useQuery<Employee[]>({
     queryKey: ['/api/employees'],
     staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1, // Only retry once
+    refetchOnWindowFocus: false,
+    enabled: navigator.onLine // Only fetch when online
   });
 
-  // Fetch projects
+  // Fetch projects with error handling - keeping it simple to avoid TypeScript errors
   const { data: projects = [] } = useQuery<Project[]>({
     queryKey: ['/api/projects'],
     staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1, // Only retry once
+    refetchOnWindowFocus: false,
+    enabled: navigator.onLine // Only fetch when online
   });
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -275,14 +281,26 @@ export default function MobileAttendancePage() {
       }
       
       if (isOnline) {
-        // If online, send directly to the server
-        await apiRequest('POST', '/api/attendance', record);
-        queryClient.invalidateQueries({ queryKey: ['/api/attendance'] });
-        
-        toast({
-          title: 'Success',
-          description: `${action === 'checkIn' ? 'Check-in' : 'Check-out'} recorded successfully`,
-        });
+        try {
+          // If online, attempt to send to the server
+          await apiRequest('POST', '/api/attendance', record);
+          queryClient.invalidateQueries({ queryKey: ['/api/attendance'] });
+          
+          toast({
+            title: 'Success',
+            description: `${action === 'checkIn' ? 'Check-in' : 'Check-out'} recorded successfully`,
+          });
+        } catch (error) {
+          console.error('Error submitting to server, saving locally:', error);
+          // If API call fails, store locally as fallback
+          record.isOffline = true;
+          setOfflineRecords(prev => [...prev, record]);
+          toast({
+            title: 'Saved Locally',
+            description: 'Could not connect to server. Record saved locally and will sync later.',
+            variant: 'destructive',
+          });
+        }
       } else {
         // If offline, store locally
         record.isOffline = true;
