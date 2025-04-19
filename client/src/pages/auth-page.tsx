@@ -257,15 +257,30 @@ export default function AuthPage() {
                         
                         setIsRequestingReset(true);
                         
-                        // Simulate API call - in a real app, this would call your backend
-                        setTimeout(() => {
-                          toast({
-                            title: "Password reset email sent",
-                            description: "Check your email for instructions to reset your password",
+                        // Call the server API to send password reset email
+                        apiRequest("POST", "/api/auth/forgot-password", { email })
+                          .then(async (response) => {
+                            if (!response.ok) {
+                              const errorData = await response.json();
+                              throw new Error(errorData.message || "Failed to send reset email");
+                            }
+                            
+                            toast({
+                              title: "Password reset email sent",
+                              description: "Check your email for instructions to reset your password",
+                            });
+                            setShowForgotPassword(false);
+                          })
+                          .catch((error) => {
+                            toast({
+                              title: "Failed to send reset email",
+                              description: error instanceof Error ? error.message : "Please try again later",
+                              variant: "destructive",
+                            });
+                          })
+                          .finally(() => {
+                            setIsRequestingReset(false);
                           });
-                          setShowForgotPassword(false);
-                          setIsRequestingReset(false);
-                        }, 1500);
                       }}>
                         <Input 
                           type="email" 

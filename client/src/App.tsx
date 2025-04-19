@@ -30,7 +30,6 @@ import AuthPage from "@/pages/auth-page";
 import UsersPage from "@/pages/users";
 import MobileAttendance from "@/pages/mobile-attendance";
 import { CompanyProvider } from "@/hooks/useCompanySettings";
-import { AuthProvider } from "@/hooks/useAuth";
 import { RouteGuard } from "@/lib/protected-route";
 
 function Router() {
@@ -249,22 +248,22 @@ function App() {
   const isAuthPage = location === "/auth";
   const isMobileAttendance = location === "/mobile-attendance";
 
+  // Since AuthProvider is already available from main.tsx,
+  // we don't need to wrap components with it again here
   return (
     <CompanyProvider>
-      <AuthProvider>
-        <>
-          {isAuthPage || isMobileAttendance ? (
-            <main className="min-h-screen">
-              <Router />
-            </main>
-          ) : (
-            <MainLayout>
-              <Router />
-            </MainLayout>
-          )}
-          <Toaster />
-        </>
-      </AuthProvider>
+      <>
+        {isAuthPage || isMobileAttendance ? (
+          <main className="min-h-screen">
+            <Router />
+          </main>
+        ) : (
+          <MainLayout>
+            <Router />
+          </MainLayout>
+        )}
+        <Toaster />
+      </>
     </CompanyProvider>
   );
 }

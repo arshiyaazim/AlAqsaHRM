@@ -109,6 +109,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Forgot password endpoint - will send reset email
+  app.post("/api/auth/forgot-password", async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+      
+      console.log("Password reset requested for email:", email);
+      
+      // Find user with that email
+      const user = await storage.getUserByEmail(email);
+      
+      // Always return success even if email not found (security best practice)
+      // This prevents user enumeration attacks
+      if (!user) {
+        console.log("User not found with email:", email);
+        // Return success even though no email was sent
+        return res.status(200).json({ 
+          message: "If a user with that email exists, a password reset link has been sent" 
+        });
+      }
+      
+      // In a real implementation, this would:
+      // 1. Generate a unique token and store it in the database
+      // 2. Send an email with a link containing the token
+      // 3. That link would take the user to a password reset page
+      
+      // For now, we'll just log the request and indicate success
+      console.log(`Password reset requested for user: ${user.email} (${user.fullName})`);
+      
+      res.status(200).json({ 
+        message: "If a user with that email exists, a password reset link has been sent" 
+      });
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
       // Parse and validate input

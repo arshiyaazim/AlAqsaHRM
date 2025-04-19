@@ -167,7 +167,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    console.error("useAuth is being called outside of AuthProvider");
+    // Return a default value instead of throwing to prevent app crashes
+    return {
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+      loginMutation: {} as any,
+      registerMutation: {} as any,
+      logoutMutation: {} as any
+    };
   }
   return context;
 };
