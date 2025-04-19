@@ -143,9 +143,14 @@ export default function UsersPage() {
       const token = localStorage.getItem('token');
       if (!token) {
         toast({
-          title: "Authentication error",
-          description: "No authentication token found. Please log in again.",
-          variant: "destructive"
+          title: "Authentication required",
+          description: "You need to login to access the user management page.",
+          variant: "destructive",
+          action: (
+            <div className="cursor-pointer" onClick={() => window.location.href = '/auth'}>
+              Go to Login
+            </div>
+          ),
         });
         throw new Error('No authentication token found');
       }
@@ -421,19 +426,37 @@ export default function UsersPage() {
   }
   
   if (usersError) {
+    // Check if this is an authentication error
+    const isAuthError = usersError instanceof Error && 
+      usersError.message.includes('authentication token');
+    
     return (
       <div className="flex flex-col items-center justify-center h-48 text-center">
         <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
-        <h3 className="text-xl font-semibold text-red-600">Error Loading Users</h3>
+        <h3 className="text-xl font-semibold text-red-600">
+          {isAuthError ? 'Authentication Required' : 'Error Loading Users'}
+        </h3>
         <p className="text-gray-600 max-w-md mt-2">
-          {usersError instanceof Error ? usersError.message : 'An unknown error occurred while fetching users'}
+          {isAuthError 
+            ? 'You need to login to access the user management page.'
+            : (usersError instanceof Error ? usersError.message : 'An unknown error occurred while fetching users')
+          }
         </p>
-        <Button 
-          onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/users"] })}
-          className="mt-4"
-        >
-          Retry
-        </Button>
+        {isAuthError ? (
+          <Button 
+            onClick={() => window.location.href = '/auth'}
+            className="mt-4 bg-blue-600 hover:bg-blue-700"
+          >
+            Go to Login
+          </Button>
+        ) : (
+          <Button 
+            onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/users"] })}
+            className="mt-4"
+          >
+            Retry
+          </Button>
+        )}
       </div>
     );
   }
