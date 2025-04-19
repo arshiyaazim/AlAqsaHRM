@@ -14,7 +14,6 @@ import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import { useAuth } from "@/hooks/useAuth";
 import {
   Dialog,
   DialogContent,
@@ -31,47 +30,62 @@ interface HeaderProps {
 export default function Header({ onMenuClick }: HeaderProps) {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { user, logoutMutation } = useAuth();
+  const [userInfo, setUserInfo] = useState({ name: 'Admin User' });
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Prepare user display name
-  const userDisplayName = user 
-    ? user.fullName || `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email || 'User'
-    : 'User';
-  
   const handleLogout = async () => {
     try {
-      // Remove stored user data
+      // Remove the auth token
       localStorage.removeItem('authToken');
-      localStorage.removeItem('user');
       
-      // Use the logoutMutation from useAuth
-      await logoutMutation.mutateAsync();
-      
-      toast({
-        title: "Logged out successfully",
-        description: "You have been logged out of the system",
+      // Call logout API endpoint
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
       });
       
-      // Redirect to login page
-      setLocation('/auth');
+      if (response.ok) {
+        toast({
+          title: "Logged out successfully",
+          description: "You have been logged out of the system",
+        });
+        
+        // Redirect to login page
+        setLocation('/auth');
+      } else {
+        throw new Error('Logout failed');
+      }
     } catch (error) {
-      console.error('Logout error:', error);
       toast({
         title: "Logout failed",
         description: "There was a problem logging out",
         variant: "destructive",
       });
-      
-      // Force redirect to login page even if API fails
-      setLocation('/auth');
     }
   };
   
-  // Get saved profile photo URL
+  // Get user info from API or localStorage
   useEffect(() => {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      try {
+        // Decode JWT token to get user info
+        const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+        if (tokenPayload) {
+          setUserInfo({
+            name: tokenPayload.fullName || tokenPayload.email || 'User'
+          });
+        }
+      } catch (error) {
+        console.error('Error decoding JWT token:', error);
+      }
+    }
+    
+    // Try to get saved profile photo URL
     const savedProfilePhoto = localStorage.getItem('profilePhotoUrl');
     if (savedProfilePhoto) {
       setProfilePhotoUrl(savedProfilePhoto);
@@ -171,10 +185,10 @@ export default function Header({ onMenuClick }: HeaderProps) {
               >
                 <Avatar className="h-8 w-8 relative">
                   <AvatarImage 
-                    src={profilePhotoUrl || "https://ui-avatars.com/api/?name=" + encodeURIComponent(userDisplayName) + "&background=random"} 
+                    src={profilePhotoUrl || "https://ui-avatars.com/api/?name=" + encodeURIComponent(userInfo.name) + "&background=random"} 
                     alt="User profile" 
                   />
-                  <AvatarFallback>{userDisplayName.charAt(0)}</AvatarFallback>
+                  <AvatarFallback>{userInfo.name.charAt(0)}</AvatarFallback>
                   
                   {/* Camera Icon Overlay */}
                   <div className="absolute inset-0 bg-black bg-opacity-20 rounded-full flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
@@ -186,7 +200,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <div className="flex items-center cursor-pointer">
-                    <span className="ml-2 text-sm font-medium text-gray-700 hidden md:block">{userDisplayName}</span>
+                    <span className="ml-2 text-sm font-medium text-gray-700 hidden md:block">{userInfo.name}</span>
                   </div>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
@@ -235,10 +249,10 @@ export default function Header({ onMenuClick }: HeaderProps) {
             {/* Current Profile Photo */}
             <Avatar className="h-24 w-24 mb-4">
               <AvatarImage 
-                src={profilePhotoUrl || "https://ui-avatars.com/api/?name=" + encodeURIComponent(userDisplayName) + "&background=random&size=96"} 
+                src={profilePhotoUrl || "https://ui-avatars.com/api/?name=" + encodeURIComponent(userInfo.name) + "&background=random&size=96"} 
                 alt="User profile" 
               />
-              <AvatarFallback className="text-xl">{userDisplayName.charAt(0)}</AvatarFallback>
+              <AvatarFallback className="text-xl">{userInfo.name.charAt(0)}</AvatarFallback>
             </Avatar>
             
             {/* Hidden File Input */}

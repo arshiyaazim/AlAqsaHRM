@@ -44,50 +44,16 @@ const AuthContext = createContext<AuthContextType | null>(null);
 const useLoginMutation = () => {
   return useMutation({
     mutationFn: async (credentials: LoginCredentials) => {
-      console.log("Login mutation started with credentials:", { email: credentials.email });
-      
-      // Direct fetch for more control
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(credentials),
-      });
-      
-      // Get response data first
-      const data = await response.json();
-      console.log("Login response:", data);
-      
+      const response = await apiRequest("POST", "/api/auth/login", credentials);
       if (!response.ok) {
-        throw new Error(data.message || "Login failed");
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Login failed");
       }
-      
-      // Store token in localStorage
-      if (data.token) {
-        localStorage.setItem("authToken", data.token);
-        console.log("Token stored in localStorage as authToken");
-        
-        // Store user data if available
-        if (data.user) {
-          localStorage.setItem("user", JSON.stringify(data.user));
-        }
-      } else {
-        console.error("No token received from server");
-      }
-      
-      return data;
+      return response.json();
     },
-    onSuccess: (data) => {
-      // Update the authentication state
-      queryClient.setQueryData(["/api/auth/me"], data.user);
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-      // Force window location change after auth
-      window.location.href = "/";
     },
-    onError: (error) => {
-      console.error("Login error:", error);
-    }
   });
 };
 
@@ -112,46 +78,17 @@ const useRegisterMutation = () => {
 const useLogoutMutation = () => {
   return useMutation({
     mutationFn: async () => {
-      console.log("Logout mutation started");
-      
-      // Try server logout
-      try {
-        const response = await apiRequest("POST", "/api/auth/logout");
-        if (!response.ok) {
-          console.warn("Server logout failed, continuing with client-side logout");
-        } else {
-          console.log("Server logout succeeded");
-        }
-      } catch (error) {
-        console.warn("Server logout error, continuing with client-side logout:", error);
+      const response = await apiRequest("POST", "/api/auth/logout");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Logout failed");
       }
-      
-      // Always clean up local storage regardless of server response
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("user");
-      console.log("Logged out: tokens and user data removed from localStorage");
-      
-      return { success: true };
+      return response.json();
     },
     onSuccess: () => {
-      // Clear all queries and reset auth state
-      queryClient.clear();
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       queryClient.setQueryData(["/api/auth/me"], null);
-      
-      // Force reload to ensure clean state
-      window.location.href = "/auth";
     },
-    onError: (error) => {
-      console.error("Logout error:", error);
-      
-      // Even on error, attempt to clear client state
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("user");
-      queryClient.setQueryData(["/api/auth/me"], null);
-      
-      // Force navigation to login page
-      window.location.href = "/auth";
-    }
   });
 };
 
@@ -173,38 +110,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     queryKey: ["/api/auth/me"],
     queryFn: async () => {
       try {
-        // First check if we have a token
-        const token = localStorage.getItem('authToken');
-        if (!token) {
-          console.log("No auth token found in localStorage");
-          setIsAuthenticated(false);
-          return null;
-        }
-        
-        console.log("Found auth token, fetching user data");
-        const response = await fetch("/api/auth/me", {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
+        const response = await apiRequest("GET", "/api/auth/me");
         if (response.status === 401) {
-          console.log("Auth token invalid or expired");
-          localStorage.removeItem('authToken');
           setIsAuthenticated(false);
           return null;
         }
-        
         if (!response.ok) {
           throw new Error("Failed to fetch user data");
         }
-        
         const userData = await response.json();
-        console.log("User data fetched successfully:", userData);
         setIsAuthenticated(true);
         return userData;
       } catch (error) {
-        console.error("Error fetching user data:", error);
         setIsAuthenticated(false);
         return null;
       }
@@ -247,19 +164,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 };
 
 // Custom Hook to use Auth Context
-export const useAuth = () => {
+const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    console.error("useAuth is being called outside of AuthProvider");
-    // Return a default value instead of throwing to prevent app crashes
-    return {
-      user: null,
-      isAuthenticated: false,
-      isLoading: false,
-      loginMutation: {} as any,
-      registerMutation: {} as any,
-      logoutMutation: {} as any
-    };
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
+
+export default useAuth;

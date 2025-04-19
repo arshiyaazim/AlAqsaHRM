@@ -2,7 +2,6 @@ import { Link, useLocation } from "wouter";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import { useAuth } from "@/hooks/useAuth";
 import {
   Home,
   Users,
@@ -35,18 +34,34 @@ const allNavigationItems = [
 export default function Sidebar() {
   const [location] = useLocation();
   const { settings } = useCompanySettings();
-  const { user } = useAuth();
-  const [navigationItems, setNavigationItems] = useState<typeof allNavigationItems>([]);
+  const [userRole, setUserRole] = useState('admin'); // Default to admin for now
+  const [navigationItems, setNavigationItems] = useState(allNavigationItems);
+  
+  // Get user role from JWT
+  useEffect(() => {
+    
+    // Get user role from localStorage or JWT
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      try {
+        // Decode JWT token to get user role
+        const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+        if (tokenPayload && tokenPayload.role) {
+          setUserRole(tokenPayload.role);
+        }
+      } catch (error) {
+        console.error('Error decoding JWT token:', error);
+      }
+    }
+  }, []);
   
   // Filter navigation items based on user role
   useEffect(() => {
-    if (!user) return;
-    
     const filteredItems = allNavigationItems.filter(item => 
-      item.roles.includes(user.role)
+      item.roles.includes(userRole)
     );
     setNavigationItems(filteredItems);
-  }, [user]);
+  }, [userRole]);
 
   return (
     <div className="hidden md:block w-64 bg-white shadow-md overflow-y-auto">

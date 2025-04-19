@@ -12,17 +12,11 @@ import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
-import { useAuth } from "@/hooks/useAuth";
 
 // Login form schema
 const loginSchema = z.object({
   email: z.string().email({ message: "Please enter a valid email address" }),
   password: z.string().min(6, { message: "Password must be at least 6 characters" }),
-});
-
-// Forgot Password form schema
-const forgotPasswordSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address" }),
 });
 
 // Register form schema
@@ -41,18 +35,13 @@ const registerSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
-type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
-
 export default function AuthPage() {
   const [activeTab, setActiveTab] = useState<string>("login");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
-  const [isRequestingReset, setIsRequestingReset] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [_, setLocation] = useLocation();
   const { toast } = useToast();
   const { settings } = useCompanySettings();
-  const { loginMutation } = useAuth();
 
   // Login form
   const loginForm = useForm<LoginFormValues>({
@@ -80,54 +69,42 @@ export default function AuthPage() {
   const onLoginSubmit = async (data: LoginFormValues) => {
     setIsLoggingIn(true);
     try {
-      console.log("Login submission started with:", { email: data.email });
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
       
-      await loginMutation.mutateAsync(data);
+      // Get response data first
+      const responseData = await response.json();
+      console.log("Login response:", responseData);
       
-      console.log("Login successful via loginMutation");
+      if (!response.ok) {
+        throw new Error(responseData.message || "Login failed");
+      }
       
-      // Check if token was properly set
-      const token = localStorage.getItem("authToken");
-      if (!token) {
-        // If using the hook still doesn't set the token, fallback to direct API call
-        console.log("Fallback: direct login API call");
-        const response = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(data),
-        });
+      console.log("Login successful, response:", responseData);
+      
+      // Store token in localStorage
+      if (responseData.token) {
+        localStorage.setItem("token", responseData.token);
+        console.log("Token stored in localStorage");
         
-        // Get response data
-        const responseData = await response.json();
-        console.log("Login direct response:", responseData);
-        
-        if (!response.ok) {
-          throw new Error(responseData.message || "Login failed");
+        // Store user data if available
+        if (responseData.user) {
+          localStorage.setItem("user", JSON.stringify(responseData.user));
         }
-        
-        // Store token in localStorage
-        if (responseData.token) {
-          localStorage.setItem("authToken", responseData.token);
-          console.log("Token stored in localStorage as authToken from direct call");
-          
-          // Store user data if available
-          if (responseData.user) {
-            localStorage.setItem("user", JSON.stringify(responseData.user));
-          }
-        } else {
-          console.error("No token received from server");
-        }
+      } else {
+        console.error("No token received from server");
       }
       
       toast({
         title: "Login successful",
         description: "Welcome back!",
       });
-      
-      // Force page reload to ensure auth state is properly updated
-      window.location.href = "/";
+      setLocation("/");
     } catch (error) {
       console.error("Login error:", error);
       toast({
@@ -220,19 +197,9 @@ export default function AuthPage() {
                         </FormItem>
                       )}
                     />
-                    <div className="text-right">
-                      <Button 
-                        variant="link" 
-                        className="p-0 h-auto font-normal text-xs text-primary"
-                        type="button"
-                        onClick={() => setShowForgotPassword(true)}
-                      >
-                        Forgot password?
-                      </Button>
-                    </div>
                     <Button 
                       type="submit" 
-                      className="w-full mt-4" 
+                      className="w-full mt-6" 
                       disabled={isLoggingIn}
                     >
                       {isLoggingIn ? (
@@ -246,90 +213,6 @@ export default function AuthPage() {
                     </Button>
                   </form>
                 </Form>
-                
-                {/* Forgot Password Dialog */}
-                {showForgotPassword && (
-                  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
-                      <h3 className="text-lg font-semibold mb-4">Reset Password</h3>
-                      <p className="text-sm text-gray-600 mb-4">
-                        Enter your email address and we'll send you instructions to reset your password.
-                      </p>
-                      <form onSubmit={(e) => {
-                        e.preventDefault();
-                        const email = (e.target as HTMLFormElement).email.value;
-                        
-                        // Form validation
-                        if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
-                          toast({
-                            title: "Invalid email",
-                            description: "Please enter a valid email address",
-                            variant: "destructive",
-                          });
-                          return;
-                        }
-                        
-                        setIsRequestingReset(true);
-                        
-                        // Call the server API to send password reset email
-                        apiRequest("POST", "/api/auth/forgot-password", { email })
-                          .then(async (response) => {
-                            if (!response.ok) {
-                              const errorData = await response.json();
-                              throw new Error(errorData.message || "Failed to send reset email");
-                            }
-                            
-                            toast({
-                              title: "Password reset email sent",
-                              description: "Check your email for instructions to reset your password",
-                            });
-                            setShowForgotPassword(false);
-                          })
-                          .catch((error) => {
-                            toast({
-                              title: "Failed to send reset email",
-                              description: error instanceof Error ? error.message : "Please try again later",
-                              variant: "destructive",
-                            });
-                          })
-                          .finally(() => {
-                            setIsRequestingReset(false);
-                          });
-                      }}>
-                        <Input 
-                          type="email" 
-                          name="email" 
-                          placeholder="your.email@example.com" 
-                          className="mb-4" 
-                          required 
-                        />
-                        <div className="flex justify-end space-x-2">
-                          <Button 
-                            type="button" 
-                            variant="outline" 
-                            onClick={() => setShowForgotPassword(false)}
-                            disabled={isRequestingReset}
-                          >
-                            Cancel
-                          </Button>
-                          <Button 
-                            type="submit" 
-                            disabled={isRequestingReset}
-                          >
-                            {isRequestingReset ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Sending...
-                              </>
-                            ) : (
-                              "Send Reset Link"
-                            )}
-                          </Button>
-                        </div>
-                      </form>
-                    </div>
-                  </div>
-                )}
               </TabsContent>
 
               {/* Register Form */}

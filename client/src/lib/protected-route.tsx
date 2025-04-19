@@ -1,6 +1,6 @@
-import { ReactNode, useEffect } from 'react';
+import { ReactNode } from 'react';
 import { Route, useLocation } from 'wouter';
-import { useAuth } from '@/hooks/useAuth';
+import useAuth from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
@@ -64,13 +64,6 @@ interface RouteGuardProps {
 export const RouteGuard = ({ children, requiredRoles }: RouteGuardProps) => {
   const { user, isAuthenticated, isLoading } = useAuth();
   const [, setLocation] = useLocation();
-  
-  // Use useEffect to handle redirects to avoid setState during render
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      setLocation('/auth');
-    }
-  }, [isLoading, isAuthenticated, setLocation]);
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -81,8 +74,9 @@ export const RouteGuard = ({ children, requiredRoles }: RouteGuardProps) => {
     );
   }
 
-  // Wait for authentication check before rendering anything
+  // Redirect to login if not authenticated
   if (!isAuthenticated) {
+    setLocation('/auth');
     return null;
   }
 
