@@ -12,6 +12,7 @@ import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useCompanySettings } from "@/hooks/useCompanySettings";
+import { useAuth } from "@/hooks/useAuth";
 
 // Login form schema
 const loginSchema = z.object({
@@ -78,42 +79,55 @@ export default function AuthPage() {
   const onLoginSubmit = async (data: LoginFormValues) => {
     setIsLoggingIn(true);
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
+      // Use the hook for consistency across the app
+      const { loginMutation } = useAuth();
       
-      // Get response data first
-      const responseData = await response.json();
-      console.log("Login response:", responseData);
+      await loginMutation.mutateAsync(data);
       
-      if (!response.ok) {
-        throw new Error(responseData.message || "Login failed");
-      }
+      console.log("Login successful via loginMutation");
       
-      console.log("Login successful, response:", responseData);
-      
-      // Store token in localStorage
-      if (responseData.token) {
-        localStorage.setItem("authToken", responseData.token);
-        console.log("Token stored in localStorage as authToken");
+      // Check if token was properly set
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        // If using the hook still doesn't set the token, fallback to direct API call
+        console.log("Fallback: direct login API call");
+        const response = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        });
         
-        // Store user data if available
-        if (responseData.user) {
-          localStorage.setItem("user", JSON.stringify(responseData.user));
+        // Get response data
+        const responseData = await response.json();
+        console.log("Login direct response:", responseData);
+        
+        if (!response.ok) {
+          throw new Error(responseData.message || "Login failed");
         }
-      } else {
-        console.error("No token received from server");
+        
+        // Store token in localStorage
+        if (responseData.token) {
+          localStorage.setItem("authToken", responseData.token);
+          console.log("Token stored in localStorage as authToken from direct call");
+          
+          // Store user data if available
+          if (responseData.user) {
+            localStorage.setItem("user", JSON.stringify(responseData.user));
+          }
+        } else {
+          console.error("No token received from server");
+        }
       }
       
       toast({
         title: "Login successful",
         description: "Welcome back!",
       });
-      setLocation("/");
+      
+      // Force page reload to ensure auth state is properly updated
+      window.location.href = "/";
     } catch (error) {
       console.error("Login error:", error);
       toast({

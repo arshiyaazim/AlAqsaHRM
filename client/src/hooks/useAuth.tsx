@@ -44,26 +44,50 @@ const AuthContext = createContext<AuthContextType | null>(null);
 const useLoginMutation = () => {
   return useMutation({
     mutationFn: async (credentials: LoginCredentials) => {
-      const response = await apiRequest("POST", "/api/auth/login", credentials);
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Login failed");
-      }
+      console.log("Login mutation started with credentials:", { email: credentials.email });
+      
+      // Direct fetch for more control
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(credentials),
+      });
+      
+      // Get response data first
       const data = await response.json();
       console.log("Login response:", data);
       
-      // Store the token in localStorage
+      if (!response.ok) {
+        throw new Error(data.message || "Login failed");
+      }
+      
+      // Store token in localStorage
       if (data.token) {
-        localStorage.setItem('authToken', data.token);
-        console.log("Login successful, response:", data);
-        console.log("Token stored in localStorage");
+        localStorage.setItem("authToken", data.token);
+        console.log("Token stored in localStorage as authToken");
+        
+        // Store user data if available
+        if (data.user) {
+          localStorage.setItem("user", JSON.stringify(data.user));
+        }
+      } else {
+        console.error("No token received from server");
       }
       
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Update the authentication state
+      queryClient.setQueryData(["/api/auth/me"], data.user);
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      // Force window location change after auth
+      window.location.href = "/";
     },
+    onError: (error) => {
+      console.error("Login error:", error);
+    }
   });
 };
 
