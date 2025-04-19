@@ -96,8 +96,13 @@ export default function Dashboard() {
         <RecentPayments />
       </div>
 
-      {/* Quick Actions */}
-      <QuickActions />
+      {/* Mobile Attendance and Quick Actions */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <QRCodeCard />
+        <div className="lg:col-span-2">
+          <QuickActions />
+        </div>
+      </div>
     </div>
   );
 }
