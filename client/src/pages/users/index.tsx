@@ -147,10 +147,12 @@ export default function UsersPage() {
   // Approve user registration
   const approveMutation = useMutation({
     mutationFn: async (userId: number) => {
+      const token = localStorage.getItem('token');
       const res = await fetch(`/api/users/${userId}/approve`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
       });
       
@@ -179,10 +181,12 @@ export default function UsersPage() {
   // Reject user registration
   const rejectMutation = useMutation({
     mutationFn: async (userId: number) => {
-      const res = await fetch(`/api/users/${userId}`, {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/users/${userId}/decline`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
       });
       
@@ -211,10 +215,12 @@ export default function UsersPage() {
   // Update user role
   const updateRoleMutation = useMutation({
     mutationFn: async ({ userId, role }: { userId: number; role: string }) => {
+      const token = localStorage.getItem('token');
       const res = await fetch(`/api/users/${userId}/role`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({ role }),
       });
@@ -244,10 +250,12 @@ export default function UsersPage() {
   // Delete user
   const deleteMutation = useMutation({
     mutationFn: async (userId: number) => {
+      const token = localStorage.getItem('token');
       const res = await fetch(`/api/users/${userId}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
       });
       
