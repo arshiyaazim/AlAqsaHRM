@@ -68,8 +68,9 @@ export default function AddProjectPage() {
       clientName: "",
       vessel: "",
       lighter: "",
-      startDate: null,
-      endDate: null,
+      location: "",
+      startDate: new Date(), // Set to current date by default
+      endDate: undefined,
       duty: "",
       salary: "",
       releasePoint: "",
@@ -105,11 +106,29 @@ export default function AddProjectPage() {
       // Format dates for API submission
       const formattedData = {
         ...data,
-        startDate: data.startDate ? data.startDate.toISOString().split('T')[0] : null,
+        // Convert boolean to PostgreSQL-friendly format
+        isActive: data.active,
+        // Convert dates to YYYY-MM-DD format
+        startDate: data.startDate.toISOString().split('T')[0],
         endDate: data.endDate ? data.endDate.toISOString().split('T')[0] : null,
       };
       
-      await apiRequest("POST", "/api/projects", formattedData);
+      // Remove fields not matching the database schema
+      const {
+        active, 
+        employeeName, 
+        duty, 
+        salary, 
+        releasePoint, 
+        conveyance, 
+        loanAdvance, 
+        due,
+        ...projectData
+      } = formattedData;
+      
+      console.log("Submitting project data:", projectData);
+      
+      await apiRequest("POST", "/api/projects", projectData);
       
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       
@@ -162,6 +181,18 @@ export default function AddProjectPage() {
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="location">Location *</Label>
+                <Input
+                  id="location"
+                  placeholder="Enter project location"
+                  {...form.register("location")}
+                />
+                {form.formState.errors.location && (
+                  <p className="text-sm text-red-500">{form.formState.errors.location.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="employee">Employee ID</Label>
                 <EmployeeIdAutocomplete 
                   value={selectedEmployeeId}
@@ -210,18 +241,21 @@ export default function AddProjectPage() {
               </div>
               
               <div className="space-y-2">
-                <Label>Start Date</Label>
+                <Label>Start Date *</Label>
                 <DatePicker
-                  date={form.watch("startDate")}
-                  setDate={(date) => form.setValue("startDate", date)}
+                  date={form.watch("startDate") as Date}
+                  onChange={(date?: Date) => form.setValue("startDate", date || new Date())}
                 />
+                {form.formState.errors.startDate && (
+                  <p className="text-sm text-red-500">{form.formState.errors.startDate.message}</p>
+                )}
               </div>
               
               <div className="space-y-2">
                 <Label>End Date</Label>
                 <DatePicker
-                  date={form.watch("endDate")}
-                  setDate={(date) => form.setValue("endDate", date)}
+                  date={form.watch("endDate") as Date | undefined}
+                  onChange={(date?: Date) => form.setValue("endDate", date)}
                 />
               </div>
               
