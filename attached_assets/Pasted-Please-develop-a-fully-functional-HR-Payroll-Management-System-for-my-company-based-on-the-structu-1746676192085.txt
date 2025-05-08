@@ -1,0 +1,75 @@
+Please develop a fully functional HR & Payroll Management System for my company based on the structure in the following files:
+
+- app.py (Flask-based prototype)
+- HR_and_Payroll_AlAqsa_FIXED.xlsm (macro logic and data structure)
+- Company Book Keeping April 2025.xlsx
+- Monthly bill documents (San Marine, ISATL, Taher Brothers)
+- Program December 2024.xlsx (monthly duty program)
+
+---
+
+### ✅ Features to Include
+
+1. 🧑‍💼 **Employee Management**
+   - Create/edit/delete employee profiles
+   - Store fields: Name, Employee ID, Designation, Join Date, Project, Salary, NID, Phone
+   - Auto-generate unique Employee IDs with suggestion/autocomplete when typing
+   - Display employee profile with historical data (loans, attendance, duty, bills)
+
+2. 📅 **Attendance & Duty Recording**
+   - Assign employees to projects (guards, escort, supervisor, etc.)
+   - Daily attendance entry with post, shift, and duration
+   - Monthly program integration from Excel files
+   - Ship duty (San Marine-style) entry with date-wise log and calculations
+
+3. 💸 **Daily Cash Payment Tracking**
+   - Input loan, advance, and expense entries with date and Employee ID
+   - Allow Admin or HR to process cash payments with auto sum and balance
+   - Link daily cash to project/employee account for report summaries
+
+4. 🧾 **Salary & Bill Generation**
+   - Auto-calculate salary based on days present, duty hours, project rates
+   - Generate project-wise bills (like ISATL, Taher, San Marine) with:
+     - Duty breakdown
+     - Conv. & salary calculations
+     - VAT, AIT, and net payable
+   - Export bills as printable PDF/DOCX templates
+
+5. 🔍 **Search & Reporting**
+   - Search by Employee ID to show:
+     - Profile
+     - Loan/advance/payment history
+     - Duty logs
+     - Salary slips
+   - Filter by project, date, or duty type
+
+6. 🔐 **Role-Based Access Control**
+   - **Admin**: full access to all modules, reports, and user management
+   - **HR**: add attendance, process salary/loan, generate bills
+   - **Employee**: view only their profile and salary history
+   - **Viewer**: read-only access to selected modules
+
+7. 📊 **Reports & Dashboard**
+   - Monthly summary: total salary, total duty, per project cost
+   - Daily ledger (income/expense) tracking
+   - Cash in/out flow visualization
+   - Exportable summaries
+
+8. ⚙️ **System Design Features**
+   - Built with Flask (or Django) + Bootstrap or React (optional)
+   - SQLite or MySQL backend
+   - Data import from XLSM/Excel for monthly programs
+   - Secure login + session management
+
+---
+
+### 🔁 Technical Requests
+
+- Enable Employee ID field with autosuggestion/autocomplete on all entry forms
+- Prevent duplicate entries for loan/advance on the same day
+- Clean UI with left-side nav (Employee, Attendance, Payment, Bill, Reports)
+- Enable bulk import of monthly programs and duty assignments from Excel
+
+---
+
+Let me know once the full web app with all the features and admin panel is ready. I will host it on my own server or local PC.
