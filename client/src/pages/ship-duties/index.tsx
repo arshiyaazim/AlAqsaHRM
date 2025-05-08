@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, PlusCircle, Filter, Download, Search } from "lucide-react";
+import { Loader2, PlusCircle, Filter, Download, Search, FileSpreadsheet } from "lucide-react";
 import { Link } from "wouter";
 import { useState } from "react";
 import {
@@ -17,11 +17,19 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { ShipDuty } from "@shared/schema";
+import { exportShipDutiesToExcel } from "@/lib/exports/shipDutyExport";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function ShipDutyPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
   
+  // Fetch ship duties
   const { data: shipDuties, isLoading } = useQuery<ShipDuty[]>({
     queryKey: ["/api/ship-duties"],
     onError: (error) => {
@@ -32,7 +40,60 @@ export default function ShipDutyPage() {
       });
     },
   });
+  
+  // Fetch employees to get names
+  const { data: employees } = useQuery({
+    queryKey: ["/api/employees"],
+  });
+  
+  // Fetch projects to get project names
+  const { data: projects } = useQuery({
+    queryKey: ["/api/projects"],
+  });
 
+  // Create a map of employee names for easier lookup
+  const employeeNameMap = employees?.reduce((acc, employee) => {
+    if (employee.id) {
+      acc[employee.id] = `${employee.firstName} ${employee.lastName}`;
+    }
+    return acc;
+  }, {} as Record<number, string>) || {};
+  
+  // Get project name for export
+  const projectName = projects?.[0]?.name || "Marine";
+  
+  // Handle export to Excel
+  const handleExport = () => {
+    if (!shipDuties || shipDuties.length === 0) {
+      toast({
+        title: "No data to export",
+        description: "There are no ship duties to export.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      exportShipDutiesToExcel({
+        duties: filteredDuties || shipDuties,
+        employeeNames: employeeNameMap,
+        projectName
+      });
+      
+      toast({
+        title: "Export successful",
+        description: "Ship duties exported to Excel successfully.",
+      });
+    } catch (error) {
+      console.error("Export error:", error);
+      toast({
+        title: "Export failed",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive",
+      });
+    }
+  };
+  
   // Filter duties based on search term
   const filteredDuties = shipDuties?.filter((duty) => {
     if (!searchTerm) return true;
@@ -61,10 +122,20 @@ export default function ShipDutyPage() {
               <Filter className="h-4 w-4 mr-2" />
               Filter
             </Button>
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExport}>
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Export to Excel
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </CardHeader>
         <CardContent>

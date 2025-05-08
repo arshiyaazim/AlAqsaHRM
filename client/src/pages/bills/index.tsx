@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, PlusCircle, Filter, Download, Search } from "lucide-react";
+import { Loader2, PlusCircle, Filter, Download, Search, FileText } from "lucide-react";
 import { Link } from "wouter";
 import { useState } from "react";
 import {
@@ -16,12 +16,20 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import { Bill } from "@shared/schema";
+import { Bill, ShipDuty } from "@shared/schema";
+import { exportBillToDocx } from "@/lib/exports/billExport";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function BillManagementPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
   
+  // Fetch bills
   const { data: bills, isLoading } = useQuery<Bill[]>({
     queryKey: ["/api/bills"],
     onError: (error) => {
@@ -31,6 +39,21 @@ export default function BillManagementPage() {
         variant: "destructive",
       });
     },
+  });
+  
+  // Fetch company info
+  const { data: companyInfo } = useQuery({
+    queryKey: ["/api/company-info"],
+  });
+  
+  // Fetch employees to get names
+  const { data: employees } = useQuery({
+    queryKey: ["/api/employees"],
+  });
+  
+  // Fetch ship duties to include in the bill
+  const { data: allShipDuties } = useQuery<ShipDuty[]>({
+    queryKey: ["/api/ship-duties"],
   });
 
   // Filter bills based on search term
@@ -44,6 +67,88 @@ export default function BillManagementPage() {
     );
   });
 
+  // Create a map of employee names for easier lookup
+  const employeeNameMap = employees?.reduce((acc, employee) => {
+    if (employee.id) {
+      acc[employee.id] = `${employee.firstName} ${employee.lastName}`;
+    }
+    return acc;
+  }, {} as Record<number, string>) || {};
+  
+  // Handle export to DOCX
+  const handleExportBill = (billId: number) => {
+    if (!bills || !allShipDuties) {
+      toast({
+        title: "Export failed",
+        description: "Required data is not loaded",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const bill = bills.find(b => b.id === billId);
+    
+    if (!bill) {
+      toast({
+        title: "Export failed",
+        description: "Bill not found",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      // Get ship duties associated with this bill
+      const selectedDuties = allShipDuties.filter(duty => 
+        duty.billId === billId || 
+        (new Date(duty.dutyDate) >= new Date(bill.startDate) && 
+         new Date(duty.dutyDate) <= new Date(bill.endDate) &&
+         duty.billId === null || duty.billId === undefined)
+      ).map(duty => ({
+        id: duty.id,
+        dutyDate: duty.dutyDate,
+        employeeId: duty.employeeId,
+        employeeName: employeeNameMap[duty.employeeId] || `Employee #${duty.employeeId}`,
+        vesselName: duty.vesselName,
+        lighterName: duty.lighterName || "",
+        dutyHours: duty.dutyHours,
+        salaryRate: duty.salaryRate,
+        conveyanceAmount: duty.conveyanceAmount,
+        amount: duty.dutyHours * duty.salaryRate
+      }));
+      
+      // Company info
+      const company = {
+        companyName: companyInfo?.companyName || "Marine HR Management",
+        companyAddress: companyInfo?.address || "Dhaka, Bangladesh",
+        companyPhone: companyInfo?.phone || "",
+        companyEmail: companyInfo?.email || ""
+      };
+      
+      exportBillToDocx({
+        bill,
+        companyName: company.companyName,
+        companyAddress: company.companyAddress,
+        companyPhone: company.companyPhone,
+        companyEmail: company.companyEmail,
+        selectedDuties,
+        employeeNames: employeeNameMap
+      });
+      
+      toast({
+        title: "Export successful",
+        description: "Bill exported to DOCX successfully",
+      });
+    } catch (error) {
+      console.error("Export error:", error);
+      toast({
+        title: "Export failed",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive",
+      });
+    }
+  };
+  
   // Helper function to get status badge color
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -74,10 +179,22 @@ export default function BillManagementPage() {
               <Filter className="h-4 w-4 mr-2" />
               Filter
             </Button>
-            <Button variant="outline" size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {filteredBills?.map(bill => (
+                  <DropdownMenuItem key={bill.id} onClick={() => handleExportBill(bill.id)}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    {bill.billNumber} - {bill.clientName}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </CardHeader>
         <CardContent>
@@ -151,6 +268,14 @@ export default function BillManagementPage() {
                                 View
                               </Button>
                             </Link>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleExportBill(bill.id)}
+                            >
+                              <FileText className="h-4 w-4 mr-1" />
+                              Export
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>
