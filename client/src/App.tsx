@@ -29,6 +29,11 @@ import Settings from "@/pages/settings";
 import AuthPage from "@/pages/auth-page";
 import UsersPage from "@/pages/users";
 import MobileAttendance from "@/pages/mobile-attendance";
+import ShipDutyList from "@/pages/ship-duties/index";
+import AddShipDuty from "@/pages/ship-duties/add";
+import EditShipDuty from "@/pages/ship-duties/edit/[id]";
+import BillList from "@/pages/bills/index";
+import GenerateBill from "@/pages/bills/generate";
 import { CompanyProvider } from "@/hooks/useCompanySettings";
 
 function Router() {
@@ -81,6 +86,11 @@ function Router() {
       <Route path="/projects" component={ProjectsPage} />
       <Route path="/projects/add" component={AddProjectPage} />
       <Route path="/projects/edit/:id" component={EditProjectPage} />
+      <Route path="/ship-duties" component={ShipDutyList} />
+      <Route path="/ship-duties/add" component={AddShipDuty} />
+      <Route path="/ship-duties/edit/:id" component={EditShipDuty} />
+      <Route path="/bills" component={BillList} />
+      <Route path="/bills/generate" component={GenerateBill} />
       <Route path="/expenditures" component={ExpenditureList} />
       <Route path="/expenditures/add" component={AddExpenditure} />
       <Route path="/expenditures/edit/:id" component={EditExpenditure} />
