@@ -208,3 +208,84 @@ export const insertCompanySettingsSchema = createInsertSchema(companySettings).o
 
 export type CompanySettings = typeof companySettings.$inferSelect;
 export type InsertCompanySettings = z.infer<typeof insertCompanySettingsSchema>;
+
+// Ship Duty schema
+export const shipDuty = pgTable("ship_duty", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull(),
+  employeeId: integer("employee_id").notNull(),
+  vesselName: text("vessel_name").notNull(),
+  lighterName: text("lighter_name"),
+  dutyDate: date("duty_date").notNull(),
+  dutyHours: numeric("duty_hours").notNull(),
+  releasePoint: text("release_point"),
+  salaryRate: numeric("salary_rate").notNull(),
+  conveyanceAmount: numeric("conveyance_amount").default("0"),
+  remarks: text("remarks"),
+  timestamp: timestamp("timestamp").defaultNow(),
+});
+
+export const insertShipDutySchema = createInsertSchema(shipDuty).omit({
+  id: true,
+  timestamp: true,
+});
+
+// Bill Generation schema
+export const bills = pgTable("bills", {
+  id: serial("id").primaryKey(),
+  billNumber: text("bill_number").notNull().unique(),
+  projectId: integer("project_id").notNull(),
+  clientName: text("client_name").notNull(), // ISATL, Taher Brothers, San Marine, etc.
+  billDate: date("bill_date").notNull(),
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  totalDutyAmount: numeric("total_duty_amount").notNull(),
+  totalConveyance: numeric("total_conveyance").default("0"),
+  vatPercentage: numeric("vat_percentage").default("0"),
+  aitPercentage: numeric("ait_percentage").default("0"),
+  vatAmount: numeric("vat_amount").default("0"),
+  aitAmount: numeric("ait_amount").default("0"),
+  grossAmount: numeric("gross_amount").notNull(),
+  netPayable: numeric("net_payable").notNull(),
+  status: text("status").notNull(), // Draft, Sent, Paid
+  paidAmount: numeric("paid_amount").default("0"),
+  dueAmount: numeric("due_amount"),
+  paidDate: date("paid_date"),
+  remarks: text("remarks"),
+  billDetails: jsonb("bill_details").default("[]"), // Array of duty details included in the bill
+  generatedBy: text("generated_by").notNull(),
+  timestamp: timestamp("timestamp").defaultNow(),
+});
+
+export const insertBillSchema = createInsertSchema(bills).omit({
+  id: true,
+  timestamp: true,
+  dueAmount: true, // Will be calculated
+});
+
+// Bill Payment tracking
+export const billPayments = pgTable("bill_payments", {
+  id: serial("id").primaryKey(),
+  billId: integer("bill_id").notNull(),
+  amount: numeric("amount").notNull(),
+  paymentDate: date("payment_date").notNull(),
+  paymentMethod: text("payment_method").notNull(), // Check, Bank Transfer, Cash
+  reference: text("reference"),
+  remarks: text("remarks"),
+  timestamp: timestamp("timestamp").defaultNow(),
+});
+
+export const insertBillPaymentSchema = createInsertSchema(billPayments).omit({
+  id: true,
+  timestamp: true,
+});
+
+// Type definitions for the new schemas
+export type ShipDuty = typeof shipDuty.$inferSelect;
+export type InsertShipDuty = z.infer<typeof insertShipDutySchema>;
+
+export type Bill = typeof bills.$inferSelect;
+export type InsertBill = z.infer<typeof insertBillSchema>;
+
+export type BillPayment = typeof billPayments.$inferSelect;
+export type InsertBillPayment = z.infer<typeof insertBillPaymentSchema>;

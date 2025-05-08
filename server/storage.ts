@@ -9,7 +9,11 @@ import {
   DashboardStats, InsertDashboardStats,
   User, InsertUser,
   CompanySettings, InsertCompanySettings,
-  employees, projects, attendance, dailyExpenditure, dailyIncome, payroll, payments, dashboardStats, users, companySettings
+  ShipDuty, InsertShipDuty,
+  Bill, InsertBill,
+  BillPayment, InsertBillPayment,
+  employees, projects, attendance, dailyExpenditure, dailyIncome, payroll, payments, dashboardStats, users, companySettings,
+  shipDuty, bills, billPayments
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, sql, gte, lte } from "drizzle-orm";
@@ -106,6 +110,37 @@ export interface IStorage {
   updatePayment(id: number, payment: Partial<InsertPayment>): Promise<Payment | undefined>;
   deletePayment(id: number): Promise<boolean>;
   
+  // Ship Duty operations
+  getAllShipDuties(): Promise<ShipDuty[]>;
+  getShipDuty(id: number): Promise<ShipDuty | undefined>;
+  getShipDutiesByProjectId(projectId: number): Promise<ShipDuty[]>;
+  getShipDutiesByEmployeeId(employeeId: number): Promise<ShipDuty[]>;
+  getShipDutiesByDateRange(startDate: Date, endDate: Date): Promise<ShipDuty[]>;
+  createShipDuty(duty: InsertShipDuty): Promise<ShipDuty>;
+  updateShipDuty(id: number, duty: Partial<InsertShipDuty>): Promise<ShipDuty | undefined>;
+  deleteShipDuty(id: number): Promise<boolean>;
+  
+  // Bill operations
+  getAllBills(): Promise<Bill[]>;
+  getBill(id: number): Promise<Bill | undefined>;
+  getBillByBillNumber(billNumber: string): Promise<Bill | undefined>;
+  getBillsByProjectId(projectId: number): Promise<Bill[]>;
+  getBillsByClientName(clientName: string): Promise<Bill[]>;
+  getBillsByDateRange(startDate: Date, endDate: Date): Promise<Bill[]>;
+  getBillsByStatus(status: string): Promise<Bill[]>;
+  createBill(bill: InsertBill): Promise<Bill>;
+  updateBill(id: number, bill: Partial<InsertBill>): Promise<Bill | undefined>;
+  updateBillStatus(id: number, status: string): Promise<Bill | undefined>;
+  deleteBill(id: number): Promise<boolean>;
+  
+  // Bill Payment operations
+  getAllBillPayments(): Promise<BillPayment[]>;
+  getBillPayment(id: number): Promise<BillPayment | undefined>;
+  getBillPaymentsByBillId(billId: number): Promise<BillPayment[]>;
+  createBillPayment(payment: InsertBillPayment): Promise<BillPayment>;
+  updateBillPayment(id: number, payment: Partial<InsertBillPayment>): Promise<BillPayment | undefined>;
+  deleteBillPayment(id: number): Promise<boolean>;
+  
   // Dashboard stats operations
   getDashboardStats(): Promise<DashboardStats | undefined>;
   createOrUpdateDashboardStats(stats: InsertDashboardStats): Promise<DashboardStats>;
@@ -122,6 +157,8 @@ export interface IStorage {
   getProjects(filters?: any): Promise<any[]>;
   getExpenditures(filters?: any): Promise<any[]>;
   getIncomes(filters?: any): Promise<any[]>;
+  getShipDutyRecords(filters?: any): Promise<any[]>;
+  getBillRecords(filters?: any): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
