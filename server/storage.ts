@@ -1030,6 +1030,329 @@ export class DatabaseStorage implements IStorage {
     
     return await query;
   }
+  
+  // Ship Duty operations
+  async getAllShipDuties(): Promise<ShipDuty[]> {
+    return await db.select().from(shipDuty);
+  }
+  
+  async getShipDuty(id: number): Promise<ShipDuty | undefined> {
+    const [duty] = await db.select().from(shipDuty).where(eq(shipDuty.id, id));
+    return duty;
+  }
+  
+  async getShipDutiesByProjectId(projectId: number): Promise<ShipDuty[]> {
+    return await db.select().from(shipDuty).where(eq(shipDuty.projectId, projectId));
+  }
+  
+  async getShipDutiesByEmployeeId(employeeId: number): Promise<ShipDuty[]> {
+    return await db.select().from(shipDuty).where(eq(shipDuty.employeeId, employeeId));
+  }
+  
+  async getShipDutiesByDateRange(startDate: Date, endDate: Date): Promise<ShipDuty[]> {
+    return await db.select().from(shipDuty).where(
+      and(
+        gte(shipDuty.dutyDate, startDate),
+        lte(shipDuty.dutyDate, endDate)
+      )
+    );
+  }
+  
+  async createShipDuty(duty: InsertShipDuty): Promise<ShipDuty> {
+    const [newDuty] = await db.insert(shipDuty).values(duty).returning();
+    return newDuty;
+  }
+  
+  async updateShipDuty(id: number, duty: Partial<InsertShipDuty>): Promise<ShipDuty | undefined> {
+    const [updatedDuty] = await db
+      .update(shipDuty)
+      .set(duty)
+      .where(eq(shipDuty.id, id))
+      .returning();
+    
+    return updatedDuty;
+  }
+  
+  async deleteShipDuty(id: number): Promise<boolean> {
+    const result = await db.delete(shipDuty).where(eq(shipDuty.id, id));
+    return !!result.rowCount;
+  }
+  
+  // Bill operations
+  async getAllBills(): Promise<Bill[]> {
+    return await db.select().from(bills);
+  }
+  
+  async getBill(id: number): Promise<Bill | undefined> {
+    const [bill] = await db.select().from(bills).where(eq(bills.id, id));
+    return bill;
+  }
+  
+  async getBillByBillNumber(billNumber: string): Promise<Bill | undefined> {
+    const [bill] = await db.select().from(bills).where(eq(bills.billNumber, billNumber));
+    return bill;
+  }
+  
+  async getBillsByProjectId(projectId: number): Promise<Bill[]> {
+    return await db.select().from(bills).where(eq(bills.projectId, projectId));
+  }
+  
+  async getBillsByClientName(clientName: string): Promise<Bill[]> {
+    return await db.select().from(bills).where(eq(bills.clientName, clientName));
+  }
+  
+  async getBillsByDateRange(startDate: Date, endDate: Date): Promise<Bill[]> {
+    return await db.select().from(bills).where(
+      and(
+        gte(bills.billDate, startDate),
+        lte(bills.billDate, endDate)
+      )
+    );
+  }
+  
+  async getBillsByStatus(status: string): Promise<Bill[]> {
+    return await db.select().from(bills).where(eq(bills.status, status));
+  }
+  
+  async createBill(bill: InsertBill): Promise<Bill> {
+    // Calculate dueAmount from grossAmount if not set
+    const dueAmount = bill.netPayable - (bill.paidAmount || 0);
+    const [newBill] = await db.insert(bills).values({...bill, dueAmount}).returning();
+    return newBill;
+  }
+  
+  async updateBill(id: number, bill: Partial<InsertBill>): Promise<Bill | undefined> {
+    // Recalculate dueAmount if netPayable or paidAmount was updated
+    let updatedValues = {...bill};
+    
+    if (bill.netPayable !== undefined || bill.paidAmount !== undefined) {
+      const existingBill = await this.getBill(id);
+      if (existingBill) {
+        const netPayable = bill.netPayable !== undefined ? bill.netPayable : existingBill.netPayable;
+        const paidAmount = bill.paidAmount !== undefined ? bill.paidAmount : existingBill.paidAmount;
+        updatedValues.dueAmount = netPayable - paidAmount;
+      }
+    }
+    
+    const [updatedBill] = await db
+      .update(bills)
+      .set(updatedValues)
+      .where(eq(bills.id, id))
+      .returning();
+    
+    return updatedBill;
+  }
+  
+  async updateBillStatus(id: number, status: string): Promise<Bill | undefined> {
+    const [updatedBill] = await db
+      .update(bills)
+      .set({ status })
+      .where(eq(bills.id, id))
+      .returning();
+    
+    return updatedBill;
+  }
+  
+  async deleteBill(id: number): Promise<boolean> {
+    const result = await db.delete(bills).where(eq(bills.id, id));
+    return !!result.rowCount;
+  }
+  
+  // Bill Payment operations
+  async getAllBillPayments(): Promise<BillPayment[]> {
+    return await db.select().from(billPayments);
+  }
+  
+  async getBillPayment(id: number): Promise<BillPayment | undefined> {
+    const [payment] = await db.select().from(billPayments).where(eq(billPayments.id, id));
+    return payment;
+  }
+  
+  async getBillPaymentsByBillId(billId: number): Promise<BillPayment[]> {
+    return await db.select().from(billPayments).where(eq(billPayments.billId, billId));
+  }
+  
+  async createBillPayment(payment: InsertBillPayment): Promise<BillPayment> {
+    const [newPayment] = await db.insert(billPayments).values(payment).returning();
+    
+    // Update the bill's paidAmount and dueAmount
+    const bill = await this.getBill(payment.billId);
+    if (bill) {
+      const newPaidAmount = Number(bill.paidAmount) + Number(payment.amount);
+      const newDueAmount = Number(bill.netPayable) - newPaidAmount;
+      
+      await this.updateBill(payment.billId, { 
+        paidAmount: newPaidAmount,
+        dueAmount: newDueAmount,
+        status: newDueAmount <= 0 ? 'Paid' : bill.status
+      });
+    }
+    
+    return newPayment;
+  }
+  
+  async updateBillPayment(id: number, payment: Partial<InsertBillPayment>): Promise<BillPayment | undefined> {
+    // If we're updating the amount, we need to update the bill's paidAmount and dueAmount
+    const existingPayment = await this.getBillPayment(id);
+    
+    if (existingPayment && payment.amount && payment.amount !== existingPayment.amount) {
+      const amountDifference = Number(payment.amount) - Number(existingPayment.amount);
+      
+      // Update the bill
+      const bill = await this.getBill(existingPayment.billId);
+      if (bill) {
+        const newPaidAmount = Number(bill.paidAmount) + amountDifference;
+        const newDueAmount = Number(bill.netPayable) - newPaidAmount;
+        
+        await this.updateBill(existingPayment.billId, { 
+          paidAmount: newPaidAmount,
+          dueAmount: newDueAmount,
+          status: newDueAmount <= 0 ? 'Paid' : bill.status
+        });
+      }
+    }
+    
+    const [updatedPayment] = await db
+      .update(billPayments)
+      .set(payment)
+      .where(eq(billPayments.id, id))
+      .returning();
+    
+    return updatedPayment;
+  }
+  
+  async deleteBillPayment(id: number): Promise<boolean> {
+    // First, get the payment details so we can update the bill
+    const payment = await this.getBillPayment(id);
+    
+    if (payment) {
+      // Update the bill to reduce the paidAmount
+      const bill = await this.getBill(payment.billId);
+      if (bill) {
+        const newPaidAmount = Number(bill.paidAmount) - Number(payment.amount);
+        const newDueAmount = Number(bill.netPayable) - newPaidAmount;
+        
+        await this.updateBill(payment.billId, { 
+          paidAmount: newPaidAmount,
+          dueAmount: newDueAmount,
+          status: 'Draft' // Reset to draft if a payment is deleted
+        });
+      }
+    }
+    
+    const result = await db.delete(billPayments).where(eq(billPayments.id, id));
+    return !!result.rowCount;
+  }
+  
+  // Report methods for ship duty and bills
+  async getShipDutyRecords(filters?: any): Promise<any[]> {
+    try {
+      let query = db.select({
+        id: shipDuty.id,
+        projectId: shipDuty.projectId,
+        employeeId: shipDuty.employeeId,
+        vesselName: shipDuty.vesselName,
+        lighterName: shipDuty.lighterName,
+        dutyDate: shipDuty.dutyDate,
+        dutyHours: shipDuty.dutyHours,
+        releasePoint: shipDuty.releasePoint,
+        salaryRate: shipDuty.salaryRate,
+        conveyanceAmount: shipDuty.conveyanceAmount,
+        remarks: shipDuty.remarks,
+      })
+      .from(shipDuty)
+      .leftJoin(employees, eq(shipDuty.employeeId, employees.id))
+      .leftJoin(projects, eq(shipDuty.projectId, projects.id));
+      
+      if (filters) {
+        if (filters.startDate && filters.endDate) {
+          query = query.where(
+            and(
+              gte(shipDuty.dutyDate, filters.startDate),
+              lte(shipDuty.dutyDate, filters.endDate)
+            )
+          );
+        } else if (filters.dutyDate) {
+          query = query.where(eq(shipDuty.dutyDate, filters.dutyDate));
+        }
+        
+        if (filters.employeeId) {
+          query = query.where(eq(shipDuty.employeeId, filters.employeeId));
+        }
+        
+        if (filters.projectId) {
+          query = query.where(eq(shipDuty.projectId, filters.projectId));
+        }
+        
+        if (filters.vesselName) {
+          query = query.where(eq(shipDuty.vesselName, filters.vesselName));
+        }
+      }
+      
+      return await query;
+    } catch (error) {
+      console.error('Error getting ship duty records:', error);
+      return [];
+    }
+  }
+  
+  async getBillRecords(filters?: any): Promise<any[]> {
+    try {
+      let query = db.select({
+        id: bills.id,
+        billNumber: bills.billNumber,
+        projectId: bills.projectId,
+        clientName: bills.clientName,
+        billDate: bills.billDate,
+        startDate: bills.startDate,
+        endDate: bills.endDate,
+        totalDutyAmount: bills.totalDutyAmount,
+        totalConveyance: bills.totalConveyance,
+        vatPercentage: bills.vatPercentage,
+        aitPercentage: bills.aitPercentage,
+        vatAmount: bills.vatAmount,
+        aitAmount: bills.aitAmount,
+        grossAmount: bills.grossAmount,
+        netPayable: bills.netPayable,
+        paidAmount: bills.paidAmount,
+        dueAmount: bills.dueAmount,
+        status: bills.status,
+        billDetails: bills.billDetails,
+      })
+      .from(bills)
+      .leftJoin(projects, eq(bills.projectId, projects.id));
+      
+      if (filters) {
+        if (filters.startDate && filters.endDate) {
+          query = query.where(
+            and(
+              gte(bills.billDate, filters.startDate),
+              lte(bills.billDate, filters.endDate)
+            )
+          );
+        } else if (filters.billDate) {
+          query = query.where(eq(bills.billDate, filters.billDate));
+        }
+        
+        if (filters.projectId) {
+          query = query.where(eq(bills.projectId, filters.projectId));
+        }
+        
+        if (filters.clientName) {
+          query = query.where(eq(bills.clientName, filters.clientName));
+        }
+        
+        if (filters.status) {
+          query = query.where(eq(bills.status, filters.status));
+        }
+      }
+      
+      return await query;
+    } catch (error) {
+      console.error('Error getting bill records:', error);
+      return [];
+    }
+  }
 }
 
 export const storage = new DatabaseStorage();

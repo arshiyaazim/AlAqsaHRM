@@ -10,7 +10,10 @@ import {
   insertPayrollSchema, 
   insertPaymentSchema,
   insertDashboardStatsSchema,
-  insertUserSchema
+  insertUserSchema,
+  insertShipDutySchema,
+  insertBillSchema,
+  insertBillPaymentSchema
 } from "@shared/schema";
 import { z } from "zod";
 import { ZodError } from "zod";
@@ -1549,6 +1552,390 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error) {
       handleError(error, res);
+    }
+  });
+    
+  // Ship Duty routes
+  app.get("/api/ship-duties", authenticateJWT, async (req: Request, res: Response) => {
+    try {
+      const duties = await storage.getAllShipDuties();
+      res.json(duties);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.get("/api/ship-duties/:id", authenticateJWT, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid ship duty ID" });
+      }
+      
+      const duty = await storage.getShipDuty(id);
+      if (!duty) {
+        return res.status(404).json({ message: "Ship duty not found" });
+      }
+      
+      res.json(duty);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.get("/api/ship-duties/project/:projectId", authenticateJWT, async (req: Request, res: Response) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      if (isNaN(projectId)) {
+        return res.status(400).json({ message: "Invalid project ID" });
+      }
+      
+      const duties = await storage.getShipDutiesByProjectId(projectId);
+      res.json(duties);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.get("/api/ship-duties/employee/:employeeId", authenticateJWT, async (req: Request, res: Response) => {
+    try {
+      const employeeId = parseInt(req.params.employeeId);
+      if (isNaN(employeeId)) {
+        return res.status(400).json({ message: "Invalid employee ID" });
+      }
+      
+      const duties = await storage.getShipDutiesByEmployeeId(employeeId);
+      res.json(duties);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.get("/api/ship-duties/date-range", authenticateJWT, async (req: Request, res: Response) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "Start date and end date are required" });
+      }
+      
+      const duties = await storage.getShipDutiesByDateRange(new Date(startDate as string), new Date(endDate as string));
+      res.json(duties);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.post("/api/ship-duties", authenticateJWT, authorize(["admin", "hr"]), async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertShipDutySchema.parse(req.body);
+      const duty = await storage.createShipDuty(validatedData);
+      res.status(201).json(duty);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.patch("/api/ship-duties/:id", authenticateJWT, authorize(["admin", "hr"]), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid ship duty ID" });
+      }
+      
+      const validatedData = insertShipDutySchema.partial().parse(req.body);
+      const updatedDuty = await storage.updateShipDuty(id, validatedData);
+      
+      if (!updatedDuty) {
+        return res.status(404).json({ message: "Ship duty not found" });
+      }
+      
+      res.json(updatedDuty);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.delete("/api/ship-duties/:id", authenticateJWT, authorize(["admin", "hr"]), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid ship duty ID" });
+      }
+      
+      const success = await storage.deleteShipDuty(id);
+      if (!success) {
+        return res.status(404).json({ message: "Ship duty not found" });
+      }
+      
+      res.status(204).send();
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  // Bill routes
+  app.get("/api/bills", authenticateJWT, async (req: Request, res: Response) => {
+    try {
+      const bills = await storage.getAllBills();
+      res.json(bills);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.get("/api/bills/:id", authenticateJWT, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid bill ID" });
+      }
+      
+      const bill = await storage.getBill(id);
+      if (!bill) {
+        return res.status(404).json({ message: "Bill not found" });
+      }
+      
+      res.json(bill);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.get("/api/bills/number/:billNumber", authenticateJWT, async (req: Request, res: Response) => {
+    try {
+      const billNumber = req.params.billNumber;
+      if (!billNumber) {
+        return res.status(400).json({ message: "Bill number is required" });
+      }
+      
+      const bill = await storage.getBillByBillNumber(billNumber);
+      if (!bill) {
+        return res.status(404).json({ message: "Bill not found" });
+      }
+      
+      res.json(bill);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.get("/api/bills/project/:projectId", authenticateJWT, async (req: Request, res: Response) => {
+    try {
+      const projectId = parseInt(req.params.projectId);
+      if (isNaN(projectId)) {
+        return res.status(400).json({ message: "Invalid project ID" });
+      }
+      
+      const bills = await storage.getBillsByProjectId(projectId);
+      res.json(bills);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.get("/api/bills/client/:clientName", authenticateJWT, async (req: Request, res: Response) => {
+    try {
+      const clientName = req.params.clientName;
+      if (!clientName) {
+        return res.status(400).json({ message: "Client name is required" });
+      }
+      
+      const bills = await storage.getBillsByClientName(clientName);
+      res.json(bills);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.get("/api/bills/status/:status", authenticateJWT, async (req: Request, res: Response) => {
+    try {
+      const status = req.params.status;
+      if (!status) {
+        return res.status(400).json({ message: "Status is required" });
+      }
+      
+      const bills = await storage.getBillsByStatus(status);
+      res.json(bills);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.get("/api/bills/date-range", authenticateJWT, async (req: Request, res: Response) => {
+    try {
+      const { startDate, endDate } = req.query;
+      
+      if (!startDate || !endDate) {
+        return res.status(400).json({ message: "Start date and end date are required" });
+      }
+      
+      const bills = await storage.getBillsByDateRange(new Date(startDate as string), new Date(endDate as string));
+      res.json(bills);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.post("/api/bills", authenticateJWT, authorize(["admin", "hr"]), async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertBillSchema.parse(req.body);
+      const bill = await storage.createBill(validatedData);
+      res.status(201).json(bill);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.patch("/api/bills/:id", authenticateJWT, authorize(["admin", "hr"]), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid bill ID" });
+      }
+      
+      const validatedData = insertBillSchema.partial().parse(req.body);
+      const updatedBill = await storage.updateBill(id, validatedData);
+      
+      if (!updatedBill) {
+        return res.status(404).json({ message: "Bill not found" });
+      }
+      
+      res.json(updatedBill);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.patch("/api/bills/:id/status", authenticateJWT, authorize(["admin", "hr"]), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid bill ID" });
+      }
+      
+      const { status } = req.body;
+      if (!status) {
+        return res.status(400).json({ message: "Status is required" });
+      }
+      
+      const updatedBill = await storage.updateBillStatus(id, status);
+      
+      if (!updatedBill) {
+        return res.status(404).json({ message: "Bill not found" });
+      }
+      
+      res.json(updatedBill);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.delete("/api/bills/:id", authenticateJWT, authorize(["admin", "hr"]), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid bill ID" });
+      }
+      
+      const success = await storage.deleteBill(id);
+      if (!success) {
+        return res.status(404).json({ message: "Bill not found" });
+      }
+      
+      res.status(204).send();
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  // Bill Payment routes
+  app.get("/api/bill-payments", authenticateJWT, async (req: Request, res: Response) => {
+    try {
+      const payments = await storage.getAllBillPayments();
+      res.json(payments);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.get("/api/bill-payments/:id", authenticateJWT, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid payment ID" });
+      }
+      
+      const payment = await storage.getBillPayment(id);
+      if (!payment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+      
+      res.json(payment);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.get("/api/bill-payments/bill/:billId", authenticateJWT, async (req: Request, res: Response) => {
+    try {
+      const billId = parseInt(req.params.billId);
+      if (isNaN(billId)) {
+        return res.status(400).json({ message: "Invalid bill ID" });
+      }
+      
+      const payments = await storage.getBillPaymentsByBillId(billId);
+      res.json(payments);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.post("/api/bill-payments", authenticateJWT, authorize(["admin", "hr"]), async (req: Request, res: Response) => {
+    try {
+      const validatedData = insertBillPaymentSchema.parse(req.body);
+      const payment = await storage.createBillPayment(validatedData);
+      res.status(201).json(payment);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.patch("/api/bill-payments/:id", authenticateJWT, authorize(["admin", "hr"]), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid payment ID" });
+      }
+      
+      const validatedData = insertBillPaymentSchema.partial().parse(req.body);
+      const updatedPayment = await storage.updateBillPayment(id, validatedData);
+      
+      if (!updatedPayment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+      
+      res.json(updatedPayment);
+    } catch (err) {
+      handleError(err, res);
+    }
+  });
+  
+  app.delete("/api/bill-payments/:id", authenticateJWT, authorize(["admin", "hr"]), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ message: "Invalid payment ID" });
+      }
+      
+      const success = await storage.deleteBillPayment(id);
+      if (!success) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+      
+      res.status(204).send();
+    } catch (err) {
+      handleError(err, res);
     }
   });
 
