@@ -14,7 +14,9 @@ import {
   ArrowDownCircle,
   ArrowUpCircle,
   ShieldCheck,
-  FolderKanban
+  FolderKanban,
+  Anchor,
+  Receipt
 } from "lucide-react";
 
 // Define navigation items with role-based access
@@ -23,6 +25,8 @@ const allNavigationItems = [
   { name: "Employees", href: "/employees", icon: Users, roles: ["admin", "hr", "viewer"] },
   { name: "Attendance", href: "/attendance", icon: Calendar, roles: ["admin", "hr", "viewer"] },
   { name: "Projects", href: "/projects", icon: FolderKanban, roles: ["admin", "hr", "viewer"] },
+  { name: "Ship Duty", href: "/ship-duties", icon: Anchor, roles: ["admin", "hr", "viewer"] },
+  { name: "Bill Management", href: "/bills", icon: Receipt, roles: ["admin", "hr", "viewer"] },
   { name: "Daily Expenditure", href: "/expenditures", icon: ArrowUpCircle, roles: ["admin", "hr", "viewer"] },
   { name: "Cash Receive", href: "/incomes", icon: ArrowDownCircle, roles: ["admin", "hr", "viewer"] },
   { name: "Payroll", href: "/payroll", icon: DollarSign, roles: ["admin", "hr", "viewer"] },
