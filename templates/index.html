@@ -1,287 +1,85 @@
 {% extends "base.html" %}
 
-{% block title %}Attendance Tracking - Al-Aqsa Security{% endblock %}
-
-{% block head %}
-<style>
-    .clock-container {
-        background-color: white;
-        border-radius: 1rem;
-        padding: 1.5rem;
-        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
-        margin-bottom: 1.5rem;
-        text-align: center;
-    }
-    
-    .employee-form {
-        background-color: white;
-        border-radius: 1rem;
-        padding: 1.5rem;
-        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
-    }
-    
-    .action-options {
-        display: flex;
-        margin: 1.5rem 0;
-    }
-    
-    .action-option {
-        flex: 1;
-        text-align: center;
-        padding: 1rem;
-        border: 2px solid #e3e6f0;
-        border-radius: 0.5rem;
-        margin: 0 0.5rem;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-    
-    .action-option:hover {
-        border-color: #4e73df;
-        background-color: #f8f9fc;
-    }
-    
-    .action-option.active {
-        border-color: #4e73df;
-        background-color: #ebf0ff;
-    }
-    
-    .action-option input[type="radio"] {
-        display: none;
-    }
-    
-    .action-icon {
-        font-size: 2rem;
-        margin-bottom: 0.5rem;
-        display: block;
-    }
-    
-    .clock-in-icon {
-        color: #1cc88a;
-    }
-    
-    .clock-out-icon {
-        color: #e74a3b;
-    }
-    
-    .status-indicator {
-        display: inline-block;
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        margin-right: 0.5rem;
-    }
-    
-    .status-acquiring {
-        background-color: #f6c23e;
-        animation: pulse 1.5s infinite;
-    }
-    
-    .status-success {
-        background-color: #1cc88a;
-    }
-    
-    .status-error {
-        background-color: #e74a3b;
-    }
-    
-    .camera-preview-container {
-        display: none;
-        background-color: #f8f9fc;
-        border-radius: 0.5rem;
-        padding: 1rem;
-        margin-bottom: 1rem;
-        border: 1px solid #e3e6f0;
-    }
-    
-    .camera-preview {
-        width: 100%;
-        border-radius: 0.5rem;
-        display: block;
-        margin-bottom: 1rem;
-    }
-    
-    .photo-preview-container {
-        display: none;
-        background-color: #f8f9fc;
-        border-radius: 0.5rem;
-        padding: 1rem;
-        margin-bottom: 1rem;
-        border: 1px solid #e3e6f0;
-    }
-    
-    .photo-preview {
-        max-width: 100%;
-        border-radius: 0.5rem;
-        display: block;
-        margin: 0 auto 1rem;
-    }
-    
-    #captureCanvas {
-        display: none;
-    }
-    
-    @keyframes pulse {
-        0% { opacity: 0.6; }
-        50% { opacity: 1; }
-        100% { opacity: 0.6; }
-    }
-    
-    @media (max-width: 576px) {
-        .action-options {
-            flex-direction: column;
-        }
-        
-        .action-option {
-            margin: 0.5rem 0;
-        }
-    }
-</style>
-{% endblock %}
+{% block title %}Al-Aqsa Security - Field Attendance Tracker{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-8">
-        <div class="clock-container">
-            <div id="currentTime" class="current-time">--:--:-- --</div>
-            <div id="currentDate" class="current-date">Loading date...</div>
-        </div>
-        
-        <div class="employee-form">
-            <h2 class="text-center mb-4">Attendance Tracking</h2>
-            
-            <form id="attendanceForm" method="post" action="{{ url_for('submit') }}" enctype="multipart/form-data">
-                <div class="mb-3">
-                    <label for="employee_id" class="form-label">Employee ID <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="employee_id" name="employee_id" required>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h4 mb-0">
+                        <i class="bi bi-clock-history me-2"></i> 
+                        Field Attendance Tracker
+                    </h2>
                 </div>
-                
-                <div class="mb-3">
-                    <label for="project_id" class="form-label">Project</label>
-                    <select class="form-select" id="project_id" name="project_id">
-                        <option value="">-- Select Project --</option>
-                        {% for project in projects %}
-                        <option value="{{ project.id }}">{{ project.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                
-                <div class="action-options">
-                    <label for="clockIn" class="action-option" id="clockInOption">
-                        <i class="bi bi-box-arrow-in-right action-icon clock-in-icon"></i>
-                        <span class="action-label">Clock In</span>
-                        <input type="radio" id="clockIn" name="action" value="Clock In" checked>
-                    </label>
+                <div class="card-body">
+                    {% if g.user %}
+                    <div class="alert alert-info mb-4">
+                        <h5><i class="bi bi-info-circle me-2"></i> Welcome, {{ g.user.name or g.user.username }}!</h5>
+                        <p class="mb-0">You are logged in as a <strong>{{ g.user.role|title }}</strong>.</p>
+                    </div>
                     
-                    <label for="clockOut" class="action-option" id="clockOutOption">
-                        <i class="bi bi-box-arrow-right action-icon clock-out-icon"></i>
-                        <span class="action-label">Clock Out</span>
-                        <input type="radio" id="clockOut" name="action" value="Clock Out">
-                    </label>
-                </div>
-                
-                <div class="card mb-3">
-                    <div class="card-header">
-                        <i class="bi bi-geo-alt"></i> Location
-                        <span class="float-end">
-                            <span id="locationStatus" class="status-indicator status-acquiring"></span>
-                            <span id="locationStatusText">Acquiring...</span>
-                        </span>
-                    </div>
-                    <div class="card-body">
-                        <div id="locationInfo" class="mb-2">
-                            Acquiring your location...
-                        </div>
-                        <div id="coordinatesInfo" class="text-muted small"></div>
-                        
-                        <input type="hidden" id="latitude" name="latitude">
-                        <input type="hidden" id="longitude" name="longitude">
-                        
-                        <button type="button" id="refreshLocationBtn" class="btn btn-sm btn-outline-secondary mt-2">
-                            <i class="bi bi-arrow-repeat"></i> Refresh Location
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="card mb-3">
-                    <div class="card-header">
-                        <i class="bi bi-camera"></i> Photo Verification (Optional)
-                    </div>
-                    <div class="card-body">
-                        <p class="text-muted small">Take a selfie to verify your identity and location. This helps confirm your physical presence at the work site.</p>
-                        
-                        <button type="button" id="toggleCameraBtn" class="btn btn-outline-primary mb-3">
-                            <i class="bi bi-camera"></i> Take Photo
-                        </button>
-                        
-                        <div id="cameraContainer" class="camera-preview-container">
-                            <video id="cameraPreview" class="camera-preview" autoplay playsinline></video>
-                            <div class="d-flex justify-content-center">
-                                <button type="button" id="captureBtn" class="btn btn-primary">
-                                    <i class="bi bi-camera"></i> Capture
-                                </button>
+                    <div class="row g-4 text-center">
+                        {% if g.user.role in ['admin', 'hr'] %}
+                        <div class="col-md-6">
+                            <div class="p-4 border rounded hover-card">
+                                <div class="mb-3">
+                                    <i class="bi bi-speedometer2 text-primary" style="font-size: 3rem;"></i>
+                                </div>
+                                <h5>Admin Dashboard</h5>
+                                <p class="text-muted small">Manage projects, users, and view reports</p>
+                                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-primary">
+                                    <i class="bi bi-arrow-right-circle me-2"></i> Go to Dashboard
+                                </a>
                             </div>
                         </div>
+                        {% endif %}
                         
-                        <div id="photoPreviewContainer" class="photo-preview-container">
-                            <img id="photoPreview" class="photo-preview" src="">
-                            <div class="d-flex justify-content-center">
-                                <button type="button" id="retakePhotoBtn" class="btn btn-outline-secondary">
-                                    <i class="bi bi-arrow-repeat"></i> Retake
-                                </button>
+                        <div class="col-md-6">
+                            <div class="p-4 border rounded hover-card">
+                                <div class="mb-3">
+                                    <i class="bi bi-clock text-primary" style="font-size: 3rem;"></i>
+                                </div>
+                                <h5>Clock In/Out</h5>
+                                <p class="text-muted small">Record your attendance in the field</p>
+                                <a href="{{ url_for('mobile_app') }}" class="btn btn-primary">
+                                    <i class="bi bi-arrow-right-circle me-2"></i> Go to Clock In/Out
+                                </a>
                             </div>
                         </div>
-                        
-                        <canvas id="captureCanvas"></canvas>
-                        <input type="file" id="photoInput" name="photo" accept="image/*" style="display: none;">
                     </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-shield-check text-primary" style="font-size: 4rem;"></i>
+                        <h3 class="mt-4">Welcome to Al-Aqsa Security</h3>
+                        <p class="mb-4">Please log in to access the Field Attendance Tracker.</p>
+                        <div class="d-grid gap-2 col-md-6 mx-auto">
+                            <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg">
+                                <i class="bi bi-box-arrow-in-right me-2"></i> Login
+                            </a>
+                            <a href="{{ url_for('register') }}" class="btn btn-outline-primary">
+                                <i class="bi bi-person-plus me-2"></i> Register
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
-                
-                <div class="d-grid">
-                    <button type="submit" id="submitBtn" class="btn btn-primary btn-lg" disabled>
-                        <i class="bi bi-check-circle"></i> Submit Attendance
-                    </button>
-                </div>
-            </form>
-        </div>
-        
-        <div class="text-center mt-3">
-            <a href="{{ url_for('admin_login') }}" class="text-decoration-none">
-                <i class="bi bi-shield-lock"></i> Admin Login
-            </a>
+            </div>
         </div>
     </div>
 </div>
 
-{% endblock %}
-
-{% block scripts %}
-<script>
-    // Handle action options selection
-    document.addEventListener('DOMContentLoaded', function() {
-        const clockInOption = document.getElementById('clockInOption');
-        const clockOutOption = document.getElementById('clockOutOption');
-        const clockInRadio = document.getElementById('clockIn');
-        const clockOutRadio = document.getElementById('clockOut');
-        
-        clockInOption.addEventListener('click', function() {
-            clockInRadio.checked = true;
-            clockInOption.classList.add('active');
-            clockOutOption.classList.remove('active');
-        });
-        
-        clockOutOption.addEventListener('click', function() {
-            clockOutRadio.checked = true;
-            clockOutOption.classList.add('active');
-            clockInOption.classList.remove('active');
-        });
-        
-        // Set initial state
-        if (clockInRadio.checked) {
-            clockInOption.classList.add('active');
-        } else if (clockOutRadio.checked) {
-            clockOutOption.classList.add('active');
-        }
-    });
-</script>
+<style>
+    .hover-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+        height: 100%;
+    }
+    
+    .hover-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+</style>
 {% endblock %}

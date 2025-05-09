@@ -1,115 +1,141 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
-Migration Script - Enhance Authentication System
+Migration Script: Add Authentication System
 
-This script:
-1. Adds email and role validation to the users table
-2. Updates existing users to have proper roles
-3. Creates new indexes for improved performance
+This script adds the necessary tables and fields to support
+a robust authentication system with role-based access control:
+- users table with role-based permissions
+- activity_logs table for auditing
 """
 
+import sqlite3
 import os
 import sys
-import sqlite3
-import json
-import datetime
+import logging
+from datetime import datetime
 from werkzeug.security import generate_password_hash
 
-# Get the database file path
-DB_PATH = os.path.join('instance', 'attendance.db')
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('migrations.log'),
+        logging.StreamHandler()
+    ]
+)
 
-def get_db_connection():
-    """Get database connection"""
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+# Get database path from environment or use default
+DB_PATH = os.environ.get('DATABASE_PATH', 'instance/attendance.db')
 
-def execute_migration():
-    """Execute the migration to enhance authentication system"""
-    # Check if the database file exists
-    if not os.path.exists(DB_PATH):
-        print(f"Database file not found at {DB_PATH}")
-        return False
-    
+def check_table_exists(cursor, table):
+    """Check if a table exists in the database."""
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table,))
+    return cursor.fetchone() is not None
+
+def add_auth_system():
+    """Add authentication system tables and fields."""
     try:
         # Connect to the database
-        conn = get_db_connection()
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         
-        # 1. Make sure the users table has all required fields
-        cursor.execute("PRAGMA table_info(users)")
-        columns = cursor.fetchall()
-        column_names = [col['name'] for col in columns]
-        
-        # Check which columns need to be added
-        new_columns = []
-        if 'email' not in column_names:
-            new_columns.append(('email', 'TEXT'))
-        
-        if 'role' not in column_names:
-            new_columns.append(('role', 'TEXT NOT NULL DEFAULT "viewer"'))
-        
-        if 'active' not in column_names:
-            new_columns.append(('active', 'INTEGER NOT NULL DEFAULT 1'))
-        
-        if 'created_at' not in column_names:
-            new_columns.append(('created_at', 'TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP'))
-        
-        if 'last_login' not in column_names:
-            new_columns.append(('last_login', 'TIMESTAMP'))
-        
-        # Add the new columns
-        for column_name, column_type in new_columns:
-            query = f"ALTER TABLE users ADD COLUMN {column_name} {column_type}"
-            cursor.execute(query)
-            print(f"Added column {column_name} to users table")
-        
-        # 2. Check if there's an admin user, create if not
-        cursor.execute("SELECT * FROM users WHERE role = 'admin'")
-        admin = cursor.fetchone()
-        
-        if not admin:
-            admin_password = generate_password_hash('admin123')
+        # Add users table if it doesn't exist
+        if not check_table_exists(cursor, 'users'):
+            logging.info("Creating users table...")
+            cursor.execute("""
+                CREATE TABLE users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT UNIQUE NOT NULL,
+                    password TEXT NOT NULL,
+                    email TEXT UNIQUE,
+                    name TEXT,
+                    role TEXT NOT NULL DEFAULT 'viewer',
+                    active INTEGER NOT NULL DEFAULT 1,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP,
+                    last_login TIMESTAMP
+                )
+            """)
+            
+            # Create default admin user
+            default_admin_password = generate_password_hash('admin123')
             cursor.execute(
-                "INSERT INTO users (username, password, email, role) VALUES (?, ?, ?, ?)",
-                ('admin', admin_password, 'admin@alaqsa.com', 'admin')
+                "INSERT INTO users (username, password, email, name, role) VALUES (?, ?, ?, ?, ?)",
+                ('admin', default_admin_password, 'admin@example.com', 'Administrator', 'admin')
             )
-            print("Created default admin user")
-        
-        # 3. Create indexes for improved performance
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_username ON users (username)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users (email)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_role ON users (role)")
-        
-        # 4. Log the migration
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='error_logs'")
-        if cursor.fetchone():
-            timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            cursor.execute(
-                "INSERT INTO error_logs (error_type, error_message, error_details, resolved) VALUES (?, ?, ?, ?)",
-                ('migration', 'Enhanced authentication system', json.dumps({
-                    'added_columns': [col[0] for col in new_columns], 
-                    'timestamp': timestamp
-                }), 1)
-            )
+            
+            logging.info("Created users table with default admin user.")
         else:
-            print("Error logs table not found, skipping migration logging.")
+            logging.info("Users table already exists.")
         
-        # Commit the changes
+        # Add activity_logs table if it doesn't exist
+        if not check_table_exists(cursor, 'activity_logs'):
+            logging.info("Creating activity_logs table...")
+            cursor.execute("""
+                CREATE TABLE activity_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER,
+                    action TEXT NOT NULL,
+                    details TEXT,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (id)
+                )
+            """)
+            logging.info("Created activity_logs table.")
+        else:
+            logging.info("Activity_logs table already exists.")
+        
+        # Update attendance table to add created_by field if it doesn't have it
+        if check_table_exists(cursor, 'attendance'):
+            cursor.execute("PRAGMA table_info(attendance)")
+            columns = [col[1] for col in cursor.fetchall()]
+            
+            if 'created_by' not in columns:
+                logging.info("Adding created_by field to attendance table...")
+                cursor.execute("ALTER TABLE attendance ADD COLUMN created_by INTEGER REFERENCES users(id)")
+                logging.info("Added created_by field to attendance table.")
+            else:
+                logging.info("created_by field already exists in attendance table.")
+        
+        # Update projects table to add created_by field if it doesn't have it
+        if check_table_exists(cursor, 'projects'):
+            cursor.execute("PRAGMA table_info(projects)")
+            columns = [col[1] for col in cursor.fetchall()]
+            
+            if 'created_by' not in columns:
+                logging.info("Adding created_by field to projects table...")
+                cursor.execute("ALTER TABLE projects ADD COLUMN created_by INTEGER REFERENCES users(id)")
+                logging.info("Added created_by field to projects table.")
+            else:
+                logging.info("created_by field already exists in projects table.")
+        
+        # Commit changes
         conn.commit()
-        print("Authentication system migration completed successfully")
-        return True
         
-    except sqlite3.Error as e:
-        print(f"SQLite error: {e}")
-        return False
+        # Record migration itself in activity_logs
+        cursor.execute(
+            "INSERT INTO activity_logs (action, details, created_at) VALUES (?, ?, ?)",
+            ('migration', 'Added authentication system tables and fields', datetime.now().isoformat())
+        )
+        conn.commit()
+        
+        logging.info("Migration completed successfully.")
+        return True
+    
     except Exception as e:
-        print(f"Error executing migration: {e}")
+        logging.error(f"Error during migration: {str(e)}")
         return False
+    
     finally:
         if 'conn' in locals():
             conn.close()
 
-if __name__ == '__main__':
-    success = execute_migration()
-    sys.exit(0 if success else 1)
+if __name__ == "__main__":
+    logging.info("Starting migration to add authentication system...")
+    if add_auth_system():
+        logging.info("Migration completed successfully.")
+        sys.exit(0)
+    else:
+        logging.error("Migration failed.")
+        sys.exit(1)

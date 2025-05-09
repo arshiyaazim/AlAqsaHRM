@@ -3,27 +3,64 @@ Error Handling Routes for Field Attendance Tracker
 """
 
 import json
-import functools
+import sqlite3
+import traceback
 from datetime import datetime, timedelta
-import xlsxwriter
-from io import BytesIO
 from flask import (
-    Blueprint, flash, g, redirect, render_template, request, session, url_for, jsonify,
-    send_file, abort, current_app
+    Blueprint, flash, g, redirect, render_template, request,
+    url_for, jsonify, current_app, session
 )
 from werkzeug.exceptions import HTTPException
-from .db import get_db
-from .auth import login_required, role_required
 
-bp = Blueprint('errors', __name__, url_prefix='/errors')
+# Create a blueprint
+bp = Blueprint('errors', __name__, url_prefix='/admin/error-logs')
 
-# Error log management routes
-@bp.route('/logs')
-@login_required
-@role_required(['admin', 'hr'])
+# Error logging
+def log_error(error_type, error_message, error_details=None):
+    """Log error to database and file"""
+    try:
+        # Get database connection
+        db = current_app.extensions['get_db']()
+        
+        # Convert error_details to JSON string if it's a dict
+        error_details_json = None
+        if error_details:
+            if isinstance(error_details, dict):
+                error_details_json = json.dumps(error_details)
+            else:
+                error_details_json = str(error_details)
+        
+        # Get device info if available in error details
+        device_info = None
+        if isinstance(error_details, dict) and 'deviceInfo' in error_details:
+            device_info = json.dumps(error_details['deviceInfo'])
+        
+        # Insert error into database
+        db.execute(
+            'INSERT INTO error_logs (error_type, error_message, error_details, device_info, created_at) '
+            'VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)',
+            (error_type, error_message, error_details_json, device_info)
+        )
+        db.commit()
+        
+        # Also log to file
+        current_app.logger.error(f"Error Type: {error_type}, Message: {error_message}")
+        if error_details:
+            current_app.logger.error(f"Details: {error_details}")
+    except Exception as e:
+        # If we can't log to the database, at least log to file
+        current_app.logger.error(f"Failed to log error to database: {e}")
+        current_app.logger.error(f"Original error - Type: {error_type}, Message: {error_message}")
+        if error_details:
+            current_app.logger.error(f"Details: {error_details}")
+
+@bp.route('/')
 def error_logs():
     """View error logs with filtering and pagination."""
-    db = get_db()
+    # Check if user has permission
+    if g.user is None or g.user['role'] not in ['admin', 'hr']:
+        flash('You do not have permission to access this page.', 'danger')
+        return redirect(url_for('login'))
     
     # Get query parameters for filtering
     error_type = request.args.get('error_type')
@@ -32,6 +69,8 @@ def error_logs():
     date_to = request.args.get('date_to')
     page = int(request.args.get('page', 1))
     per_page = 20  # Number of logs per page
+    
+    db = current_app.extensions['get_db']()
     
     # Build the query
     query = 'SELECT * FROM error_logs WHERE 1=1'
@@ -74,45 +113,56 @@ def error_logs():
     # Execute the query
     error_logs = db.execute(query, query_params).fetchall()
     
+    # Get unique error types for filter dropdown
+    error_types = db.execute('SELECT DISTINCT error_type FROM error_logs ORDER BY error_type').fetchall()
+    
     # Parse JSON in error_details field
     parsed_logs = []
     for log in error_logs:
         log_dict = dict(log)
         if log_dict['error_details']:
             try:
-                log_dict['error_details'] = json.dumps(json.loads(log_dict['error_details']), indent=2)
-            except json.JSONDecodeError:
+                log_dict['error_details_formatted'] = json.dumps(json.loads(log_dict['error_details']), indent=2)
+            except:
                 # If not valid JSON, keep as is
-                pass
+                log_dict['error_details_formatted'] = log_dict['error_details']
         parsed_logs.append(log_dict)
     
     return render_template(
         'admin_error_logs.html', 
         error_logs=parsed_logs, 
+        error_types=error_types,
         page=page, 
-        total_pages=total_pages
+        total_pages=total_pages,
+        filter_error_type=error_type,
+        filter_resolved=resolved,
+        filter_date_from=date_from,
+        filter_date_to=date_to
     )
 
-@bp.route('/logs/resolve/<int:error_id>', methods=['POST', 'GET'])
-@login_required
-@role_required(['admin', 'hr'])
+@bp.route('/resolve/<int:error_id>', methods=['POST', 'GET'])
 def resolve_error(error_id):
     """Mark an error as resolved."""
-    db = get_db()
+    if g.user is None or g.user['role'] not in ['admin', 'hr']:
+        flash('You do not have permission to access this page.', 'danger')
+        return redirect(url_for('login'))
+    
+    db = current_app.extensions['get_db']()
     
     # Check if the error exists
     error = db.execute('SELECT * FROM error_logs WHERE id = ?', (error_id,)).fetchone()
     if not error:
         flash('Error not found.', 'danger')
-        return redirect(url_for('errors.error_logs'))
+        return redirect(url_for('error_logs'))
     
     # Get resolution notes if provided
     resolution_notes = request.form.get('resolution_notes', '')
     
     # Update the error
     db.execute(
-        'UPDATE error_logs SET resolved = 1, resolution_notes = ?, resolved_at = CURRENT_TIMESTAMP WHERE id = ?',
-        (resolution_notes, error_id)
+        'UPDATE error_logs SET resolved = 1, resolution_notes = ?, resolved_at = CURRENT_TIMESTAMP, '
+        'resolved_by = ? WHERE id = ?',
+        (resolution_notes, g.user['id'] if g.user else None, error_id)
     )
     db.commit()
     
@@ -122,11 +172,13 @@ def resolve_error(error_id):
     next_page = request.args.get('next') or url_for('errors.error_logs')
     return redirect(next_page)
 
-@bp.route('/logs/export')
-@login_required
-@role_required(['admin', 'hr'])
+@bp.route('/export')
 def export_error_logs():
     """Export error logs to Excel or CSV."""
+    if g.user is None or g.user['role'] not in ['admin', 'hr']:
+        flash('You do not have permission to access this page.', 'danger')
+        return redirect(url_for('login'))
+    
     format_type = request.args.get('format', 'excel')
     
     # Get query parameters for filtering
@@ -135,7 +187,7 @@ def export_error_logs():
     date_from = request.args.get('date_from')
     date_to = request.args.get('date_to')
     
-    db = get_db()
+    db = current_app.extensions['get_db']()
     
     # Build the query
     query = 'SELECT * FROM error_logs WHERE 1=1'
@@ -162,68 +214,27 @@ def export_error_logs():
     # Execute the query
     error_logs = db.execute(query, query_params).fetchall()
     
+    # TODO: Implement Excel and CSV exports
     if format_type == 'excel':
-        # Create Excel file in memory
-        output = BytesIO()
-        workbook = xlsxwriter.Workbook(output)
-        worksheet = workbook.add_worksheet('Error Logs')
-        
-        # Add header row
-        headers = ['ID', 'Error Type', 'Message', 'Details', 'User ID', 'Device Info', 
-                  'Resolved', 'Resolution Notes', 'Resolved At', 'Created At']
-        for col, header in enumerate(headers):
-            worksheet.write(0, col, header)
-        
-        # Write data rows
-        for row, log in enumerate(error_logs, start=1):
-            worksheet.write(row, 0, log['id'])
-            worksheet.write(row, 1, log['error_type'])
-            worksheet.write(row, 2, log['error_message'])
-            
-            # Format error details as string if it's JSON
-            details = log['error_details']
-            if details:
-                try:
-                    details_json = json.loads(details)
-                    details = json.dumps(details_json, indent=2)
-                except json.JSONDecodeError:
-                    pass
-            worksheet.write(row, 3, details)
-            
-            worksheet.write(row, 4, log['user_id'])
-            worksheet.write(row, 5, log['device_info'])
-            worksheet.write(row, 6, 'Yes' if log['resolved'] else 'No')
-            worksheet.write(row, 7, log['resolution_notes'])
-            worksheet.write(row, 8, log['resolved_at'])
-            worksheet.write(row, 9, log['created_at'])
-        
-        workbook.close()
-        output.seek(0)
-        
-        # Generate filename with current date
-        today = datetime.now().strftime('%Y-%m-%d')
-        filename = f'error_logs_{today}.xlsx'
-        
-        return send_file(
-            output, 
-            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            as_attachment=True,
-            download_name=filename
-        )
-    
-    else:  # CSV format
-        # Implement CSV export here
-        abort(501, "CSV export not implemented yet")
+        # For now, just return a message
+        flash('Excel export not implemented yet. Coming soon!', 'info')
+        return redirect(url_for('errors.error_logs'))
+    else:
+        # For now, just return a message
+        flash('CSV export not implemented yet. Coming soon!', 'info')
+        return redirect(url_for('errors.error_logs'))
 
-@bp.route('/logs/cleanup', methods=['POST'])
-@login_required
-@role_required('admin')
+@bp.route('/cleanup', methods=['POST'])
 def cleanup_error_logs():
     """Clean up old error logs."""
+    if g.user is None or g.user['role'] != 'admin':
+        flash('You do not have permission to access this page.', 'danger')
+        return redirect(url_for('login'))
+    
     cleanup_type = request.form.get('cleanup_type', 'resolved')
     older_than = int(request.form.get('older_than', 30))
     
-    db = get_db()
+    db = current_app.extensions['get_db']()
     
     # Calculate the cutoff date
     cutoff_date = datetime.now() - timedelta(days=older_than)
@@ -244,10 +255,12 @@ def cleanup_error_logs():
     result = db.execute(query, query_params)
     db.commit()
     
-    flash(f'Cleaned up {result.rowcount} error logs.', 'success')
+    # Get number of affected rows
+    affected_rows = result.rowcount
+    
+    flash(f'Cleaned up {affected_rows} error logs.', 'success')
     return redirect(url_for('errors.error_logs'))
 
-# API Endpoints for Error Logging
 @bp.route('/api/sync', methods=['POST'])
 def api_sync_errors():
     """API endpoint to sync error logs from client."""
@@ -260,7 +273,7 @@ def api_sync_errors():
     if not errors:
         return jsonify({'success': True, 'syncedCount': 0, 'message': 'No errors to sync'}), 200
     
-    db = get_db()
+    db = current_app.extensions['get_db']()
     synced_ids = []
     
     for error in errors:
@@ -281,6 +294,9 @@ def api_sync_errors():
             if key not in ['errorType', 'message', 'deviceInfo', 'url', 'timestamp', 'id']:
                 error_details[key] = value
         
+        # Extract device info
+        device_info = json.dumps(error.get('deviceInfo')) if error.get('deviceInfo') else None
+        
         # Insert the error into the database
         cursor = db.execute(
             'INSERT INTO error_logs (error_type, error_message, error_details, device_info, created_at) VALUES (?, ?, ?, ?, ?)',
@@ -288,7 +304,7 @@ def api_sync_errors():
                 error_type, 
                 error_message, 
                 json.dumps(error_details), 
-                json.dumps(error.get('deviceInfo')), 
+                device_info, 
                 timestamp or datetime.now().isoformat()
             )
         )
@@ -306,56 +322,37 @@ def api_sync_errors():
         'message': f'Successfully synced {len(errors)} error logs'
     })
 
-# Global error handler
 def init_app(app):
     """Initialize the error handling for the app."""
+    # Store get_db function in app extensions for access in the blueprint
+    app.extensions['get_db'] = app.teardown_appcontext_funcs[0].__self__
     
     @app.errorhandler(Exception)
     def handle_exception(e):
         """Log all exceptions to the error_logs table."""
-        response = e.get_response() if isinstance(e, HTTPException) else None
-        status_code = response.status_code if response else 500
+        # Get the traceback
+        tb = traceback.format_exc()
         
-        # Only log server errors (5xx)
-        if status_code >= 500:
-            error_type = 'server_error'
+        # If it's an HTTP exception, get the status code
+        if isinstance(e, HTTPException):
+            error_type = f"HTTP {e.code}"
+            error_message = e.description
+        else:
+            error_type = e.__class__.__name__
             error_message = str(e)
-            
-            error_details = {
-                'url': request.url,
-                'method': request.method,
-                'status_code': status_code,
-                'user_agent': request.user_agent.string if request.user_agent else None,
-                'timestamp': datetime.now().isoformat()
-            }
-            
-            if g.user:
-                error_details['user_id'] = g.user['id']
-                error_details['username'] = g.user['username']
-            
-            try:
-                db = get_db()
-                db.execute(
-                    'INSERT INTO error_logs (error_type, error_message, error_details, user_id, created_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)',
-                    (
-                        error_type, 
-                        error_message, 
-                        json.dumps(error_details), 
-                        g.user['id'] if g.user else None
-                    )
-                )
-                db.commit()
-            except Exception as log_error:
-                current_app.logger.error(f"Failed to log error: {log_error}")
         
-        # For API requests, return JSON error response
-        if request.path.startswith('/api/'):
-            response = {
-                'success': False,
-                'error': str(e),
-                'status_code': status_code
-            }
-            return jsonify(response), status_code
+        # Log the error
+        log_error(error_type, error_message, {
+            'traceback': tb,
+            'endpoint': request.endpoint,
+            'url': request.url,
+            'method': request.method,
+            'user_id': g.user['id'] if g.user else None
+        })
         
-        # For web requests, pass to the default handler
-        return e
+        # Pass through HTTP exceptions
+        if isinstance(e, HTTPException):
+            return e
+        
+        # For non-HTTP exceptions, return a generic 500 error page
+        return render_template('error.html', error=e, traceback=tb), 500
