@@ -692,8 +692,16 @@ function showLocationError(error) {
     document.getElementById('accuracyBadge').textContent = 'Failed';
     document.getElementById('accuracyBadge').className = 'location-accuracy accuracy-low';
     
-    // Alert the user
-    alert('Location Error: ' + errorMessage);
+    // Show error in the UI instead of alert
+    const locationError = document.getElementById('locationError');
+    const locationErrorMessage = document.getElementById('locationErrorMessage');
+    locationErrorMessage.textContent = errorMessage;
+    locationError.classList.remove('d-none');
+    
+    // Save the error for offline sync
+    if (typeof storeErrorForSync === 'function') {
+        storeErrorForSync('location_error', errorMessage);
+    }
 }
 
 // Initialize camera when modal is opened
@@ -743,9 +751,22 @@ function startCamera() {
 // Show camera error
 function showCameraError(message) {
     const errorElement = document.getElementById('cameraError');
-    errorElement.textContent = message;
+    const errorMessageElement = document.getElementById('cameraErrorMessage');
+    errorMessageElement.textContent = message;
     errorElement.style.display = 'block';
     document.getElementById('cameraFeed').style.display = 'none';
+    document.getElementById('captureBtn').style.display = 'none';
+    
+    // Add event listener for the retry button
+    document.getElementById('retryCamera').addEventListener('click', function() {
+        stopCamera();
+        startCamera();
+    });
+    
+    // Save the error for offline sync
+    if (typeof storeErrorForSync === 'function') {
+        storeErrorForSync('camera_error', message);
+    }
 }
 
 // Stop the camera

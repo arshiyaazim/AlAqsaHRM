@@ -14,6 +14,7 @@ const DB_NAME = 'field-attendance-tracker-db';
 const DB_VERSION = 1;
 const ATTENDANCE_STORE = 'attendance-records';
 const FORM_CACHE_STORE = 'form-cache';
+const ERROR_STORE = 'error-logs';
 
 // DOM Element references
 let offlineStatus;
@@ -121,6 +122,10 @@ function initDatabase() {
             
             if (!db.objectStoreNames.contains(FORM_CACHE_STORE)) {
                 db.createObjectStore(FORM_CACHE_STORE, { keyPath: 'id' });
+            }
+            
+            if (!db.objectStoreNames.contains(ERROR_STORE)) {
+                db.createObjectStore(ERROR_STORE, { keyPath: 'id', autoIncrement: true });
             }
         };
         
