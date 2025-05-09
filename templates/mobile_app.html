@@ -359,6 +359,12 @@
                             <div class="card-body">
                                 <div id="map"></div>
                                 
+                                <!-- Location Error Message -->
+                                <div id="locationError" class="alert alert-warning mt-2 d-none">
+                                    <i class="bi bi-exclamation-triangle me-2"></i>
+                                    <span id="locationErrorMessage">Unable to access your location. Please check your device settings and permissions.</span>
+                                </div>
+                                
                                 <div class="location-info">
                                     <div>
                                         <i class="bi bi-bullseye me-1"></i> Accuracy:
@@ -490,7 +496,18 @@
                 <div class="camera-container">
                     <video id="cameraFeed" autoplay muted playsinline></video>
                     <canvas id="capturedPhoto" style="display:none;"></canvas>
-                    <div id="cameraError" style="display:none;">Camera not available</div>
+                    
+                    <!-- Improved Camera Error Message -->
+                    <div id="cameraError" class="alert alert-warning text-center my-3" style="display:none;">
+                        <i class="bi bi-camera-video-off me-2"></i>
+                        <span id="cameraErrorMessage">Camera not available</span>
+                        <div class="mt-2 small">
+                            Please check your device settings and ensure camera permissions are granted.
+                            <button id="retryCamera" class="btn btn-sm btn-outline-primary mt-2">
+                                <i class="bi bi-arrow-clockwise me-1"></i> Try Again
+                            </button>
+                        </div>
+                    </div>
                     
                     <div class="camera-controls">
                         <button id="captureBtn" class="camera-btn">
