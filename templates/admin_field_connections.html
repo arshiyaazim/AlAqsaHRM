@@ -1,0 +1,752 @@
+{% extends "base.html" %}
+
+{% block title %}Field Connections - Al-Aqsa Security{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h2">Field Connections</h1>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addConnectionModal">
+            <i class="bi bi-plus-lg me-1"></i> Add Connection
+        </button>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h5 class="mb-0">Configure Field Connections</h5>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="input-group">
+                                <select class="form-select" id="formFilter">
+                                    <option value="">All Forms</option>
+                                    <option value="attendance">Attendance Form</option>
+                                    <option value="employee">Employee Form</option>
+                                    <option value="financial">Financial Form</option>
+                                </select>
+                                <input type="text" class="form-control" id="searchConnections" placeholder="Search connections...">
+                                <button class="btn btn-outline-secondary" type="button" id="clearSearch">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover connections-table mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 16%">Form</th>
+                                    <th style="width: 16%">Source Field</th>
+                                    <th style="width: 16%">Target Field</th>
+                                    <th style="width: 18%">Connection Type</th>
+                                    <th style="width: 18%">Parameters</th>
+                                    <th style="width: 8%">Status</th>
+                                    <th style="width: 8%" class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for connection in connections %}
+                                <tr data-connection-id="{{ connection.id }}" data-form-id="{{ connection.source_form }}">
+                                    <td>{{ connection.source_form }}</td>
+                                    <td>
+                                        <div class="fw-medium">{{ source_fields[connection.source_field_id]['display_name']|default('Unknown') }}</div>
+                                        <div class="text-muted">{{ source_fields[connection.source_field_id]['field_name']|default(connection.source_field_id) }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="fw-medium">{{ target_fields[connection.target_field_id]['display_name']|default('Unknown') }}</div>
+                                        <div class="text-muted">{{ target_fields[connection.target_field_id]['field_name']|default(connection.target_field_id) }}</div>
+                                    </td>
+                                    <td>
+                                        {% if connection.connection_type == 'show_related' %}
+                                            <span class="badge bg-primary">Show Related</span>
+                                        {% elif connection.connection_type == 'copy' %}
+                                            <span class="badge bg-info">Copy</span>
+                                        {% elif connection.connection_type == 'add' %}
+                                            <span class="badge bg-success">Add</span>
+                                        {% elif connection.connection_type == 'subtract' %}
+                                            <span class="badge bg-warning">Subtract</span>
+                                        {% elif connection.connection_type == 'multiply' %}
+                                            <span class="badge bg-danger">Multiply</span>
+                                        {% elif connection.connection_type == 'divide' %}
+                                            <span class="badge bg-secondary">Divide</span>
+                                        {% elif connection.connection_type == 'custom_formula' %}
+                                            <span class="badge bg-dark">Custom Formula</span>
+                                        {% else %}
+                                            <span class="badge bg-light text-dark">{{ connection.connection_type }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if connection.parameters %}
+                                            {% for key, value in connection.parameters.items() %}
+                                                <div><strong>{{ key }}:</strong> {{ value }}</div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="text-muted">None</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if connection.active %}
+                                            <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="btn-group">
+                                            <button type="button" class="btn btn-sm btn-primary edit-connection" 
+                                                    data-connection-id="{{ connection.id }}">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-danger delete-connection" 
+                                                    data-connection-id="{{ connection.id }}">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-4">
+                                        <div class="d-flex flex-column align-items-center">
+                                            <i class="bi bi-diagram-3 mb-3" style="font-size: 3rem;"></i>
+                                            <p class="text-muted mb-1">No field connections found.</p>
+                                            <p class="text-muted">Click the "Add Connection" button to create your first connection.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Fields with Suggestions Enabled</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Form</th>
+                                    <th>Field Name</th>
+                                    <th>Display Name</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for field in suggestion_fields %}
+                                <tr>
+                                    <td>{{ field.form_id }}</td>
+                                    <td>{{ field.field_name }}</td>
+                                    <td>{{ field.display_name }}</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-outline-danger disable-suggestions" 
+                                                data-field-id="{{ field.id }}">
+                                            Disable Suggestions
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-3">
+                                        <p class="text-muted mb-0">No fields with suggestions enabled</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer bg-light">
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#enableSuggestionsModal">
+                        <i class="bi bi-plus-lg me-1"></i> Enable Field Suggestions
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Connection Types</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">Show Related</h5>
+                                <span class="badge bg-primary">Lookup</span>
+                            </div>
+                            <p class="mb-1">Looks up a related value from another table based on the source field value.</p>
+                            <small class="text-muted">Example: When employee ID is entered, show the employee name from the employees table.</small>
+                        </div>
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">Copy</h5>
+                                <span class="badge bg-info">Simple</span>
+                            </div>
+                            <p class="mb-1">Copies the value from the source field to the target field.</p>
+                            <small class="text-muted">Example: Copy project name to a description field.</small>
+                        </div>
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">Mathematical Operations</h5>
+                                <span class="badge bg-success">Calculation</span>
+                            </div>
+                            <p class="mb-1">Add, subtract, multiply, or divide values with optional parameters.</p>
+                            <small class="text-muted">Example: Calculate total by multiplying quantity by unit price.</small>
+                        </div>
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">Custom Formula</h5>
+                                <span class="badge bg-dark">Advanced</span>
+                            </div>
+                            <p class="mb-1">Apply a custom JavaScript formula to calculate a value.</p>
+                            <small class="text-muted">Example: Use {source} * 1.1 - 5 for complex calculations.</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Connection Modal -->
+<div class="modal fade" id="addConnectionModal" tabindex="-1" aria-labelledby="addConnectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addConnectionModalLabel">Add Field Connection</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addConnectionForm" action="{{ url_for('add_field_connection') }}" method="post">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="sourceForm" class="form-label">Source Form</label>
+                            <select class="form-select" id="sourceForm" name="source_form" required>
+                                <option value="">Select a form</option>
+                                <option value="attendance">Attendance</option>
+                                <option value="employee">Employee</option>
+                                <option value="financial">Financial</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="targetForm" class="form-label">Target Form</label>
+                            <select class="form-select" id="targetForm" name="target_form" required>
+                                <option value="">Select a form</option>
+                                <option value="attendance">Attendance</option>
+                                <option value="employee">Employee</option>
+                                <option value="financial">Financial</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="sourceField" class="form-label">Source Field</label>
+                            <select class="form-select" id="sourceField" name="source_field_id" required disabled>
+                                <option value="">Select a form first</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="targetField" class="form-label">Target Field</label>
+                            <select class="form-select" id="targetField" name="target_field_id" required disabled>
+                                <option value="">Select a form first</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="connectionType" class="form-label">Connection Type</label>
+                            <select class="form-select" id="connectionType" name="connection_type" required>
+                                <option value="">Select connection type</option>
+                                <option value="show_related">Show Related Value</option>
+                                <option value="copy">Copy</option>
+                                <option value="add">Add</option>
+                                <option value="subtract">Subtract</option>
+                                <option value="multiply">Multiply</option>
+                                <option value="divide">Divide</option>
+                                <option value="custom_formula">Custom Formula</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch mt-4">
+                                <input class="form-check-input" type="checkbox" id="connectionActive" name="active" value="1" checked>
+                                <label class="form-check-label" for="connectionActive">Active</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="parametersContainer" class="mb-3 d-none">
+                        <label for="parameterValue" class="form-label">Parameter Value</label>
+                        <input type="text" class="form-control" id="parameterValue" name="parameter_value" placeholder="Enter parameter value">
+                        <div class="form-text">For math operations, enter a number. For custom formula, use {source} to reference the source field value.</div>
+                    </div>
+                    
+                    <div id="customFormulaContainer" class="mb-3 d-none">
+                        <label for="customFormula" class="form-label">Custom Formula</label>
+                        <input type="text" class="form-control" id="customFormula" name="custom_formula" placeholder="Example: {source} * 1.1 + 5">
+                        <div class="form-text">Use {source} to reference the source field value in your formula.</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="addConnectionForm" class="btn btn-primary">Save Connection</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Connection Modal -->
+<div class="modal fade" id="editConnectionModal" tabindex="-1" aria-labelledby="editConnectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editConnectionModalLabel">Edit Field Connection</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editConnectionForm" action="{{ url_for('edit_field_connection') }}" method="post">
+                    <input type="hidden" id="editConnectionId" name="connection_id">
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="editSourceForm" class="form-label">Source Form</label>
+                            <select class="form-select" id="editSourceForm" name="source_form" required>
+                                <option value="">Select a form</option>
+                                <option value="attendance">Attendance</option>
+                                <option value="employee">Employee</option>
+                                <option value="financial">Financial</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editTargetForm" class="form-label">Target Form</label>
+                            <select class="form-select" id="editTargetForm" name="target_form" required>
+                                <option value="">Select a form</option>
+                                <option value="attendance">Attendance</option>
+                                <option value="employee">Employee</option>
+                                <option value="financial">Financial</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="editSourceField" class="form-label">Source Field</label>
+                            <select class="form-select" id="editSourceField" name="source_field_id" required>
+                                <option value="">Select a form first</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="editTargetField" class="form-label">Target Field</label>
+                            <select class="form-select" id="editTargetField" name="target_field_id" required>
+                                <option value="">Select a form first</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="editConnectionType" class="form-label">Connection Type</label>
+                            <select class="form-select" id="editConnectionType" name="connection_type" required>
+                                <option value="">Select connection type</option>
+                                <option value="show_related">Show Related Value</option>
+                                <option value="copy">Copy</option>
+                                <option value="add">Add</option>
+                                <option value="subtract">Subtract</option>
+                                <option value="multiply">Multiply</option>
+                                <option value="divide">Divide</option>
+                                <option value="custom_formula">Custom Formula</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-check form-switch mt-4">
+                                <input class="form-check-input" type="checkbox" id="editConnectionActive" name="active" value="1">
+                                <label class="form-check-label" for="editConnectionActive">Active</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="editParametersContainer" class="mb-3 d-none">
+                        <label for="editParameterValue" class="form-label">Parameter Value</label>
+                        <input type="text" class="form-control" id="editParameterValue" name="parameter_value" placeholder="Enter parameter value">
+                        <div class="form-text">For math operations, enter a number. For custom formula, use {source} to reference the source field value.</div>
+                    </div>
+                    
+                    <div id="editCustomFormulaContainer" class="mb-3 d-none">
+                        <label for="editCustomFormula" class="form-label">Custom Formula</label>
+                        <input type="text" class="form-control" id="editCustomFormula" name="custom_formula" placeholder="Example: {source} * 1.1 + 5">
+                        <div class="form-text">Use {source} to reference the source field value in your formula.</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="editConnectionForm" class="btn btn-primary">Update Connection</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Connection Modal -->
+<div class="modal fade" id="deleteConnectionModal" tabindex="-1" aria-labelledby="deleteConnectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteConnectionModalLabel">Delete Field Connection</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this field connection?</p>
+                <p class="text-danger">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteConnectionForm" action="{{ url_for('delete_field_connection') }}" method="post">
+                    <input type="hidden" id="deleteConnectionId" name="connection_id">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Enable Suggestions Modal -->
+<div class="modal fade" id="enableSuggestionsModal" tabindex="-1" aria-labelledby="enableSuggestionsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="enableSuggestionsModalLabel">Enable Field Suggestions</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="enableSuggestionsForm" action="{{ url_for('enable_field_suggestions') }}" method="post">
+                    <div class="mb-3">
+                        <label for="suggestionForm" class="form-label">Form</label>
+                        <select class="form-select" id="suggestionForm" name="form_id" required>
+                            <option value="">Select a form</option>
+                            <option value="attendance">Attendance</option>
+                            <option value="employee">Employee</option>
+                            <option value="financial">Financial</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="suggestionField" class="form-label">Field</label>
+                        <select class="form-select" id="suggestionField" name="field_id" required disabled>
+                            <option value="">Select a form first</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="enableSuggestionsForm" class="btn btn-primary">Enable Suggestions</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Filter connections by form
+    document.getElementById('formFilter').addEventListener('change', function() {
+        const formId = this.value;
+        const rows = document.querySelectorAll('.connections-table tbody tr[data-connection-id]');
+        
+        rows.forEach(row => {
+            if (!formId || row.getAttribute('data-form-id') === formId) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+    
+    // Search connections
+    document.getElementById('searchConnections').addEventListener('input', function() {
+        const searchText = this.value.toLowerCase();
+        const rows = document.querySelectorAll('.connections-table tbody tr[data-connection-id]');
+        
+        rows.forEach(row => {
+            const rowText = row.textContent.toLowerCase();
+            if (rowText.includes(searchText)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+    
+    // Clear search
+    document.getElementById('clearSearch').addEventListener('click', function() {
+        document.getElementById('searchConnections').value = '';
+        const rows = document.querySelectorAll('.connections-table tbody tr[data-connection-id]');
+        rows.forEach(row => {
+            row.style.display = '';
+        });
+    });
+    
+    // Connection type change handlers
+    function setupConnectionTypeHandlers(prefix) {
+        const connectionTypeSelect = document.getElementById(`${prefix}ConnectionType`);
+        const parametersContainer = document.getElementById(`${prefix}ParametersContainer`);
+        const customFormulaContainer = document.getElementById(`${prefix}CustomFormulaContainer`);
+        
+        if (connectionTypeSelect) {
+            connectionTypeSelect.addEventListener('change', function() {
+                const type = this.value;
+                
+                // Hide both containers initially
+                parametersContainer.classList.add('d-none');
+                customFormulaContainer.classList.add('d-none');
+                
+                // Show relevant container based on connection type
+                if (['add', 'subtract', 'multiply', 'divide'].includes(type)) {
+                    parametersContainer.classList.remove('d-none');
+                } else if (type === 'custom_formula') {
+                    customFormulaContainer.classList.remove('d-none');
+                }
+            });
+        }
+    }
+    
+    // Setup handlers for both add and edit forms
+    setupConnectionTypeHandlers('');
+    setupConnectionTypeHandlers('edit');
+    
+    // Form change handlers to load fields
+    function setupFormChangeHandlers(prefix) {
+        const formSelect = document.getElementById(`${prefix}SourceForm`);
+        const fieldSelect = document.getElementById(`${prefix}SourceField`);
+        
+        if (formSelect && fieldSelect) {
+            formSelect.addEventListener('change', function() {
+                const formId = this.value;
+                
+                if (formId) {
+                    // Enable the field select
+                    fieldSelect.disabled = false;
+                    
+                    // Clear current options
+                    fieldSelect.innerHTML = '<option value="">Loading fields...</option>';
+                    
+                    // Fetch fields for the selected form
+                    fetch(`/api/form-fields?form_id=${formId}`)
+                        .then(response => response.json())
+                        .then(fields => {
+                            fieldSelect.innerHTML = '<option value="">Select a field</option>';
+                            
+                            fields.forEach(field => {
+                                const option = document.createElement('option');
+                                option.value = field.id;
+                                option.textContent = `${field.display_name} (${field.field_name})`;
+                                fieldSelect.appendChild(option);
+                            });
+                        })
+                        .catch(error => {
+                            console.error('Error fetching fields:', error);
+                            fieldSelect.innerHTML = '<option value="">Error loading fields</option>';
+                        });
+                } else {
+                    // Disable and reset the field select
+                    fieldSelect.disabled = true;
+                    fieldSelect.innerHTML = '<option value="">Select a form first</option>';
+                }
+            });
+        }
+        
+        const targetFormSelect = document.getElementById(`${prefix}TargetForm`);
+        const targetFieldSelect = document.getElementById(`${prefix}TargetField`);
+        
+        if (targetFormSelect && targetFieldSelect) {
+            targetFormSelect.addEventListener('change', function() {
+                const formId = this.value;
+                
+                if (formId) {
+                    // Enable the field select
+                    targetFieldSelect.disabled = false;
+                    
+                    // Clear current options
+                    targetFieldSelect.innerHTML = '<option value="">Loading fields...</option>';
+                    
+                    // Fetch fields for the selected form
+                    fetch(`/api/form-fields?form_id=${formId}`)
+                        .then(response => response.json())
+                        .then(fields => {
+                            targetFieldSelect.innerHTML = '<option value="">Select a field</option>';
+                            
+                            fields.forEach(field => {
+                                const option = document.createElement('option');
+                                option.value = field.id;
+                                option.textContent = `${field.display_name} (${field.field_name})`;
+                                targetFieldSelect.appendChild(option);
+                            });
+                        })
+                        .catch(error => {
+                            console.error('Error fetching fields:', error);
+                            targetFieldSelect.innerHTML = '<option value="">Error loading fields</option>';
+                        });
+                } else {
+                    // Disable and reset the field select
+                    targetFieldSelect.disabled = true;
+                    targetFieldSelect.innerHTML = '<option value="">Select a form first</option>';
+                }
+            });
+        }
+    }
+    
+    // Setup form change handlers for both add and edit forms
+    setupFormChangeHandlers('');
+    setupFormChangeHandlers('edit');
+    
+    // Setup suggestion form handlers
+    const suggestionFormSelect = document.getElementById('suggestionForm');
+    const suggestionFieldSelect = document.getElementById('suggestionField');
+    
+    if (suggestionFormSelect && suggestionFieldSelect) {
+        suggestionFormSelect.addEventListener('change', function() {
+            const formId = this.value;
+            
+            if (formId) {
+                // Enable the field select
+                suggestionFieldSelect.disabled = false;
+                
+                // Clear current options
+                suggestionFieldSelect.innerHTML = '<option value="">Loading fields...</option>';
+                
+                // Fetch fields for the selected form
+                fetch(`/api/form-fields?form_id=${formId}`)
+                    .then(response => response.json())
+                    .then(fields => {
+                        suggestionFieldSelect.innerHTML = '<option value="">Select a field</option>';
+                        
+                        fields.forEach(field => {
+                            const option = document.createElement('option');
+                            option.value = field.id;
+                            option.textContent = `${field.display_name} (${field.field_name})`;
+                            suggestionFieldSelect.appendChild(option);
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error fetching fields:', error);
+                        suggestionFieldSelect.innerHTML = '<option value="">Error loading fields</option>';
+                    });
+            } else {
+                // Disable and reset the field select
+                suggestionFieldSelect.disabled = true;
+                suggestionFieldSelect.innerHTML = '<option value="">Select a form first</option>';
+            }
+        });
+    }
+    
+    // Edit connection button handlers
+    document.querySelectorAll('.edit-connection').forEach(button => {
+        button.addEventListener('click', function() {
+            const connectionId = this.getAttribute('data-connection-id');
+            
+            // Fetch connection details
+            fetch(`/api/field-connection/${connectionId}`)
+                .then(response => response.json())
+                .then(connection => {
+                    // Populate form with connection details
+                    document.getElementById('editConnectionId').value = connection.id;
+                    
+                    // Set source form and trigger change event to load fields
+                    const sourceFormSelect = document.getElementById('editSourceForm');
+                    sourceFormSelect.value = connection.source_form;
+                    sourceFormSelect.dispatchEvent(new Event('change'));
+                    
+                    // Set target form and trigger change event to load fields
+                    const targetFormSelect = document.getElementById('editTargetForm');
+                    targetFormSelect.value = connection.target_form;
+                    targetFormSelect.dispatchEvent(new Event('change'));
+                    
+                    // Need to wait for fields to load before setting values
+                    setTimeout(() => {
+                        document.getElementById('editSourceField').value = connection.source_field_id;
+                        document.getElementById('editTargetField').value = connection.target_field_id;
+                    }, 500);
+                    
+                    // Set connection type and trigger change event
+                    const connectionTypeSelect = document.getElementById('editConnectionType');
+                    connectionTypeSelect.value = connection.connection_type;
+                    connectionTypeSelect.dispatchEvent(new Event('change'));
+                    
+                    // Set active status
+                    document.getElementById('editConnectionActive').checked = connection.active;
+                    
+                    // Set parameters if available
+                    if (connection.parameters) {
+                        if (connection.connection_type === 'custom_formula' && connection.parameters.formula) {
+                            document.getElementById('editCustomFormula').value = connection.parameters.formula;
+                        } else if (['add', 'subtract', 'multiply', 'divide'].includes(connection.connection_type) && connection.parameters.value) {
+                            document.getElementById('editParameterValue').value = connection.parameters.value;
+                        }
+                    }
+                    
+                    // Show the modal
+                    const modal = new bootstrap.Modal(document.getElementById('editConnectionModal'));
+                    modal.show();
+                })
+                .catch(error => {
+                    console.error('Error fetching connection details:', error);
+                    alert('Failed to load connection details. Please try again.');
+                });
+        });
+    });
+    
+    // Delete connection button handlers
+    document.querySelectorAll('.delete-connection').forEach(button => {
+        button.addEventListener('click', function() {
+            const connectionId = this.getAttribute('data-connection-id');
+            document.getElementById('deleteConnectionId').value = connectionId;
+            
+            // Show the modal
+            const modal = new bootstrap.Modal(document.getElementById('deleteConnectionModal'));
+            modal.show();
+        });
+    });
+    
+    // Disable suggestions button handlers
+    document.querySelectorAll('.disable-suggestions').forEach(button => {
+        button.addEventListener('click', function() {
+            const fieldId = this.getAttribute('data-field-id');
+            
+            if (confirm('Are you sure you want to disable suggestions for this field?')) {
+                // Submit form to disable suggestions
+                const form = document.createElement('form');
+                form.method = 'post';
+                form.action = '{{ url_for("disable_field_suggestions") }}';
+                
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'field_id';
+                input.value = fieldId;
+                
+                form.appendChild(input);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

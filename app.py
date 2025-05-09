@@ -1500,6 +1500,9 @@ def api_field_connections():
     """API endpoint to get field connections"""
     try:
         source_field_id = request.args.get('source_field_id')
+        form_id = request.args.get('form_id')
+        
+        # First try to query by source_field_id if provided
         if source_field_id:
             try:
                 source_field_id = int(source_field_id)
@@ -1507,7 +1510,12 @@ def api_field_connections():
             except ValueError:
                 return jsonify({'error': 'Invalid source field ID'}), 400
         else:
+            # Get all connections
             connections = get_field_connections()
+        
+        # Filter by form_id if provided
+        if form_id:
+            connections = [c for c in connections if c['source_form'] == form_id]
         
         # Convert Row objects to dictionaries
         result = []
@@ -1523,9 +1531,38 @@ def api_field_connections():
             else:
                 conn_dict['parameters'] = {}
             
-            result.append(conn_dict)
+            # Convert to a format that matches our client-side field connection manager
+            formatted_conn = {
+                'id': conn_dict['id'],
+                'source_field_id': conn_dict['source_field_id'],
+                'target_field_id': conn_dict['target_field_id'],
+                'source_field_name': conn_dict['source_name'],
+                'target_field_name': conn_dict['target_name'],
+                'source_form': conn_dict['source_form'],
+                'target_form': conn_dict['target_form'],
+                'connection_type': conn_dict['connection_type'],
+                'parameters': conn_dict['parameters'],
+                'active': conn_dict['active'] == 1
+            }
+            
+            result.append(formatted_conn)
         
-        return jsonify(result)
+        # Get suggestion fields
+        suggestion_fields = []
+        if form_id:
+            db = get_db()
+            fields = db.execute(
+                '''SELECT field_name FROM form_fields 
+                   WHERE form_id = ? AND suggestions_enabled = 1''',
+                (form_id,)
+            ).fetchall()
+            suggestion_fields = [field['field_name'] for field in fields]
+        
+        # Return both connections and suggestion fields
+        return jsonify({
+            'connections': result,
+            'suggestions': suggestion_fields
+        })
     except Exception as e:
         log_error('api', f'Error getting field connections: {str(e)}')
         return jsonify({'error': str(e)}), 500
@@ -1534,39 +1571,105 @@ def api_field_connections():
 def api_related_field_value():
     """API endpoint to get related field value"""
     source_field = request.args.get('source_field')
-    source_form = request.args.get('source_form')
-    target_field = request.args.get('target_field')
     source_value = request.args.get('source_value')
+    target_field = request.args.get('target_field', None)
+    source_form = request.args.get('source_form', None)
     
-    if not source_field or not source_form or not target_field or not source_value:
-        return jsonify({'error': 'Missing required parameters'}), 400
+    if not source_field or not source_value:
+        return jsonify({'error': 'Missing required parameters: source_field and source_value required'}), 400
     
     try:
         db = get_db()
         
-        # Look up the related value
-        # This is just a simple example - in a real app, you'd have a more sophisticated lookup
-        if source_form == 'attendance' and source_field == 'employee_id':
-            # Example: If the source is employee_id, look up employee details
+        # Looking up employee data by ID (most common case)
+        if source_field == 'employee_id':
+            # First try new employees table
             employee = db.execute(
                 'SELECT * FROM employees WHERE id = ?', 
                 (source_value,)
             ).fetchone()
             
-            if employee and target_field in employee.keys():
-                return jsonify({'value': employee[target_field]})
+            # If found in employees table
+            if employee:
+                if target_field:
+                    # Return specific field if requested
+                    if target_field in dict(employee).keys():
+                        return jsonify({'value': employee[target_field]})
+                else:
+                    # Return all employee data if no specific field requested
+                    return jsonify({'value': dict(employee)})
+            
+            # Try attendance table as fallback for older records
+            if not employee and target_field == 'employee_name':
+                att_record = db.execute(
+                    'SELECT employee_name FROM attendance WHERE employee_id = ? ORDER BY timestamp DESC LIMIT 1', 
+                    (source_value,)
+                ).fetchone()
+                
+                if att_record:
+                    return jsonify({'value': att_record['employee_name']})
         
-        # Another example for projects
-        if source_form == 'projects' and source_field == 'id':
+        # Handle employee name to ID lookup (reverse lookup)
+        elif source_field == 'employee_name':
+            employee = db.execute(
+                'SELECT id FROM employees WHERE name = ? OR name LIKE ?', 
+                (source_value, f"%{source_value}%")
+            ).fetchone()
+            
+            if employee:
+                return jsonify({'value': employee['id']})
+        
+        # Looking up project data
+        elif source_field == 'project_id':
             project = db.execute(
                 'SELECT * FROM projects WHERE id = ?', 
                 (source_value,)
             ).fetchone()
             
-            if project and target_field in project.keys():
-                return jsonify({'value': project[target_field]})
+            if project:
+                if target_field:
+                    # Return specific field if requested
+                    if target_field in dict(project).keys():
+                        return jsonify({'value': project[target_field]})
+                else:
+                    # Return all project data if no specific field requested
+                    return jsonify({'value': dict(project)})
         
+        # Looking up cash receive data
+        elif source_field == 'cash_receive_id':
+            transaction = db.execute(
+                'SELECT * FROM cash_receives WHERE id = ?', 
+                (source_value,)
+            ).fetchone()
+            
+            if transaction:
+                if target_field:
+                    # Return specific field if requested
+                    if target_field in dict(transaction).keys():
+                        return jsonify({'value': transaction[target_field]})
+                else:
+                    # Return all transaction data
+                    return jsonify({'value': dict(transaction)})
+        
+        # Looking up cash payment data
+        elif source_field == 'cash_payment_id':
+            transaction = db.execute(
+                'SELECT * FROM cash_payments WHERE id = ?', 
+                (source_value,)
+            ).fetchone()
+            
+            if transaction:
+                if target_field:
+                    # Return specific field if requested
+                    if target_field in dict(transaction).keys():
+                        return jsonify({'value': transaction[target_field]})
+                else:
+                    # Return all transaction data
+                    return jsonify({'value': dict(transaction)})
+        
+        # Return empty if no match found
         return jsonify({'value': None})
+    
     except Exception as e:
         log_error('api', f'Error getting related field value: {str(e)}')
         return jsonify({'error': str(e)}), 500
@@ -1576,49 +1679,375 @@ def api_related_field_value():
 def api_submit():
     """API endpoint for submitting attendance records"""
     try:
-        data = request.json
+        # Determine if request is JSON or form data
+        if request.is_json:
+            data = request.json
+            is_form_data = False
+        else:
+            data = request.form.to_dict()
+            is_form_data = True
+        
+        # For backward compatibility with both data formats
+        employee_id = data.get('employee_id')
+        action = data.get('action', data.get('status'))  # Support both action and status fields
         
         # Validate required fields
-        if not data.get('employee_id') or not data.get('action'):
-            return jsonify({'error': 'Employee ID and action are required'}), 400
+        if not employee_id or not action:
+            return jsonify({'success': False, 'error': 'Employee ID and action/status are required'}), 400
         
         # Insert record into database
         db = get_db()
         
-        # Check for duplicate entry (same employee, same action, same day)
-        today = datetime.datetime.now().strftime('%Y-%m-%d')
-        duplicate = db.execute('''
-            SELECT id FROM attendance 
-            WHERE employee_id = ? AND action = ? AND date(timestamp) = date(?)
-        ''', (data.get('employee_id'), data.get('action'), today)).fetchone()
+        # Process timestamp - use client timestamp for offline records if provided
+        timestamp = None
+        is_offline_record = False
         
-        if duplicate:
-            return jsonify({'error': 'Duplicate entry. Already recorded today.'}), 400
+        if data.get('offline_sync') == 'true':
+            is_offline_record = True
+            # Use the original timestamp if provided
+            if data.get('offline_timestamp'):
+                timestamp = data.get('offline_timestamp')
+            else:
+                timestamp = data.get('client_timestamp')
+        
+        # If no valid timestamp provided, use current time
+        if not timestamp:
+            timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Check for duplicate entry (same employee, same action, same day)
+        # Skip duplicate check for offline records
+        if not is_offline_record:
+            record_date = datetime.datetime.strptime(timestamp, '%Y-%m-%d %H:%M:%S').strftime('%Y-%m-%d')
+            duplicate = db.execute('''
+                SELECT id FROM attendance 
+                WHERE employee_id = ? AND action = ? AND date(created_at) = date(?)
+            ''', (employee_id, action, record_date)).fetchone()
+            
+            if duplicate:
+                return jsonify({
+                    'success': False, 
+                    'error': 'Duplicate entry. Already recorded for this date.'
+                }), 400
+        
+        # Handle photo upload if present
+        photo_path = None
+        if is_form_data and 'photo' in request.files:
+            photo = request.files['photo']
+            if photo and photo.filename and allowed_file(photo.filename):
+                filename = secure_filename(photo.filename)
+                # Add timestamp to ensure uniqueness
+                timestamp_str = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+                unique_filename = f"{timestamp_str}_{filename}"
+                photo_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+                photo.save(photo_path)
+                photo_path = f"/uploads/{unique_filename}"
         
         # Get project details if provided
         project_name = None
-        if data.get('project_id'):
-            project = db.execute('SELECT name FROM projects WHERE id = ?', (data.get('project_id'),)).fetchone()
+        project_id = data.get('project_id')
+        if project_id:
+            project = db.execute('SELECT name FROM projects WHERE id = ?', (project_id,)).fetchone()
             if project:
                 project_name = project['name']
         
+        # Extract employee name if not provided
+        employee_name = data.get('employee_name', '')
+        if not employee_name and employee_id:
+            employee_record = db.execute('SELECT name FROM employees WHERE id = ?', (employee_id,)).fetchone()
+            if employee_record:
+                employee_name = employee_record['name']
+        
+        # Process custom fields
+        custom_fields = {}
+        for key in data:
+            if key.startswith('custom_'):
+                custom_fields[key.replace('custom_', '', 1)] = data[key]
+        
+        # Extract device info if provided
+        device_info = data.get('device_info')
+        if not device_info and data.get('useragent'):
+            device_info = json.dumps({'userAgent': data.get('useragent')})
+        elif device_info and isinstance(device_info, dict):
+            device_info = json.dumps(device_info)
+        
         # Insert attendance record
-        db.execute('''
-            INSERT INTO attendance (employee_id, action, project_id, project_name, latitude, longitude)
-            VALUES (?, ?, ?, ?, ?, ?)
+        cursor = db.execute('''
+            INSERT INTO attendance (
+                employee_id, 
+                employee_name,
+                project_id, 
+                project_name,
+                action, 
+                latitude, 
+                longitude, 
+                photo_path, 
+                notes, 
+                custom_fields,
+                created_at,
+                synced_at,
+                offline_record,
+                device_info
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
-            data.get('employee_id'), 
-            data.get('action'), 
-            data.get('project_id'), 
+            employee_id, 
+            employee_name,
+            project_id,
             project_name,
+            action,
             data.get('latitude'), 
-            data.get('longitude')
+            data.get('longitude'),
+            photo_path,
+            data.get('notes'),
+            json.dumps(custom_fields),
+            timestamp,
+            datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') if is_offline_record else None,
+            1 if is_offline_record else 0,
+            device_info
         ))
+        
+        record_id = cursor.lastrowid
         db.commit()
         
-        return jsonify({'success': True, 'message': f'Successfully {data.get("action").lower()}ed'})
-    
+        return jsonify({
+            'success': True, 
+            'message': f'Successfully {action.lower()}ed',
+            'record_id': record_id,
+            'offline_sync': is_offline_record
+        })
+        
     except Exception as e:
+        # Log the error for debugging
+        app.logger.error(f"Error in api_submit: {str(e)}")
+        traceback.print_exc()
+        
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# Admin routes for field connections
+@app.route('/admin/connections')
+@admin_required
+def admin_connections():
+    """Field connections management page"""
+    db = get_db()
+    
+    # Get all connections
+    connections = get_field_connections()
+    
+    # Prepare source and target field lookups for easier template rendering
+    source_fields = {}
+    target_fields = {}
+    
+    for conn in connections:
+        if conn['source_field_id'] not in source_fields:
+            field = db.execute('SELECT * FROM form_fields WHERE id = ?', (conn['source_field_id'],)).fetchone()
+            if field:
+                source_fields[conn['source_field_id']] = dict(field)
+        
+        if conn['target_field_id'] not in target_fields:
+            field = db.execute('SELECT * FROM form_fields WHERE id = ?', (conn['target_field_id'],)).fetchone()
+            if field:
+                target_fields[conn['target_field_id']] = dict(field)
+    
+    # Get fields with suggestions enabled
+    suggestion_fields = db.execute(
+        'SELECT * FROM form_fields WHERE suggestions_enabled = 1'
+    ).fetchall()
+    
+    return render_template('admin_field_connections.html', 
+                           connections=connections,
+                           source_fields=source_fields,
+                           target_fields=target_fields,
+                           suggestion_fields=suggestion_fields)
+
+@app.route('/admin/connections/add', methods=['POST'])
+@admin_required
+def add_field_connection():
+    """Add a new field connection"""
+    if request.method != 'POST':
+        return redirect(url_for('admin_connections'))
+    
+    # Get form data
+    source_field_id = request.form.get('source_field_id')
+    target_field_id = request.form.get('target_field_id')
+    connection_type = request.form.get('connection_type')
+    active = 1 if request.form.get('active') else 0
+    
+    # Build parameters based on connection type
+    parameters = {}
+    if connection_type == 'custom_formula':
+        parameters['formula'] = request.form.get('custom_formula')
+    elif connection_type in ['add', 'subtract', 'multiply', 'divide']:
+        parameters['value'] = request.form.get('parameter_value')
+    
+    # Convert parameters to JSON
+    parameters_json = json.dumps(parameters)
+    
+    # Insert connection into database
+    try:
+        db = get_db()
+        db.execute(
+            '''INSERT INTO field_connections 
+               (source_field_id, target_field_id, connection_type, parameters, active)
+               VALUES (?, ?, ?, ?, ?)''',
+            (source_field_id, target_field_id, connection_type, parameters_json, active)
+        )
+        db.commit()
+        
+        flash('Field connection added successfully.', 'success')
+    except Exception as e:
+        flash(f'Error adding field connection: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin_connections'))
+
+@app.route('/admin/connections/edit', methods=['POST'])
+@admin_required
+def edit_field_connection():
+    """Edit an existing field connection"""
+    if request.method != 'POST':
+        return redirect(url_for('admin_connections'))
+    
+    # Get form data
+    connection_id = request.form.get('connection_id')
+    source_field_id = request.form.get('source_field_id')
+    target_field_id = request.form.get('target_field_id')
+    connection_type = request.form.get('connection_type')
+    active = 1 if request.form.get('active') else 0
+    
+    # Build parameters based on connection type
+    parameters = {}
+    if connection_type == 'custom_formula':
+        parameters['formula'] = request.form.get('custom_formula')
+    elif connection_type in ['add', 'subtract', 'multiply', 'divide']:
+        parameters['value'] = request.form.get('parameter_value')
+    
+    # Convert parameters to JSON
+    parameters_json = json.dumps(parameters)
+    
+    # Update connection in database
+    try:
+        db = get_db()
+        db.execute(
+            '''UPDATE field_connections
+               SET source_field_id = ?, target_field_id = ?, connection_type = ?, parameters = ?, active = ?
+               WHERE id = ?''',
+            (source_field_id, target_field_id, connection_type, parameters_json, active, connection_id)
+        )
+        db.commit()
+        
+        flash('Field connection updated successfully.', 'success')
+    except Exception as e:
+        flash(f'Error updating field connection: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin_connections'))
+
+@app.route('/admin/connections/delete', methods=['POST'])
+@admin_required
+def delete_field_connection():
+    """Delete a field connection"""
+    if request.method != 'POST':
+        return redirect(url_for('admin_connections'))
+    
+    connection_id = request.form.get('connection_id')
+    
+    try:
+        db = get_db()
+        db.execute('DELETE FROM field_connections WHERE id = ?', (connection_id,))
+        db.commit()
+        
+        flash('Field connection deleted successfully.', 'success')
+    except Exception as e:
+        flash(f'Error deleting field connection: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin_connections'))
+
+@app.route('/admin/suggestions/enable', methods=['POST'])
+@admin_required
+def enable_field_suggestions():
+    """Enable suggestions for a field"""
+    if request.method != 'POST':
+        return redirect(url_for('admin_connections'))
+    
+    field_id = request.form.get('field_id')
+    
+    try:
+        db = get_db()
+        db.execute('UPDATE form_fields SET suggestions_enabled = 1 WHERE id = ?', (field_id,))
+        db.commit()
+        
+        flash('Field suggestions enabled successfully.', 'success')
+    except Exception as e:
+        flash(f'Error enabling field suggestions: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin_connections'))
+
+@app.route('/admin/suggestions/disable', methods=['POST'])
+@admin_required
+def disable_field_suggestions():
+    """Disable suggestions for a field"""
+    if request.method != 'POST':
+        return redirect(url_for('admin_connections'))
+    
+    field_id = request.form.get('field_id')
+    
+    try:
+        db = get_db()
+        db.execute('UPDATE form_fields SET suggestions_enabled = 0 WHERE id = ?', (field_id,))
+        db.commit()
+        
+        flash('Field suggestions disabled successfully.', 'success')
+    except Exception as e:
+        flash(f'Error disabling field suggestions: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin_connections'))
+
+@app.route('/api/form-fields')
+def api_form_fields():
+    """API endpoint to get form fields"""
+    form_id = request.args.get('form_id')
+    
+    if not form_id:
+        return jsonify([])
+    
+    try:
+        fields = get_form_fields(form_id)
+        return jsonify([dict(field) for field in fields])
+    except Exception as e:
+        log_error('api', f'Error getting form fields: {str(e)}')
+        return jsonify([])
+
+@app.route('/api/field-connection/<int:connection_id>')
+def api_field_connection(connection_id):
+    """API endpoint to get field connection details"""
+    try:
+        db = get_db()
+        connection = db.execute(
+            '''SELECT c.*, 
+                      s.field_name as source_name, s.form_id as source_form,
+                      t.field_name as target_name, t.form_id as target_form
+               FROM field_connections c
+               JOIN form_fields s ON c.source_field_id = s.id
+               JOIN form_fields t ON c.target_field_id = t.id
+               WHERE c.id = ?''',
+            (connection_id,)
+        ).fetchone()
+        
+        if not connection:
+            return jsonify({'error': 'Connection not found'}), 404
+        
+        connection_dict = dict(connection)
+        
+        # Parse parameters if they exist
+        if connection_dict.get('parameters'):
+            try:
+                connection_dict['parameters'] = json.loads(connection_dict['parameters'])
+            except json.JSONDecodeError:
+                connection_dict['parameters'] = {}
+        else:
+            connection_dict['parameters'] = {}
+        
+        return jsonify(connection_dict)
+    except Exception as e:
+        log_error('api', f'Error getting field connection: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
 # Initialize database when the app starts

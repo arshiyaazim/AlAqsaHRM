@@ -1,138 +1,184 @@
-{% extends "base.html" %}
-
-{% block title %}Offline - Al-Aqsa Security{% endblock %}
-
-{% block content %}
-<div class="container">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header bg-warning">
-                    <h5 class="mb-0">
-                        <i class="bi bi-wifi-off me-2"></i> You're Offline
-                    </h5>
-                </div>
-                <div class="card-body text-center">
-                    <img src="{{ url_for('static', filename='images/offline.svg') }}" alt="Offline" class="img-fluid mb-4" style="max-height: 200px;">
-                    
-                    <h4 class="mb-3">No Internet Connection</h4>
-                    
-                    <p class="lead">
-                        You are currently offline. Some features may be limited until you reconnect.
-                    </p>
-                    
-                    <div class="alert alert-info mt-4">
-                        <p class="mb-0">
-                            <strong>Don't worry!</strong> You can still:
-                        </p>
-                        <ul class="mb-0 mt-2 text-start">
-                            <li>View previously loaded pages</li>
-                            <li>Submit attendance records (they will sync when you're back online)</li>
-                            <li>Access basic functionality in the mobile app</li>
-                        </ul>
-                    </div>
-                    
-                    <div class="d-grid gap-2 mt-4">
-                        <button id="retryConnection" class="btn btn-primary">
-                            <i class="bi bi-arrow-repeat me-2"></i> Try Reconnecting
-                        </button>
-                        
-                        <a href="{{ url_for('mobile_app') }}" class="btn btn-outline-secondary">
-                            <i class="bi bi-clock me-2"></i> Go to Mobile App
-                        </a>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="card mt-4">
-                <div class="card-header">
-                    <h5 class="mb-0">Offline Mode</h5>
-                </div>
-                <div class="card-body">
-                    <p>
-                        The Al-Aqsa Security Field Attendance application works offline with these capabilities:
-                    </p>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="offline-feature">
-                                <i class="bi bi-clock-history text-primary"></i>
-                                <span>Clock in/out without internet</span>
-                            </div>
-                            <div class="offline-feature">
-                                <i class="bi bi-geo-alt text-primary"></i>
-                                <span>Location capture</span>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="offline-feature">
-                                <i class="bi bi-clock-history text-primary"></i>
-                                <span>Automatic sync when online</span>
-                            </div>
-                            <div class="offline-feature">
-                                <i class="bi bi-journal-text text-primary"></i>
-                                <span>Access to saved forms</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="alert alert-warning mt-3">
-                        <i class="bi bi-exclamation-triangle me-2"></i>
-                        <strong>Note:</strong> Some features like uploading photos and accessing the admin dashboard require an internet connection.
-                    </div>
-                </div>
-            </div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline - Field Attendance Tracker</title>
+    <link rel="stylesheet" href="/static/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/css/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+        .offline-container {
+            max-width: 500px;
+            text-align: center;
+            background-color: white;
+            border-radius: 10px;
+            padding: 2rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        .icon-large {
+            font-size: 4rem;
+            color: #dc3545;
+            margin-bottom: 1rem;
+        }
+        .offline-title {
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+        .offline-message {
+            margin-bottom: 2rem;
+            color: #6c757d;
+        }
+        .sync-status {
+            margin-top: 1rem;
+            padding: 0.5rem;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+            display: none;
+        }
+        .sync-status.show {
+            display: block;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+        .btn-primary:hover {
+            background-color: #0069d9;
+            border-color: #0062cc;
+        }
+        .cached-features {
+            margin-top: 2rem;
+            text-align: left;
+        }
+        .cached-features h4 {
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+        .cached-features ul {
+            padding-left: 1.5rem;
+        }
+        .cached-features li {
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-container">
+        <i class="bi bi-wifi-off icon-large"></i>
+        <h2 class="offline-title">You're offline</h2>
+        <p class="offline-message">Internet connection is currently unavailable. Some features are available offline.</p>
+        
+        <button id="try-reconnect" class="btn btn-primary">
+            <i class="bi bi-arrow-repeat"></i> Try to reconnect
+        </button>
+        
+        <div id="sync-status" class="sync-status mt-3">
+            Checking connection...
+        </div>
+        
+        <div class="cached-features">
+            <h4>Available offline:</h4>
+            <ul>
+                <li>View previously loaded projects</li>
+                <li>Submit new attendance records (will sync when online)</li>
+                <li>Access form fields and connections</li>
+            </ul>
+        </div>
+        
+        <div id="pending-records" class="mt-3">
+            <div id="records-count"></div>
         </div>
     </div>
-</div>
-{% endblock %}
 
-{% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const retryButton = document.getElementById('retryConnection');
-    
-    // Check connection status when button is clicked
-    retryButton.addEventListener('click', function() {
-        // Add spinning animation to button icon
-        const icon = retryButton.querySelector('i');
-        icon.classList.add('spin');
+    <script>
+        // Check for pending records to sync
+        document.addEventListener('DOMContentLoaded', function() {
+            checkPendingRecords();
+            document.getElementById('try-reconnect').addEventListener('click', tryReconnect);
+        });
         
-        // Try to fetch a small resource to check connectivity
-        fetch('/static/ping.txt?' + new Date().getTime())
-            .then(response => {
-                // If successful, reload the page
-                window.location.reload();
-            })
-            .catch(error => {
-                // If still offline, show error message
-                alert('Still offline. Please check your internet connection and try again.');
-                // Remove spinning animation
-                icon.classList.remove('spin');
-            });
-    });
-});
-</script>
-
-<style>
-.offline-feature {
-    display: flex;
-    align-items: center;
-    margin-bottom: 12px;
-}
-
-.offline-feature i {
-    font-size: 1.2rem;
-    margin-right: 10px;
-}
-
-.spin {
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-</style>
-{% endblock %}
+        function checkPendingRecords() {
+            if ('indexedDB' in window) {
+                const request = indexedDB.open('field-attendance-tracker-db', 1);
+                
+                request.onerror = function(event) {
+                    console.error('Error opening IndexedDB:', event.target.error);
+                };
+                
+                request.onsuccess = function(event) {
+                    const db = event.target.result;
+                    if (db.objectStoreNames.contains('offline-attendance')) {
+                        const transaction = db.transaction('offline-attendance', 'readonly');
+                        const store = transaction.objectStore('offline-attendance');
+                        const countRequest = store.count();
+                        
+                        countRequest.onsuccess = function() {
+                            const count = countRequest.result;
+                            const recordsCountElem = document.getElementById('records-count');
+                            
+                            if (count > 0) {
+                                recordsCountElem.innerHTML = `
+                                    <div class="alert alert-info">
+                                        <i class="bi bi-info-circle"></i>
+                                        You have ${count} attendance record${count > 1 ? 's' : ''} pending to sync
+                                    </div>
+                                `;
+                            }
+                        };
+                    }
+                    db.close();
+                };
+            }
+        }
+        
+        function tryReconnect() {
+            const syncStatus = document.getElementById('sync-status');
+            syncStatus.textContent = 'Checking connection...';
+            syncStatus.className = 'sync-status show alert alert-info';
+            
+            fetch('/')
+                .then(response => {
+                    if (response.ok) {
+                        syncStatus.textContent = 'Connected! Redirecting...';
+                        syncStatus.className = 'sync-status show alert alert-success';
+                        
+                        // Try to register sync
+                        if ('serviceWorker' in navigator && 'SyncManager' in window) {
+                            navigator.serviceWorker.ready
+                                .then(registration => {
+                                    return registration.sync.register('sync-attendance');
+                                })
+                                .then(() => {
+                                    console.log('Sync registered');
+                                })
+                                .catch(err => {
+                                    console.error('Sync registration failed:', err);
+                                });
+                        }
+                        
+                        // Redirect after a short delay
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    } else {
+                        throw new Error('Server returned ' + response.status);
+                    }
+                })
+                .catch(error => {
+                    syncStatus.textContent = 'Still offline. Please try again later.';
+                    syncStatus.className = 'sync-status show alert alert-danger';
+                    console.error('Reconnect failed:', error);
+                });
+        }
+    </script>
+</body>
+</html>

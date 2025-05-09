@@ -10,6 +10,9 @@ DROP TABLE IF EXISTS styles;
 DROP TABLE IF EXISTS menu_items;
 DROP TABLE IF EXISTS error_logs;
 DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS employees;
+DROP TABLE IF EXISTS cash_receives;
+DROP TABLE IF EXISTS cash_payments;
 
 -- Users Table for administrative users
 CREATE TABLE users (
@@ -65,6 +68,9 @@ CREATE TABLE attendance (
   notes TEXT,
   custom_fields TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  synced_at TIMESTAMP,
+  offline_record INTEGER NOT NULL DEFAULT 0,
+  device_info TEXT,
   FOREIGN KEY (project_id) REFERENCES projects (id)
 );
 
@@ -78,6 +84,7 @@ CREATE TABLE form_fields (
   options TEXT,
   required INTEGER NOT NULL DEFAULT 0,
   position INTEGER NOT NULL DEFAULT 0,
+  suggestions_enabled INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -89,6 +96,7 @@ CREATE TABLE field_connections (
   target_field_id INTEGER NOT NULL,
   connection_type TEXT NOT NULL,
   parameters TEXT,
+  active INTEGER NOT NULL DEFAULT 1,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (source_field_id) REFERENCES form_fields (id),
   FOREIGN KEY (target_field_id) REFERENCES form_fields (id)
@@ -164,3 +172,42 @@ VALUES
   ('attendance', 'longitude', 'Longitude', 'text', 5, 1),
   ('attendance', 'photo', 'Photo', 'file', 6, 0),
   ('attendance', 'notes', 'Notes', 'textarea', 7, 0);
+
+-- Employees Table
+CREATE TABLE employees (
+  id TEXT PRIMARY KEY, -- Using TEXT to handle scientific notation issues
+  name TEXT NOT NULL,
+  salary REAL,
+  mobile TEXT,
+  nid TEXT, -- National ID, stored as TEXT to handle scientific notation
+  designation TEXT,
+  date_of_join DATE,
+  addresses TEXT, -- Stored as JSON
+  loan_advance REAL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Cash Receives Table
+CREATE TABLE cash_receives (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  date DATE NOT NULL,
+  employee_id TEXT, -- Can be NULL for non-employee receives
+  description TEXT,
+  media TEXT, -- Payment method/media
+  amount REAL NOT NULL,
+  remarks TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (employee_id) REFERENCES employees (id)
+);
+
+-- Cash Payments Table
+CREATE TABLE cash_payments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  date DATE NOT NULL,
+  employee_id TEXT, -- Can be NULL for non-employee payments
+  name TEXT, -- Used when not paying to an employee
+  amount REAL NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (employee_id) REFERENCES employees (id)
+);

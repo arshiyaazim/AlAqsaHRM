@@ -1,0 +1,1645 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - Al-Aqsa Security{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <h1 class="h2 mb-0">Reports</h1>
+            <div class="btn-group">
+                <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-plus-lg me-1"></i> Create Report
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                        <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#attendanceReportModal">
+                            <i class="bi bi-clock me-2"></i> Attendance Report
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#employeeReportModal">
+                            <i class="bi bi-person me-2"></i> Employee Report
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#financialReportModal">
+                            <i class="bi bi-cash me-2"></i> Financial Report
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#projectReportModal">
+                            <i class="bi bi-building me-2"></i> Project Report
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reports Tabs -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <ul class="nav nav-tabs" id="reportTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="attendance-tab" data-bs-toggle="tab" data-bs-target="#attendance-tab-pane" type="button" role="tab" aria-controls="attendance-tab-pane" aria-selected="true">
+                        <i class="bi bi-clock me-1"></i> Attendance
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="financial-tab" data-bs-toggle="tab" data-bs-target="#financial-tab-pane" type="button" role="tab" aria-controls="financial-tab-pane" aria-selected="false">
+                        <i class="bi bi-cash me-1"></i> Financial
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="employees-tab" data-bs-toggle="tab" data-bs-target="#employees-tab-pane" type="button" role="tab" aria-controls="employees-tab-pane" aria-selected="false">
+                        <i class="bi bi-person me-1"></i> Employees
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="projects-tab" data-bs-toggle="tab" data-bs-target="#projects-tab-pane" type="button" role="tab" aria-controls="projects-tab-pane" aria-selected="false">
+                        <i class="bi bi-building me-1"></i> Projects
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="saved-tab" data-bs-toggle="tab" data-bs-target="#saved-tab-pane" type="button" role="tab" aria-controls="saved-tab-pane" aria-selected="false">
+                        <i class="bi bi-bookmark me-1"></i> Saved Reports
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="reportTabsContent">
+        <!-- Attendance Tab -->
+        <div class="tab-pane fade show active" id="attendance-tab-pane" role="tabpanel" aria-labelledby="attendance-tab" tabindex="0">
+            <div class="row">
+                <!-- Filters -->
+                <div class="col-md-3">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Filters</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="attendanceFiltersForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Date Range</label>
+                                    <div class="input-group mb-2">
+                                        <span class="input-group-text">From</span>
+                                        <input type="date" class="form-control" id="attendanceStartDate" name="start_date">
+                                    </div>
+                                    <div class="input-group">
+                                        <span class="input-group-text">To</span>
+                                        <input type="date" class="form-control" id="attendanceEndDate" name="end_date">
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="attendanceProjects" class="form-label">Projects</label>
+                                    <select class="form-select" id="attendanceProjects" name="project_id" multiple>
+                                        <option value="">All Projects</option>
+                                        {% for project in projects %}
+                                        <option value="{{ project.id }}">{{ project.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="attendanceStatus" class="form-label">Status</label>
+                                    <select class="form-select" id="attendanceStatus" name="status">
+                                        <option value="">All</option>
+                                        <option value="clock_in">Clock In</option>
+                                        <option value="clock_out">Clock Out</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="attendanceEmployee" class="form-label">Employee</label>
+                                    <input type="text" class="form-control" id="attendanceEmployee" name="employee" placeholder="ID or Name">
+                                </div>
+                                
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-filter me-1"></i> Apply Filters
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Export Options</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="attendanceExportForm">
+                                <div class="mb-3">
+                                    <label for="attendanceExportFormat" class="form-label">Format</label>
+                                    <select class="form-select" id="attendanceExportFormat" name="format">
+                                        <option value="csv">CSV</option>
+                                        <option value="excel">Excel</option>
+                                        <option value="pdf">PDF</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="attendanceIncludePhotos" name="include_photos">
+                                        <label class="form-check-label" for="attendanceIncludePhotos">
+                                            Include Photos
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="bi bi-download me-1"></i> Export
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Results -->
+                <div class="col-md-9">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Attendance Results</h5>
+                            <span class="badge bg-primary" id="attendanceCount">{{ attendance_records|length if attendance_records else 0 }} Records</span>
+                        </div>
+                        <div class="card-body p-0">
+                            <div id="attendanceResults">
+                                {% if attendance_records %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0" id="attendanceResultsTable">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Date/Time</th>
+                                                <th>Employee</th>
+                                                <th>Project</th>
+                                                <th>Status</th>
+                                                <th>Location</th>
+                                                <th>Photo</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for record in attendance_records %}
+                                            <tr>
+                                                <td>
+                                                    {% if record.status == 'clock_in' %}
+                                                    {{ record.clock_in }}
+                                                    {% elif record.status == 'clock_out' %}
+                                                    {{ record.clock_out }}
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <div>{{ record.employee_name }}</div>
+                                                    <div class="text-muted small">ID: {{ record.employee_id }}</div>
+                                                </td>
+                                                <td>{{ record.project_name }}</td>
+                                                <td>
+                                                    {% if record.status == 'clock_in' %}
+                                                    <span class="badge bg-success">Clock In</span>
+                                                    {% elif record.status == 'clock_out' %}
+                                                    <span class="badge bg-danger">Clock Out</span>
+                                                    {% else %}
+                                                    <span class="badge bg-secondary">{{ record.status }}</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if record.latitude and record.longitude %}
+                                                    <button type="button" class="btn btn-sm btn-outline-primary view-location" 
+                                                            data-lat="{{ record.latitude }}" data-lng="{{ record.longitude }}">
+                                                        <i class="bi bi-geo-alt"></i> View
+                                                    </button>
+                                                    {% else %}
+                                                    <span class="text-muted">Not available</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if record.photo_path %}
+                                                    <button type="button" class="btn btn-sm btn-outline-info view-photo" 
+                                                            data-photo="{{ url_for('uploaded_file', filename=record.photo_path) }}">
+                                                        <i class="bi bi-camera"></i> View
+                                                    </button>
+                                                    {% else %}
+                                                    <span class="text-muted">No photo</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <div class="text-center py-5">
+                                    <i class="bi bi-clock" style="font-size: 3rem;"></i>
+                                    <p class="mt-3">No attendance records match your criteria.</p>
+                                    <p class="text-muted">Try adjusting your filters or selecting a different date range.</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Attendance Charts -->
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Attendance by Project</h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="attendanceByProjectChart" height="250"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Daily Attendance</h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="dailyAttendanceChart" height="250"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Financial Tab -->
+        <div class="tab-pane fade" id="financial-tab-pane" role="tabpanel" aria-labelledby="financial-tab" tabindex="0">
+            <div class="row">
+                <!-- Filters -->
+                <div class="col-md-3">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Filters</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="financialFiltersForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Date Range</label>
+                                    <div class="input-group mb-2">
+                                        <span class="input-group-text">From</span>
+                                        <input type="date" class="form-control" id="financialStartDate" name="start_date">
+                                    </div>
+                                    <div class="input-group">
+                                        <span class="input-group-text">To</span>
+                                        <input type="date" class="form-control" id="financialEndDate" name="end_date">
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="financialType" class="form-label">Transaction Type</label>
+                                    <select class="form-select" id="financialType" name="type">
+                                        <option value="all">All Transactions</option>
+                                        <option value="receives">Cash Receives</option>
+                                        <option value="payments">Cash Payments</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="financialEmployee" class="form-label">Employee</label>
+                                    <input type="text" class="form-control" id="financialEmployee" name="employee" placeholder="ID or Name">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="financialMinAmount" class="form-label">Amount Range</label>
+                                    <div class="input-group mb-2">
+                                        <span class="input-group-text">Min</span>
+                                        <input type="number" class="form-control" id="financialMinAmount" name="min_amount" min="0" step="0.01">
+                                    </div>
+                                    <div class="input-group">
+                                        <span class="input-group-text">Max</span>
+                                        <input type="number" class="form-control" id="financialMaxAmount" name="max_amount" min="0" step="0.01">
+                                    </div>
+                                </div>
+                                
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-filter me-1"></i> Apply Filters
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Export Options</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="financialExportForm">
+                                <div class="mb-3">
+                                    <label for="financialExportFormat" class="form-label">Format</label>
+                                    <select class="form-select" id="financialExportFormat" name="format">
+                                        <option value="csv">CSV</option>
+                                        <option value="excel">Excel</option>
+                                        <option value="pdf">PDF</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="bi bi-download me-1"></i> Export
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Results -->
+                <div class="col-md-9">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Financial Summary</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3 text-center mb-3">
+                                    <div class="h3 mb-0 text-primary">{{ financial_summary.total_receives|default('0.00') }}</div>
+                                    <div class="text-muted">Total Receives</div>
+                                </div>
+                                <div class="col-md-3 text-center mb-3">
+                                    <div class="h3 mb-0 text-danger">{{ financial_summary.total_payments|default('0.00') }}</div>
+                                    <div class="text-muted">Total Payments</div>
+                                </div>
+                                <div class="col-md-3 text-center mb-3">
+                                    <div class="h3 mb-0 text-success">{{ financial_summary.balance|default('0.00') }}</div>
+                                    <div class="text-muted">Net Balance</div>
+                                </div>
+                                <div class="col-md-3 text-center mb-3">
+                                    <div class="h3 mb-0">{{ financial_summary.transaction_count|default('0') }}</div>
+                                    <div class="text-muted">Transactions</div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-3">
+                                <canvas id="financialSummaryChart" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Transaction Details</h5>
+                            <span class="badge bg-primary" id="transactionsCount">
+                                {{ financial_transactions|length if financial_transactions else 0 }} Transactions
+                            </span>
+                        </div>
+                        <div class="card-body p-0">
+                            <div id="financialResults">
+                                {% if financial_transactions %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0" id="financialResultsTable">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>Type</th>
+                                                <th>Employee/Name</th>
+                                                <th>Description</th>
+                                                <th>Amount</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for transaction in financial_transactions %}
+                                            <tr>
+                                                <td>{{ transaction.date }}</td>
+                                                <td>
+                                                    {% if transaction.type == 'receive' %}
+                                                    <span class="badge bg-primary">Receive</span>
+                                                    {% else %}
+                                                    <span class="badge bg-danger">Payment</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if transaction.employee_id %}
+                                                    <div>{{ transaction.name }}</div>
+                                                    <div class="text-muted small">ID: {{ transaction.employee_id }}</div>
+                                                    {% else %}
+                                                    {{ transaction.name }}
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ transaction.description or '' }}</td>
+                                                <td>{{ transaction.amount }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <div class="text-center py-5">
+                                    <i class="bi bi-cash" style="font-size: 3rem;"></i>
+                                    <p class="mt-3">No financial transactions match your criteria.</p>
+                                    <p class="text-muted">Try adjusting your filters or selecting a different date range.</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Employees Tab -->
+        <div class="tab-pane fade" id="employees-tab-pane" role="tabpanel" aria-labelledby="employees-tab" tabindex="0">
+            <div class="row">
+                <!-- Filters -->
+                <div class="col-md-3">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Filters</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="employeesFiltersForm">
+                                <div class="mb-3">
+                                    <label for="employeeSearch" class="form-label">Search</label>
+                                    <input type="text" class="form-control" id="employeeSearch" name="search" placeholder="ID, Name, or Designation">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="employeeDesignation" class="form-label">Designation</label>
+                                    <select class="form-select" id="employeeDesignation" name="designation">
+                                        <option value="">All Designations</option>
+                                        {% for designation in designations %}
+                                        <option value="{{ designation }}">{{ designation }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="employeeSalaryMin" class="form-label">Salary Range</label>
+                                    <div class="input-group mb-2">
+                                        <span class="input-group-text">Min</span>
+                                        <input type="number" class="form-control" id="employeeSalaryMin" name="min_salary" min="0" step="0.01">
+                                    </div>
+                                    <div class="input-group">
+                                        <span class="input-group-text">Max</span>
+                                        <input type="number" class="form-control" id="employeeSalaryMax" name="max_salary" min="0" step="0.01">
+                                    </div>
+                                </div>
+                                
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-filter me-1"></i> Apply Filters
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Export Options</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="employeesExportForm">
+                                <div class="mb-3">
+                                    <label for="employeesExportFormat" class="form-label">Format</label>
+                                    <select class="form-select" id="employeesExportFormat" name="format">
+                                        <option value="csv">CSV</option>
+                                        <option value="excel">Excel</option>
+                                        <option value="pdf">PDF</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="bi bi-download me-1"></i> Export
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Results -->
+                <div class="col-md-9">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Employee Results</h5>
+                            <span class="badge bg-primary" id="employeesCount">{{ employees|length if employees else 0 }} Employees</span>
+                        </div>
+                        <div class="card-body p-0">
+                            <div id="employeesResults">
+                                {% if employees %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0" id="employeesResultsTable">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Name</th>
+                                                <th>Designation</th>
+                                                <th>Contact</th>
+                                                <th>Joined</th>
+                                                <th>Salary</th>
+                                                <th>Loan/Advance</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for employee in employees %}
+                                            <tr>
+                                                <td>{{ employee.id }}</td>
+                                                <td>{{ employee.name }}</td>
+                                                <td>{{ employee.designation }}</td>
+                                                <td>
+                                                    {% if employee.mobile %}
+                                                    <div>{{ employee.mobile }}</div>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ employee.date_of_join }}</td>
+                                                <td>{{ employee.salary }}</td>
+                                                <td>{{ employee.loan_advance }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <div class="text-center py-5">
+                                    <i class="bi bi-people" style="font-size: 3rem;"></i>
+                                    <p class="mt-3">No employees match your criteria.</p>
+                                    <p class="text-muted">Try adjusting your filters or import employee data.</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Employee Charts -->
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Employees by Designation</h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="employeesByDesignationChart" height="250"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Salary Distribution</h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="salaryDistributionChart" height="250"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Projects Tab -->
+        <div class="tab-pane fade" id="projects-tab-pane" role="tabpanel" aria-labelledby="projects-tab" tabindex="0">
+            <div class="row">
+                <!-- Filters -->
+                <div class="col-md-3">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Filters</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="projectsFiltersForm">
+                                <div class="mb-3">
+                                    <label for="projectSearch" class="form-label">Search</label>
+                                    <input type="text" class="form-control" id="projectSearch" name="search" placeholder="Project Name or Address">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="projectStatus" class="form-label">Status</label>
+                                    <select class="form-select" id="projectStatus" name="status">
+                                        <option value="">All Status</option>
+                                        <option value="active">Active</option>
+                                        <option value="inactive">Inactive</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Date Range</label>
+                                    <div class="input-group mb-2">
+                                        <span class="input-group-text">From</span>
+                                        <input type="date" class="form-control" id="projectStartDate" name="start_date">
+                                    </div>
+                                    <div class="input-group">
+                                        <span class="input-group-text">To</span>
+                                        <input type="date" class="form-control" id="projectEndDate" name="end_date">
+                                    </div>
+                                </div>
+                                
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="bi bi-filter me-1"></i> Apply Filters
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Export Options</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="projectsExportForm">
+                                <div class="mb-3">
+                                    <label for="projectsExportFormat" class="form-label">Format</label>
+                                    <select class="form-select" id="projectsExportFormat" name="format">
+                                        <option value="csv">CSV</option>
+                                        <option value="excel">Excel</option>
+                                        <option value="pdf">PDF</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="bi bi-download me-1"></i> Export
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Results -->
+                <div class="col-md-9">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Project Results</h5>
+                            <span class="badge bg-primary" id="projectsCount">{{ projects|length if projects else 0 }} Projects</span>
+                        </div>
+                        <div class="card-body p-0">
+                            <div id="projectsResults">
+                                {% if projects %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0" id="projectsResultsTable">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Address</th>
+                                                <th>Duration</th>
+                                                <th>Status</th>
+                                                <th>Attendance</th>
+                                                <th>Custom Fields</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for project in projects %}
+                                            <tr>
+                                                <td>
+                                                    <div>{{ project.name }}</div>
+                                                    <div class="text-muted small">ID: {{ project.id }}</div>
+                                                </td>
+                                                <td>{{ project.address or 'N/A' }}</td>
+                                                <td>
+                                                    {% if project.start_date %}
+                                                    <div>From: {{ project.start_date }}</div>
+                                                    {% endif %}
+                                                    {% if project.end_date %}
+                                                    <div>To: {{ project.end_date }}</div>
+                                                    {% endif %}
+                                                    {% if not project.start_date and not project.end_date %}
+                                                    <span class="text-muted">Not specified</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if project.active %}
+                                                    <span class="badge bg-success">Active</span>
+                                                    {% else %}
+                                                    <span class="badge bg-secondary">Inactive</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ project.attendance_count or 0 }}</td>
+                                                <td>
+                                                    {% if project.custom_fields_count > 0 %}
+                                                    <span class="badge bg-info">{{ project.custom_fields_count }} Fields</span>
+                                                    {% else %}
+                                                    <span class="text-muted">None</span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <div class="text-center py-5">
+                                    <i class="bi bi-building" style="font-size: 3rem;"></i>
+                                    <p class="mt-3">No projects match your criteria.</p>
+                                    <p class="text-muted">Try adjusting your filters or adding new projects.</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Project Charts -->
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Project Timeline</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="projectTimelineChart" style="height: 250px;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Attendance by Project</h5>
+                                </div>
+                                <div class="card-body">
+                                    <canvas id="projectAttendanceChart" height="250"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Saved Reports Tab -->
+        <div class="tab-pane fade" id="saved-tab-pane" role="tabpanel" aria-labelledby="saved-tab" tabindex="0">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Saved Reports</h5>
+                            <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#saveReportModal">
+                                <i class="bi bi-bookmark-plus me-1"></i> Save Current Report
+                            </button>
+                        </div>
+                        <div class="card-body p-0">
+                            {% if saved_reports %}
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Type</th>
+                                            <th>Created</th>
+                                            <th>Last Run</th>
+                                            <th>Schedule</th>
+                                            <th class="text-end">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for report in saved_reports %}
+                                        <tr>
+                                            <td>{{ report.name }}</td>
+                                            <td>
+                                                {% if report.type == 'attendance' %}
+                                                <span class="badge bg-primary">Attendance</span>
+                                                {% elif report.type == 'financial' %}
+                                                <span class="badge bg-success">Financial</span>
+                                                {% elif report.type == 'employees' %}
+                                                <span class="badge bg-info">Employees</span>
+                                                {% elif report.type == 'projects' %}
+                                                <span class="badge bg-warning">Projects</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ report.created_at }}</td>
+                                            <td>{{ report.last_run or 'Never' }}</td>
+                                            <td>
+                                                {% if report.schedule %}
+                                                <span class="badge bg-light text-dark">{{ report.schedule }}</span>
+                                                {% else %}
+                                                <span class="text-muted">Manual</span>
+                                                {% endif %}
+                                            </td>
+                                            <td class="text-end">
+                                                <div class="btn-group" role="group">
+                                                    <button type="button" class="btn btn-sm btn-primary run-report" data-report-id="{{ report.id }}">
+                                                        <i class="bi bi-play-fill"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#scheduleReportModal" data-report-id="{{ report.id }}">
+                                                        <i class="bi bi-calendar-event"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteReportModal" data-report-id="{{ report.id }}">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-5">
+                                <i class="bi bi-bookmark" style="font-size: 3rem;"></i>
+                                <p class="mt-3">You don't have any saved reports yet.</p>
+                                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#saveReportModal">
+                                    <i class="bi bi-bookmark-plus me-1"></i> Save Your First Report
+                                </button>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Report Modals -->
+
+<!-- Attendance Report Modal -->
+<div class="modal fade" id="attendanceReportModal" tabindex="-1" aria-labelledby="attendanceReportModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="attendanceReportModalLabel">Create Attendance Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createAttendanceReportForm">
+                    <div class="mb-3">
+                        <label for="attendanceReportName" class="form-label">Report Name</label>
+                        <input type="text" class="form-control" id="attendanceReportName" name="name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Date Range</label>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text">From</span>
+                            <input type="date" class="form-control" id="newAttendanceStartDate" name="start_date">
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-text">To</span>
+                            <input type="date" class="form-control" id="newAttendanceEndDate" name="end_date">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="newAttendanceProjects" class="form-label">Projects</label>
+                        <select class="form-select" id="newAttendanceProjects" name="project_id" multiple>
+                            <option value="">All Projects</option>
+                            {% for project in projects %}
+                            <option value="{{ project.id }}">{{ project.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="newAttendanceStatus" class="form-label">Status</label>
+                        <select class="form-select" id="newAttendanceStatus" name="status">
+                            <option value="">All</option>
+                            <option value="clock_in">Clock In</option>
+                            <option value="clock_out">Clock Out</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="newAttendanceEmployee" class="form-label">Employee</label>
+                        <input type="text" class="form-control" id="newAttendanceEmployee" name="employee" placeholder="ID or Name">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="createAttendanceReportForm" class="btn btn-primary">Create Report</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Employee Report Modal -->
+<div class="modal fade" id="employeeReportModal" tabindex="-1" aria-labelledby="employeeReportModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="employeeReportModalLabel">Create Employee Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createEmployeeReportForm">
+                    <div class="mb-3">
+                        <label for="employeeReportName" class="form-label">Report Name</label>
+                        <input type="text" class="form-control" id="employeeReportName" name="name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="newEmployeeSearch" class="form-label">Search</label>
+                        <input type="text" class="form-control" id="newEmployeeSearch" name="search" placeholder="ID, Name, or Designation">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="newEmployeeDesignation" class="form-label">Designation</label>
+                        <select class="form-select" id="newEmployeeDesignation" name="designation">
+                            <option value="">All Designations</option>
+                            {% for designation in designations %}
+                            <option value="{{ designation }}">{{ designation }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="newEmployeeSalaryMin" class="form-label">Salary Range</label>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text">Min</span>
+                            <input type="number" class="form-control" id="newEmployeeSalaryMin" name="min_salary" min="0" step="0.01">
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-text">Max</span>
+                            <input type="number" class="form-control" id="newEmployeeSalaryMax" name="max_salary" min="0" step="0.01">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="createEmployeeReportForm" class="btn btn-primary">Create Report</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Financial Report Modal -->
+<div class="modal fade" id="financialReportModal" tabindex="-1" aria-labelledby="financialReportModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="financialReportModalLabel">Create Financial Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createFinancialReportForm">
+                    <div class="mb-3">
+                        <label for="financialReportName" class="form-label">Report Name</label>
+                        <input type="text" class="form-control" id="financialReportName" name="name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Date Range</label>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text">From</span>
+                            <input type="date" class="form-control" id="newFinancialStartDate" name="start_date">
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-text">To</span>
+                            <input type="date" class="form-control" id="newFinancialEndDate" name="end_date">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="newFinancialType" class="form-label">Transaction Type</label>
+                        <select class="form-select" id="newFinancialType" name="type">
+                            <option value="all">All Transactions</option>
+                            <option value="receives">Cash Receives</option>
+                            <option value="payments">Cash Payments</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="newFinancialEmployee" class="form-label">Employee</label>
+                        <input type="text" class="form-control" id="newFinancialEmployee" name="employee" placeholder="ID or Name">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="newFinancialMinAmount" class="form-label">Amount Range</label>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text">Min</span>
+                            <input type="number" class="form-control" id="newFinancialMinAmount" name="min_amount" min="0" step="0.01">
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-text">Max</span>
+                            <input type="number" class="form-control" id="newFinancialMaxAmount" name="max_amount" min="0" step="0.01">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="createFinancialReportForm" class="btn btn-primary">Create Report</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Project Report Modal -->
+<div class="modal fade" id="projectReportModal" tabindex="-1" aria-labelledby="projectReportModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="projectReportModalLabel">Create Project Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createProjectReportForm">
+                    <div class="mb-3">
+                        <label for="projectReportName" class="form-label">Report Name</label>
+                        <input type="text" class="form-control" id="projectReportName" name="name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="newProjectSearch" class="form-label">Search</label>
+                        <input type="text" class="form-control" id="newProjectSearch" name="search" placeholder="Project Name or Address">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="newProjectStatus" class="form-label">Status</label>
+                        <select class="form-select" id="newProjectStatus" name="status">
+                            <option value="">All Status</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Date Range</label>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text">From</span>
+                            <input type="date" class="form-control" id="newProjectStartDate" name="start_date">
+                        </div>
+                        <div class="input-group">
+                            <span class="input-group-text">To</span>
+                            <input type="date" class="form-control" id="newProjectEndDate" name="end_date">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="createProjectReportForm" class="btn btn-primary">Create Report</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Save Report Modal -->
+<div class="modal fade" id="saveReportModal" tabindex="-1" aria-labelledby="saveReportModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="saveReportModalLabel">Save Current Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="saveReportForm">
+                    <div class="mb-3">
+                        <label for="saveReportName" class="form-label">Report Name</label>
+                        <input type="text" class="form-control" id="saveReportName" name="name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="saveReportDescription" class="form-label">Description</label>
+                        <textarea class="form-control" id="saveReportDescription" name="description" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="saveReportSchedule" name="schedule_enabled">
+                            <label class="form-check-label" for="saveReportSchedule">
+                                Schedule automatic runs
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div id="scheduleOptions" style="display: none;">
+                        <div class="mb-3">
+                            <label for="saveReportFrequency" class="form-label">Frequency</label>
+                            <select class="form-select" id="saveReportFrequency" name="frequency">
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="saveReportTime" class="form-label">Time</label>
+                            <input type="time" class="form-control" id="saveReportTime" name="time" value="08:00">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="saveReportEmail" name="email_enabled">
+                                <label class="form-check-label" for="saveReportEmail">
+                                    Email results
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div id="emailOptions" style="display: none;">
+                            <div class="mb-3">
+                                <label for="saveReportEmailAddress" class="form-label">Email Address</label>
+                                <input type="email" class="form-control" id="saveReportEmailAddress" name="email">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="saveReportFormat" class="form-label">Export Format</label>
+                                <select class="form-select" id="saveReportFormat" name="format">
+                                    <option value="pdf">PDF</option>
+                                    <option value="excel">Excel</option>
+                                    <option value="csv">CSV</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="saveReportForm" class="btn btn-primary">Save Report</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Schedule Report Modal -->
+<div class="modal fade" id="scheduleReportModal" tabindex="-1" aria-labelledby="scheduleReportModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="scheduleReportModalLabel">Schedule Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="scheduleReportForm">
+                    <input type="hidden" id="scheduleReportId" name="report_id">
+                    
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="editReportSchedule" name="schedule_enabled">
+                            <label class="form-check-label" for="editReportSchedule">
+                                Schedule automatic runs
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div id="editScheduleOptions" style="display: none;">
+                        <div class="mb-3">
+                            <label for="editReportFrequency" class="form-label">Frequency</label>
+                            <select class="form-select" id="editReportFrequency" name="frequency">
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="editReportTime" class="form-label">Time</label>
+                            <input type="time" class="form-control" id="editReportTime" name="time" value="08:00">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="editReportEmail" name="email_enabled">
+                                <label class="form-check-label" for="editReportEmail">
+                                    Email results
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div id="editEmailOptions" style="display: none;">
+                            <div class="mb-3">
+                                <label for="editReportEmailAddress" class="form-label">Email Address</label>
+                                <input type="email" class="form-control" id="editReportEmailAddress" name="email">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="editReportFormat" class="form-label">Export Format</label>
+                                <select class="form-select" id="editReportFormat" name="format">
+                                    <option value="pdf">PDF</option>
+                                    <option value="excel">Excel</option>
+                                    <option value="csv">CSV</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="scheduleReportForm" class="btn btn-primary">Save Schedule</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Report Modal -->
+<div class="modal fade" id="deleteReportModal" tabindex="-1" aria-labelledby="deleteReportModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteReportModalLabel">Delete Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this report?</p>
+                <p class="text-danger">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteReportForm" action="{{ url_for('delete_report') }}" method="post">
+                    <input type="hidden" id="deleteReportId" name="report_id">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Schedule report checkboxes
+    document.getElementById('saveReportSchedule').addEventListener('change', function() {
+        document.getElementById('scheduleOptions').style.display = this.checked ? 'block' : 'none';
+    });
+    
+    document.getElementById('saveReportEmail').addEventListener('change', function() {
+        document.getElementById('emailOptions').style.display = this.checked ? 'block' : 'none';
+    });
+    
+    document.getElementById('editReportSchedule').addEventListener('change', function() {
+        document.getElementById('editScheduleOptions').style.display = this.checked ? 'block' : 'none';
+    });
+    
+    document.getElementById('editReportEmail').addEventListener('change', function() {
+        document.getElementById('editEmailOptions').style.display = this.checked ? 'block' : 'none';
+    });
+    
+    // Set report ID for schedule and delete modals
+    document.querySelectorAll('[data-bs-target="#scheduleReportModal"]').forEach(button => {
+        button.addEventListener('click', function() {
+            document.getElementById('scheduleReportId').value = this.getAttribute('data-report-id');
+        });
+    });
+    
+    document.querySelectorAll('[data-bs-target="#deleteReportModal"]').forEach(button => {
+        button.addEventListener('click', function() {
+            document.getElementById('deleteReportId').value = this.getAttribute('data-report-id');
+        });
+    });
+    
+    // Initialize charts if data is available
+    {% if attendance_by_project %}
+    // Attendance by project chart
+    const attendanceByProjectCtx = document.getElementById('attendanceByProjectChart').getContext('2d');
+    new Chart(attendanceByProjectCtx, {
+        type: 'bar',
+        data: {
+            labels: [{% for item in attendance_by_project %}'{{ item.name }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+            datasets: [
+                {
+                    label: 'Clock Ins',
+                    data: [{% for item in attendance_by_project %}{{ item.clock_ins }}{% if not loop.last %}, {% endif %}{% endfor %}],
+                    backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Clock Outs',
+                    data: [{% for item in attendance_by_project %}{{ item.clock_outs }}{% if not loop.last %}, {% endif %}{% endfor %}],
+                    backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
+                }
+            }
+        }
+    });
+    {% endif %}
+    
+    {% if daily_attendance %}
+    // Daily attendance chart
+    const dailyAttendanceCtx = document.getElementById('dailyAttendanceChart').getContext('2d');
+    new Chart(dailyAttendanceCtx, {
+        type: 'line',
+        data: {
+            labels: [{% for item in daily_attendance %}'{{ item.date }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+            datasets: [
+                {
+                    label: 'Clock Ins',
+                    data: [{% for item in daily_attendance %}{{ item.clock_ins }}{% if not loop.last %}, {% endif %}{% endfor %}],
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 2,
+                    tension: 0.1
+                },
+                {
+                    label: 'Clock Outs',
+                    data: [{% for item in daily_attendance %}{{ item.clock_outs }}{% if not loop.last %}, {% endif %}{% endfor %}],
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 2,
+                    tension: 0.1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
+                }
+            }
+        }
+    });
+    {% endif %}
+    
+    {% if financial_summary %}
+    // Financial summary chart
+    const financialSummaryCtx = document.getElementById('financialSummaryChart').getContext('2d');
+    new Chart(financialSummaryCtx, {
+        type: 'bar',
+        data: {
+            labels: ['Receives', 'Payments', 'Balance'],
+            datasets: [{
+                label: 'Amount',
+                data: [
+                    {{ financial_summary.total_receives|default('0') }},
+                    {{ financial_summary.total_payments|default('0') }},
+                    {{ financial_summary.balance|default('0') }}
+                ],
+                backgroundColor: [
+                    'rgba(75, 192, 192, 0.5)',
+                    'rgba(255, 99, 132, 0.5)',
+                    'rgba(54, 162, 235, 0.5)'
+                ],
+                borderColor: [
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(54, 162, 235, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+    {% endif %}
+    
+    {% if employee_designations %}
+    // Employees by designation chart
+    const employeesByDesignationCtx = document.getElementById('employeesByDesignationChart').getContext('2d');
+    new Chart(employeesByDesignationCtx, {
+        type: 'pie',
+        data: {
+            labels: [{% for item in employee_designations %}'{{ item.designation }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+            datasets: [{
+                label: 'Employees',
+                data: [{% for item in employee_designations %}{{ item.count }}{% if not loop.last %}, {% endif %}{% endfor %}],
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.5)',
+                    'rgba(54, 162, 235, 0.5)',
+                    'rgba(255, 206, 86, 0.5)',
+                    'rgba(75, 192, 192, 0.5)',
+                    'rgba(153, 102, 255, 0.5)'
+                ],
+                borderColor: [
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(255, 206, 86, 1)',
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(153, 102, 255, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+    {% endif %}
+    
+    {% if salary_distribution %}
+    // Salary distribution chart
+    const salaryDistributionCtx = document.getElementById('salaryDistributionChart').getContext('2d');
+    new Chart(salaryDistributionCtx, {
+        type: 'bar',
+        data: {
+            labels: [{% for item in salary_distribution %}'{{ item.range }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+            datasets: [{
+                label: 'Employees',
+                data: [{% for item in salary_distribution %}{{ item.count }}{% if not loop.last %}, {% endif %}{% endfor %}],
+                backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
+                }
+            }
+        }
+    });
+    {% endif %}
+    
+    {% if project_attendance %}
+    // Project attendance chart
+    const projectAttendanceCtx = document.getElementById('projectAttendanceChart').getContext('2d');
+    new Chart(projectAttendanceCtx, {
+        type: 'doughnut',
+        data: {
+            labels: [{% for item in project_attendance %}'{{ item.name }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+            datasets: [{
+                label: 'Attendance Records',
+                data: [{% for item in project_attendance %}{{ item.total }}{% if not loop.last %}, {% endif %}{% endfor %}],
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.5)',
+                    'rgba(54, 162, 235, 0.5)',
+                    'rgba(255, 206, 86, 0.5)',
+                    'rgba(75, 192, 192, 0.5)',
+                    'rgba(153, 102, 255, 0.5)'
+                ],
+                borderColor: [
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(255, 206, 86, 1)',
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(153, 102, 255, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+    {% endif %}
+    
+    // Form submissions - Use AJAX
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', function(event) {
+            if (this.id === 'deleteReportForm') {
+                // Let the delete form submit normally (POST request)
+                return;
+            }
+            
+            event.preventDefault();
+            
+            const formData = new FormData(this);
+            const formId = this.id;
+            
+            // Determine which action to take based on form ID
+            let url = '';
+            let method = 'POST';
+            
+            if (formId === 'attendanceFiltersForm') {
+                url = '{{ url_for("admin_reports") }}?tab=attendance';
+                method = 'GET';
+            } else if (formId === 'financialFiltersForm') {
+                url = '{{ url_for("admin_reports") }}?tab=financial';
+                method = 'GET';
+            } else if (formId === 'employeesFiltersForm') {
+                url = '{{ url_for("admin_reports") }}?tab=employees';
+                method = 'GET';
+            } else if (formId === 'projectsFiltersForm') {
+                url = '{{ url_for("admin_reports") }}?tab=projects';
+                method = 'GET';
+            } else if (formId === 'attendanceExportForm') {
+                url = '{{ url_for("export_attendance") }}';
+            } else if (formId === 'financialExportForm') {
+                url = '{{ url_for("export_financial") }}';
+            } else if (formId === 'employeesExportForm') {
+                url = '{{ url_for("export_employees") }}';
+            } else if (formId === 'projectsExportForm') {
+                url = '{{ url_for("export_projects") }}';
+            } else if (formId === 'createAttendanceReportForm') {
+                url = '{{ url_for("create_report") }}';
+                formData.append('type', 'attendance');
+            } else if (formId === 'createEmployeeReportForm') {
+                url = '{{ url_for("create_report") }}';
+                formData.append('type', 'employees');
+            } else if (formId === 'createFinancialReportForm') {
+                url = '{{ url_for("create_report") }}';
+                formData.append('type', 'financial');
+            } else if (formId === 'createProjectReportForm') {
+                url = '{{ url_for("create_report") }}';
+                formData.append('type', 'projects');
+            } else if (formId === 'saveReportForm') {
+                url = '{{ url_for("save_report") }}';
+            } else if (formId === 'scheduleReportForm') {
+                url = '{{ url_for("schedule_report") }}';
+            }
+            
+            // For GET requests, convert FormData to query string
+            if (method === 'GET') {
+                const params = new URLSearchParams();
+                for (const pair of formData.entries()) {
+                    params.append(pair[0], pair[1]);
+                }
+                window.location.href = `${url}&${params.toString()}`;
+                return;
+            }
+            
+            // For export requests, trigger a download
+            if (formId.includes('ExportForm') && !formId.includes('Format')) {
+                const params = new URLSearchParams();
+                for (const pair of formData.entries()) {
+                    params.append(pair[0], pair[1]);
+                }
+                window.location.href = `${url}?${params.toString()}`;
+                return;
+            }
+            
+            // For POST requests, use fetch API
+            fetch(url, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Handle successful response
+                    if (data.redirect) {
+                        window.location.href = data.redirect;
+                    } else {
+                        // Close modal if open
+                        const modalElement = this.closest('.modal');
+                        if (modalElement) {
+                            const modal = bootstrap.Modal.getInstance(modalElement);
+                            if (modal) {
+                                modal.hide();
+                            }
+                        }
+                        
+                        // Show success message
+                        alert(data.message || 'Operation completed successfully.');
+                        
+                        // Reload page if needed
+                        if (data.reload) {
+                            window.location.reload();
+                        }
+                    }
+                } else {
+                    // Handle error
+                    alert(data.message || 'An error occurred.');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while processing your request.');
+            });
+        });
+    });
+    
+    // Set active tab based on URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const tab = urlParams.get('tab');
+    if (tab) {
+        const tabElement = document.getElementById(`${tab}-tab`);
+        if (tabElement) {
+            const tabTrigger = new bootstrap.Tab(tabElement);
+            tabTrigger.show();
+        }
+    }
+});
+</script>
+{% endblock %}

@@ -1,332 +1,431 @@
-// Al-Aqsa Security - Advanced Service Worker for Field Attendance Tracker
-// Version: 2.0.0
+/**
+ * Field Attendance Tracker - Service Worker
+ * 
+ * This service worker provides offline capabilities for the Field Attendance Tracker application.
+ * It uses Cache Storage API to cache static resources and API responses for offline use.
+ * 
+ * Features:
+ * - Precaches essential static resources on install
+ * - Uses a stale-while-revalidate strategy for most resources
+ * - Caches API responses for offline use
+ * - Provides a custom offline page when offline and not in cache
+ * - Syncs offline attendance records when back online
+ */
 
-const CACHE_NAME = 'al-aqsa-field-attendance-v2';
-const DATA_CACHE_NAME = 'al-aqsa-data-v2';
+const CACHE_NAME = 'field-attendance-tracker-v1';
 
-// Assets to cache immediately when service worker is installed
-const STATIC_CACHE_URLS = [
+// Assets to cache on install
+const PRECACHE_ASSETS = [
   '/',
+  '/mobile',
   '/mobile_app',
   '/static/css/bootstrap.min.css',
   '/static/css/bootstrap-icons.css',
   '/static/js/bootstrap.bundle.min.js',
   '/static/js/jquery-3.6.0.min.js',
-  '/static/js/app.js',
-  '/static/js/offline.js',
-  '/static/images/logo.png',
-  '/static/images/offline.svg',
-  '/static/manifest.json',
-  '/static/favicon.ico',
-  '/offline'
+  '/static/js/main.js',
+  '/static/js/field-connections.js',
+  '/static/js/location.js',
+  '/static/js/camera.js',
+  '/static/js/offline-storage.js',
+  '/static/img/logo.png',
+  '/static/img/app-icon-192.png',
+  '/static/img/app-icon-512.png',
+  '/offline.html',
+  '/manifest.json'
 ];
 
-// Installation event - cache static assets
+// API endpoints to cache (GET requests only)
+const API_CACHE_URLS = [
+  '/api/projects',
+  '/api/form-fields'
+];
+
+// Install event - precache static assets
 self.addEventListener('install', event => {
   console.log('[Service Worker] Installing Service Worker...');
   
-  // Skip waiting to ensure the new service worker activates immediately
-  self.skipWaiting();
-  
+  // Precache static assets
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('[Service Worker] Caching static files');
-        return cache.addAll(STATIC_CACHE_URLS);
+        console.log('[Service Worker] Precaching app shell');
+        return cache.addAll(PRECACHE_ASSETS);
+      })
+      .then(() => {
+        console.log('[Service Worker] Precaching complete');
+        return self.skipWaiting(); // Ensure the new service worker activates right away
       })
       .catch(error => {
-        console.error('[Service Worker] Cache installation failed:', error);
+        console.error('[Service Worker] Precaching failed:', error);
       })
   );
 });
 
-// Activation event - clean up old caches
+// Activate event - clean up old caches
 self.addEventListener('activate', event => {
   console.log('[Service Worker] Activating Service Worker...');
   
-  // Take control of uncontrolled clients immediately
-  event.waitUntil(clients.claim());
-  
-  // Remove old caches
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME && cacheName !== DATA_CACHE_NAME) {
+    caches.keys()
+      .then(cacheNames => {
+        return Promise.all(
+          cacheNames.filter(cacheName => {
+            return cacheName !== CACHE_NAME;
+          }).map(cacheName => {
             console.log('[Service Worker] Removing old cache:', cacheName);
             return caches.delete(cacheName);
-          }
-        })
-      );
-    })
+          })
+        );
+      })
+      .then(() => {
+        console.log('[Service Worker] Service Worker activated');
+        return self.clients.claim(); // Take control of all clients
+      })
   );
 });
 
-// Helper function to determine if a request is an API call
-function isApiRequest(url) {
-  return url.pathname.startsWith('/api/');
-}
-
-// Helper function to determine if a request is for a page
-function isHtmlRequest(request) {
-  return request.headers.get('Accept').includes('text/html');
-}
-
-// Helper function to determine if we're online
-function isOnline() {
-  return navigator.onLine;
-}
-
-// Handle fetch events - implement the caching strategy
+// Fetch event - handle network requests
 self.addEventListener('fetch', event => {
-  const url = new URL(event.request.url);
+  const request = event.request;
+  const url = new URL(request.url);
   
-  // Handle API requests - Network with cache fallback
-  if (isApiRequest(url)) {
-    event.respondWith(
-      fetch(event.request)
-        .then(response => {
-          // Clone the response before using it
-          const clonedResponse = response.clone();
-          
-          // Open the data cache and store the new response
-          caches.open(DATA_CACHE_NAME)
-            .then(cache => {
-              cache.put(event.request, clonedResponse);
+  // Skip cross-origin requests
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+  
+  // Handle API requests
+  if (url.pathname.startsWith('/api/')) {
+    // For API GET requests that should be cached
+    if (request.method === 'GET' && API_CACHE_URLS.some(endpoint => url.pathname.startsWith(endpoint))) {
+      event.respondWith(handleApiRequest(request));
+    }
+    // For other API requests (including POST/PUT attendance records)
+    else if (url.pathname === '/api/submit') {
+      event.respondWith(handleAttendanceSubmission(request));
+    }
+    return;
+  }
+  
+  // For non-API requests, use cache-first strategy
+  event.respondWith(
+    caches.match(request)
+      .then(response => {
+        if (response) {
+          // Resource in cache, return it and fetch update in background (stale-while-revalidate)
+          const fetchPromise = fetch(request)
+            .then(networkResponse => {
+              // Update cache with new response
+              if (networkResponse.ok) {
+                caches.open(CACHE_NAME)
+                  .then(cache => cache.put(request, networkResponse.clone()));
+              }
+              return networkResponse;
+            })
+            .catch(error => {
+              console.log('[Service Worker] Network fetch failed:', error);
             });
           
           return response;
-        })
-        .catch(error => {
-          console.log('[Service Worker] API Network request failed, trying cache', error);
-          return caches.match(event.request);
-        })
-    );
-    return;
-  }
-  
-  // For HTML page requests - Network-first with offline fallback strategy
-  if (isHtmlRequest(event.request)) {
-    event.respondWith(
-      fetch(event.request)
-        .catch(() => {
-          return caches.match(event.request)
-            .then(cachedResponse => {
-              // If we have a cached version, return it
-              if (cachedResponse) {
-                return cachedResponse;
-              }
-              
-              // Otherwise return the offline page for HTML requests
-              return caches.match('/offline');
-            });
-        })
-    );
-    return;
-  }
-  
-  // For all other requests - Cache first, falling back to network
-  event.respondWith(
-    caches.match(event.request)
-      .then(cachedResponse => {
-        // Return cached response if found
-        if (cachedResponse) {
-          return cachedResponse;
         }
         
-        // Otherwise try to fetch from network
-        return fetch(event.request)
+        // Resource not in cache, fetch from network
+        return fetch(request)
           .then(response => {
             // Don't cache non-successful responses
             if (!response || response.status !== 200) {
               return response;
             }
             
-            // Clone the response before returning it
+            // Clone the response to store in cache and return the original
             const responseToCache = response.clone();
-            
-            // Add the new response to the cache
             caches.open(CACHE_NAME)
               .then(cache => {
-                cache.put(event.request, responseToCache);
+                cache.put(request, responseToCache);
               });
             
             return response;
           })
           .catch(error => {
-            console.log('[Service Worker] Fetch failed:', error);
+            console.log('[Service Worker] Network request failed:', error);
             
-            // Special handling for image requests when offline
-            if (event.request.url.match(/\.(jpg|jpeg|png|gif|svg)$/)) {
-              return caches.match('/static/images/offline.svg');
+            // If HTML page requested, show offline page
+            if (request.headers.get('Accept').includes('text/html')) {
+              return caches.match('/offline.html');
             }
+            
+            // Otherwise return error
+            return new Response('Network error occurred', {
+              status: 503,
+              headers: { 'Content-Type': 'text/plain' }
+            });
           });
       })
   );
 });
 
-// Background sync for storing attendance records when offline
-self.addEventListener('sync', event => {
-  if (event.tag === 'sync-attendance') {
-    console.log('[Service Worker] Syncing attendance records...');
-    event.waitUntil(syncAttendanceRecords());
-  }
-});
-
-// Function to sync attendance records saved while offline
-async function syncAttendanceRecords() {
-  try {
-    // Open the IndexedDB database
-    const db = await openDatabase();
-    
-    // Get all unsynced records
-    const records = await getUnsyncedRecords(db);
-    
-    if (records.length === 0) {
-      console.log('[Service Worker] No records to sync');
-      return;
-    }
-    
-    console.log(`[Service Worker] Syncing ${records.length} attendance records`);
-    
-    // Process each record
-    const syncPromises = records.map(async record => {
-      try {
-        // Try to send the record to the server
-        const response = await fetch('/api/submit', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(record.data)
+// Handle API GET requests
+function handleApiRequest(request) {
+  // Network first, falling back to cache
+  return fetch(request)
+    .then(response => {
+      // Clone response for cache
+      const responseToCache = response.clone();
+      
+      caches.open(CACHE_NAME)
+        .then(cache => {
+          cache.put(request, responseToCache);
         });
-        
-        if (response.ok) {
-          // Mark record as synced
-          await markRecordAsSynced(db, record.id);
-          console.log(`[Service Worker] Successfully synced record ${record.id}`);
-          return true;
-        } else {
-          console.error(`[Service Worker] Server rejected record ${record.id}`);
-          return false;
-        }
-      } catch (error) {
-        console.error(`[Service Worker] Failed to sync record ${record.id}:`, error);
-        return false;
-      }
+      
+      return response;
+    })
+    .catch(error => {
+      console.log('[Service Worker] API fetch failed, using cache:', error);
+      
+      return caches.match(request)
+        .then(cachedResponse => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          
+          // If no cached response, return error response
+          return new Response(JSON.stringify({ error: 'Network unavailable' }), {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        });
     });
-    
-    // Wait for all sync attempts
-    const results = await Promise.all(syncPromises);
-    
-    // Count successful syncs
-    const successCount = results.filter(result => result).length;
-    console.log(`[Service Worker] Sync completed. ${successCount}/${records.length} records synced successfully.`);
-    
-    // If any records failed to sync, schedule another sync attempt
-    if (successCount < records.length) {
-      await self.registration.sync.register('sync-attendance');
-    }
-  } catch (error) {
-    console.error('[Service Worker] Error syncing attendance records:', error);
-  }
 }
 
-// Helper function to open IndexedDB
-function openDatabase() {
+// Handle attendance submission
+function handleAttendanceSubmission(request) {
+  // Clone the request to read the body
+  const requestClone = request.clone();
+  
+  // Try to send to server
+  return fetch(request)
+    .then(response => {
+      return response;
+    })
+    .catch(error => {
+      // If offline, store the request in IndexedDB for later sync
+      console.log('[Service Worker] Attendance submission failed, storing for later:', error);
+      
+      return requestClone.json()
+        .then(data => {
+          // Store in IndexedDB for later sync
+          return saveAttendanceForLater(data)
+            .then(() => {
+              // Return success response to user
+              return new Response(JSON.stringify({ 
+                offline: true, 
+                message: 'Attendance recorded offline. Will sync when online.'
+              }), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' }
+              });
+            });
+        })
+        .catch(error => {
+          console.error('Error processing offline attendance:', error);
+          return new Response(JSON.stringify({ 
+            error: 'Failed to save attendance offline'
+          }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        });
+    });
+}
+
+// IndexedDB functions for offline data storage
+const DB_NAME = 'field-attendance-tracker-db';
+const DB_VERSION = 1;
+const ATTENDANCE_STORE = 'offline-attendance';
+
+// Open IndexedDB
+function openDB() {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('al-aqsa-attendance', 1);
-    
-    request.onerror = event => {
-      reject('Failed to open database');
-    };
-    
-    request.onsuccess = event => {
-      resolve(event.target.result);
-    };
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
     
     request.onupgradeneeded = event => {
       const db = event.target.result;
       
       // Create object store for offline attendance records
-      if (!db.objectStoreNames.contains('attendance')) {
-        const store = db.createObjectStore('attendance', { keyPath: 'id', autoIncrement: true });
-        store.createIndex('synced', 'synced', { unique: false });
-        store.createIndex('timestamp', 'timestamp', { unique: false });
+      if (!db.objectStoreNames.contains(ATTENDANCE_STORE)) {
+        db.createObjectStore(ATTENDANCE_STORE, { keyPath: 'id', autoIncrement: true });
       }
     };
-  });
-}
-
-// Helper function to get unsynced records
-function getUnsyncedRecords(db) {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(['attendance'], 'readonly');
-    const store = transaction.objectStore('attendance');
-    const index = store.index('synced');
-    const query = index.getAll(0); // Get all records where synced = 0
     
-    query.onsuccess = event => {
+    request.onsuccess = event => {
       resolve(event.target.result);
     };
     
-    query.onerror = event => {
-      reject('Failed to get unsynced records');
+    request.onerror = event => {
+      console.error('IndexedDB error:', event.target.error);
+      reject('Error opening IndexedDB');
     };
   });
 }
 
-// Helper function to mark a record as synced
-function markRecordAsSynced(db, id) {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(['attendance'], 'readwrite');
-    const store = transaction.objectStore('attendance');
-    const request = store.get(id);
-    
-    request.onsuccess = event => {
-      const record = event.target.result;
-      if (record) {
-        record.synced = 1;
-        const updateRequest = store.put(record);
+// Save attendance record for later sync
+function saveAttendanceForLater(data) {
+  return openDB()
+    .then(db => {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(ATTENDANCE_STORE, 'readwrite');
+        const store = transaction.objectStore(ATTENDANCE_STORE);
         
-        updateRequest.onsuccess = () => {
-          resolve();
+        // Add timestamp for sync ordering
+        data.timestamp = new Date().toISOString();
+        data.synced = false;
+        
+        const request = store.add(data);
+        
+        request.onsuccess = event => {
+          console.log('[Service Worker] Attendance saved for later sync');
+          resolve(event.target.result);
         };
         
-        updateRequest.onerror = () => {
-          reject('Failed to update record');
+        request.onerror = event => {
+          console.error('Error storing attendance:', event.target.error);
+          reject('Failed to store attendance data');
         };
-      } else {
-        reject('Record not found');
-      }
-    };
-    
-    request.onerror = () => {
-      reject('Failed to get record');
-    };
+        
+        transaction.oncomplete = () => {
+          db.close();
+        };
+      });
+    });
+}
+
+// Background sync for attendance data
+self.addEventListener('sync', event => {
+  if (event.tag === 'sync-attendance') {
+    event.waitUntil(syncAttendanceRecords());
+  }
+});
+
+// Sync all offline attendance records
+function syncAttendanceRecords() {
+  return openDB()
+    .then(db => {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(ATTENDANCE_STORE, 'readonly');
+        const store = transaction.objectStore(ATTENDANCE_STORE);
+        const request = store.getAll();
+        
+        request.onsuccess = event => {
+          const records = event.target.result;
+          db.close();
+          
+          if (records.length === 0) {
+            resolve('No offline records to sync');
+            return;
+          }
+          
+          console.log(`[Service Worker] Syncing ${records.length} attendance records`);
+          
+          // Process each record sequentially
+          return records.reduce((promiseChain, record) => {
+            return promiseChain
+              .then(() => syncSingleRecord(record))
+              .catch(error => {
+                console.error(`Failed to sync record ${record.id}:`, error);
+                // Continue with next record
+                return Promise.resolve();
+              });
+          }, Promise.resolve())
+            .then(() => {
+              console.log('[Service Worker] All records processed');
+              resolve('Sync completed');
+            });
+        };
+        
+        request.onerror = event => {
+          console.error('Error reading offline records:', event.target.error);
+          reject('Failed to read offline attendance records');
+        };
+      });
+    });
+}
+
+// Sync a single attendance record
+function syncSingleRecord(record) {
+  return fetch('/api/submit', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(record)
+  })
+  .then(response => {
+    if (response.ok) {
+      // Record synced successfully, remove from IndexedDB
+      return removeRecord(record.id);
+    } else {
+      // Server error
+      console.error(`Server rejected record ${record.id}:`, response.statusText);
+      return Promise.reject(`Server error: ${response.statusText}`);
+    }
   });
 }
 
-// Listen for push notifications
+// Remove a synced record from IndexedDB
+function removeRecord(id) {
+  return openDB()
+    .then(db => {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(ATTENDANCE_STORE, 'readwrite');
+        const store = transaction.objectStore(ATTENDANCE_STORE);
+        const request = store.delete(id);
+        
+        request.onsuccess = event => {
+          console.log(`[Service Worker] Record ${id} synced and removed`);
+          resolve(true);
+        };
+        
+        request.onerror = event => {
+          console.error(`Error removing record ${id}:`, event.target.error);
+          reject(`Failed to remove record ${id}`);
+        };
+        
+        transaction.oncomplete = () => {
+          db.close();
+        };
+      });
+    });
+}
+
+// Periodic sync for attendance data (if supported)
+self.addEventListener('periodicsync', event => {
+  if (event.tag === 'attendance-sync') {
+    event.waitUntil(syncAttendanceRecords());
+  }
+});
+
+// Push notification event handler
 self.addEventListener('push', event => {
-  console.log('[Service Worker] Push notification received', event);
-  
   let notification = {
-    title: 'Al-Aqsa Security',
-    body: 'New notification',
-    icon: '/static/images/logo.png',
-    badge: '/static/images/badge.png',
+    title: 'Field Attendance Tracker',
+    body: 'New update available',
+    icon: '/static/img/app-icon-192.png',
+    badge: '/static/img/notification-badge.png',
+    tag: 'attendance-notification',
     data: {
       url: '/'
     }
   };
   
-  try {
-    if (event.data) {
-      notification = { ...notification, ...JSON.parse(event.data.text()) };
+  // Try to parse notification data if available
+  if (event.data) {
+    try {
+      const data = event.data.json();
+      notification = { ...notification, ...data };
+    } catch (error) {
+      console.error('Error parsing push notification:', error);
     }
-  } catch (e) {
-    console.error('[Service Worker] Failed to parse push data', e);
   }
   
   event.waitUntil(
@@ -334,36 +433,48 @@ self.addEventListener('push', event => {
       body: notification.body,
       icon: notification.icon,
       badge: notification.badge,
-      data: notification.data
+      tag: notification.tag,
+      data: notification.data,
+      requireInteraction: true,
+      actions: [
+        {
+          action: 'open',
+          title: 'Open App'
+        },
+        {
+          action: 'dismiss',
+          title: 'Dismiss'
+        }
+      ]
     })
   );
 });
 
-// Handle notification clicks
+// Notification click event handler
 self.addEventListener('notificationclick', event => {
-  console.log('[Service Worker] Notification clicked', event);
-  
   event.notification.close();
   
-  const url = event.notification.data?.url || '/';
+  if (event.action === 'dismiss') {
+    return;
+  }
   
+  // Default action is to open the app
   event.waitUntil(
     clients.matchAll({ type: 'window' })
-      .then(windowClients => {
-        // Check if there is already a window focused
-        for (let client of windowClients) {
-          if (client.url === url && 'focus' in client) {
+      .then(clientList => {
+        const url = event.notification.data?.url || '/';
+        
+        // Check if a tab is already open
+        for (const client of clientList) {
+          if (client.url.includes(url) && 'focus' in client) {
             return client.focus();
           }
         }
         
-        // If no window is open, open a new one
-        if (clients.openWindow) {
-          return clients.openWindow(url);
-        }
+        // Otherwise open a new tab
+        return clients.openWindow(url);
       })
   );
 });
 
-// Log service worker lifecycle for debugging
-console.log('[Service Worker] Service Worker registered successfully');
+console.log('[Service Worker] Service Worker registered');
