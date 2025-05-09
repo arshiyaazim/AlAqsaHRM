@@ -602,3 +602,50 @@ function getCachedFormData(formId) {
         });
     });
 }
+
+/**
+ * Store error information for later synchronization
+ * @param {string} errorType - Type of error (e.g., "location_error", "camera_error")
+ * @param {string} errorMessage - The error message
+ * @param {Object} [extraData] - Any additional data to store with the error
+ */
+function storeErrorForSync(errorType, errorMessage, extraData = {}) {
+    if (!dbPromise) {
+        console.error("Cannot store error: IndexedDB not available");
+        return;
+    }
+    
+    // Create the error object
+    const errorObject = {
+        errorType: errorType,
+        message: errorMessage,
+        timestamp: new Date().toISOString(),
+        deviceInfo: {
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            language: navigator.language,
+            online: navigator.onLine,
+            screenSize: `${window.screen.width}x${window.screen.height}`
+        },
+        url: window.location.href,
+        ...extraData
+    };
+    
+    // Store the error in IndexedDB
+    dbPromise.then(db => {
+        const transaction = db.transaction([ERROR_STORE], "readwrite");
+        const store = transaction.objectStore(ERROR_STORE);
+        
+        const request = store.add(errorObject);
+        
+        request.onsuccess = function() {
+            console.log("Error logged for sync:", errorType);
+        };
+        
+        request.onerror = function(event) {
+            console.error("Failed to store error in IndexedDB:", event.target.error);
+        };
+    }).catch(error => {
+        console.error("Error accessing IndexedDB:", error);
+    });
+}
