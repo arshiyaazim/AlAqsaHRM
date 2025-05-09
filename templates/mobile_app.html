@@ -671,19 +671,24 @@ function updatePosition(position) {
 // Show location error
 function showLocationError(error) {
     let errorMessage = '';
+    let errorType = 'location_error';
     
     switch(error.code) {
         case error.PERMISSION_DENIED:
             errorMessage = 'Location permission denied. Please enable location services.';
+            errorType = 'location_permission_denied';
             break;
         case error.POSITION_UNAVAILABLE:
             errorMessage = 'Location information is unavailable.';
+            errorType = 'location_unavailable';
             break;
         case error.TIMEOUT:
             errorMessage = 'The request to get user location timed out.';
+            errorType = 'location_timeout';
             break;
         default:
             errorMessage = 'An unknown error occurred getting location.';
+            errorType = 'location_unknown_error';
             break;
     }
     
@@ -698,9 +703,18 @@ function showLocationError(error) {
     locationErrorMessage.textContent = errorMessage;
     locationError.classList.remove('d-none');
     
-    // Save the error for offline sync
+    // Log the error for later synchronization
     if (typeof storeErrorForSync === 'function') {
-        storeErrorForSync('location_error', errorMessage);
+        storeErrorForSync(errorType, errorMessage, {
+            errorCode: error.code || 0,
+            errorDetails: error.message || '',
+            timestamp: new Date().toISOString(),
+            formData: {
+                project_id: document.getElementById('project_id')?.value || '',
+                employee_id: document.getElementById('employee_id')?.value || '',
+                employee_name: document.getElementById('employee_name')?.value || ''
+            }
+        });
     }
 }
 
@@ -763,9 +777,19 @@ function showCameraError(message) {
         startCamera();
     });
     
-    // Save the error for offline sync
+    // Log the error for later synchronization
     if (typeof storeErrorForSync === 'function') {
-        storeErrorForSync('camera_error', message);
+        storeErrorForSync('camera_error', message, {
+            errorDetails: message,
+            timestamp: new Date().toISOString(),
+            cameraSupported: !!navigator.mediaDevices,
+            getUserMediaSupported: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
+            formData: {
+                project_id: document.getElementById('project_id')?.value || '',
+                employee_id: document.getElementById('employee_id')?.value || '',
+                employee_name: document.getElementById('employee_name')?.value || ''
+            }
+        });
     }
 }
 
