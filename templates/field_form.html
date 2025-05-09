@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if field %}Edit Field - {{ field.display_name }}{% else %}Add New Field{% endif %} - Al-Aqsa Security
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">{% if field %}Edit Field{% else %}Add New Field{% endif %}</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{{ request.url }}">
+                        <div class="mb-3">
+                            <label for="form_id" class="form-label">Form ID <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="form_id" name="form_id" 
+                                   value="{{ field.form_id if field else '' }}" required>
+                            <div class="form-text">
+                                The form this field belongs to (e.g., 'attendance', 'projects', etc.)
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="field_name" class="form-label">Field Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="field_name" name="field_name" 
+                                   value="{{ field.field_name if field else '' }}" required>
+                            <div class="form-text">
+                                Internal field name (no spaces, lowercase, e.g., 'employee_name')
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="display_name" class="form-label">Display Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="display_name" name="display_name" 
+                                   value="{{ field.display_name if field else '' }}" required>
+                            <div class="form-text">
+                                Label shown to users (e.g., 'Employee Name')
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="field_type" class="form-label">Field Type <span class="text-danger">*</span></label>
+                            <select class="form-select" id="field_type" name="field_type" required>
+                                <option value="">Select Field Type</option>
+                                <option value="text" {% if field and field.field_type == 'text' %}selected{% endif %}>Text</option>
+                                <option value="number" {% if field and field.field_type == 'number' %}selected{% endif %}>Number</option>
+                                <option value="date" {% if field and field.field_type == 'date' %}selected{% endif %}>Date</option>
+                                <option value="select" {% if field and field.field_type == 'select' %}selected{% endif %}>Select (Dropdown)</option>
+                                <option value="checkbox" {% if field and field.field_type == 'checkbox' %}selected{% endif %}>Checkbox</option>
+                                <option value="textarea" {% if field and field.field_type == 'textarea' %}selected{% endif %}>Text Area</option>
+                                <option value="file" {% if field and field.field_type == 'file' %}selected{% endif %}>File Upload</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3" id="optionsContainer" style="display: none;">
+                            <label for="options" class="form-label">Options (for Select/Dropdown)</label>
+                            <input type="text" class="form-control" id="options" name="options" 
+                                   value="{{ options_text if options_text else '' }}" 
+                                   placeholder="Option 1, Option 2, Option 3">
+                            <div class="form-text">
+                                For dropdown/select fields, enter options separated by commas
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="required" name="required" 
+                                   {% if field and field.required %}checked{% endif %}>
+                            <label class="form-check-label" for="required">Required Field</label>
+                            <div class="form-text">
+                                If checked, users must provide a value for this field
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('admin_fields') }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left me-1"></i> Back to Fields
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-1"></i> {% if field %}Update Field{% else %}Create Field{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fieldTypeSelect = document.getElementById('field_type');
+    const optionsContainer = document.getElementById('optionsContainer');
+    
+    // Show/hide options field based on field type
+    function updateOptionsVisibility() {
+        if (fieldTypeSelect.value === 'select') {
+            optionsContainer.style.display = 'block';
+        } else {
+            optionsContainer.style.display = 'none';
+        }
+    }
+    
+    fieldTypeSelect.addEventListener('change', updateOptionsVisibility);
+    
+    // Initialize visibility
+    updateOptionsVisibility();
+});
+</script>
+{% endblock %}

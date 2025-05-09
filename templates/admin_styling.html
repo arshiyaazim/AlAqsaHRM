@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}Custom Styling - Al-Aqsa Security{% endblock %}
+
+{% block head %}
+<style>
+    .color-palette {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    
+    .color-swatch {
+        width: 40px;
+        height: 40px;
+        border-radius: 4px;
+        cursor: pointer;
+        border: 2px solid #ddd;
+        transition: transform 0.2s;
+    }
+    
+    .color-swatch:hover {
+        transform: scale(1.1);
+    }
+    
+    .preview-box {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        margin-top: 20px;
+    }
+    
+    .preview-text {
+        margin-bottom: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h2 mb-0">Custom Styling</h1>
+            <p class="text-muted">Customize the appearance of the application.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-7">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Styling Options</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{{ url_for('admin_styling') }}">
+                        <div class="mb-4">
+                            <label class="form-label">Background Color</label>
+                            <div class="input-group mb-2">
+                                <span class="input-group-text">
+                                    <div id="bgColorPreview" class="color-preview" style="background-color: {{ style.background_color if style else '#ffffff' }};"></div>
+                                </span>
+                                <input type="text" class="form-control" id="backgroundColor" name="background_color" value="{{ style.background_color if style else '#ffffff' }}">
+                            </div>
+                            
+                            <div class="color-palette" id="bgColorPalette">
+                                <div class="color-swatch" style="background-color: #ffffff;" data-color="#ffffff" title="White"></div>
+                                <div class="color-swatch" style="background-color: #f8f9fa;" data-color="#f8f9fa" title="Light Gray"></div>
+                                <div class="color-swatch" style="background-color: #e9ecef;" data-color="#e9ecef" title="Gray"></div>
+                                <div class="color-swatch" style="background-color: #f0f7ff;" data-color="#f0f7ff" title="Light Blue"></div>
+                                <div class="color-swatch" style="background-color: #f0fff0;" data-color="#f0fff0" title="Light Green"></div>
+                                <div class="color-swatch" style="background-color: #fff0f0;" data-color="#fff0f0" title="Light Red"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="form-label">Text Color</label>
+                            <div class="input-group mb-2">
+                                <span class="input-group-text">
+                                    <div id="textColorPreview" class="color-preview" style="background-color: {{ style.text_color if style else '#333333' }};"></div>
+                                </span>
+                                <input type="text" class="form-control" id="textColor" name="text_color" value="{{ style.text_color if style else '#333333' }}">
+                            </div>
+                            
+                            <div class="color-palette" id="textColorPalette">
+                                <div class="color-swatch" style="background-color: #000000;" data-color="#000000" title="Black"></div>
+                                <div class="color-swatch" style="background-color: #333333;" data-color="#333333" title="Dark Gray"></div>
+                                <div class="color-swatch" style="background-color: #555555;" data-color="#555555" title="Medium Gray"></div>
+                                <div class="color-swatch" style="background-color: #0056b3;" data-color="#0056b3" title="Blue"></div>
+                                <div class="color-swatch" style="background-color: #28a745;" data-color="#28a745" title="Green"></div>
+                                <div class="color-swatch" style="background-color: #dc3545;" data-color="#dc3545" title="Red"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="fontSize" class="form-label">Font Size</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="fontSize" name="font_size" value="{{ style.font_size if style else '16px' }}">
+                                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Presets</button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="#" data-font-size="14px">Small (14px)</a></li>
+                                    <li><a class="dropdown-item" href="#" data-font-size="16px">Medium (16px)</a></li>
+                                    <li><a class="dropdown-item" href="#" data-font-size="18px">Large (18px)</a></li>
+                                    <li><a class="dropdown-item" href="#" data-font-size="20px">Extra Large (20px)</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="customCss" class="form-label">Custom CSS</label>
+                            <textarea class="form-control font-monospace" id="customCss" name="custom_css" rows="8" placeholder="Enter custom CSS rules here...">{{ style.custom_css if style else '' }}</textarea>
+                            <div class="form-text">
+                                Advanced: Add custom CSS rules for fine-grained control.
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-2"></i> Save Styling
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-5">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Live Preview</h5>
+                </div>
+                <div class="card-body">
+                    <div id="previewBox" class="preview-box">
+                        <h3 id="previewHeading">Preview Heading</h3>
+                        <p id="previewText" class="preview-text">
+                            This is a preview of how your text will look with the selected styling options.
+                            The font size, color, and background will update as you make changes.
+                        </p>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary">Primary Button</button>
+                            <button class="btn btn-secondary">Secondary Button</button>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-info mt-4">
+                        <i class="bi bi-info-circle me-2"></i>
+                        This preview shows an approximation of how the styling will look. 
+                        Some elements may appear differently in the actual application.
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Styling Tips</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li class="mb-2">Use light background colors for better readability.</li>
+                        <li class="mb-2">Ensure there's enough contrast between text and background colors.</li>
+                        <li class="mb-2">Font sizes between 14px and 18px work best for most screens.</li>
+                        <li class="mb-2">Use the Custom CSS field for advanced styling, such as:</li>
+                        <code class="d-block bg-light p-2 mt-1 mb-2">
+                            .navbar { background-color: #3a3a3a; }<br>
+                            .btn-primary { background-color: #0056b3; }
+                        </code>
+                        <li>Click 'Save Styling' and refresh your browser to see all changes.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Color pickers
+    const bgColorInput = document.getElementById('backgroundColor');
+    const bgColorPreview = document.getElementById('bgColorPreview');
+    const bgColorPalette = document.getElementById('bgColorPalette');
+    
+    const textColorInput = document.getElementById('textColor');
+    const textColorPreview = document.getElementById('textColorPreview');
+    const textColorPalette = document.getElementById('textColorPalette');
+    
+    // Font size dropdown
+    const fontSizeInput = document.getElementById('fontSize');
+    const fontSizeOptions = document.querySelectorAll('[data-font-size]');
+    
+    // Preview elements
+    const previewBox = document.getElementById('previewBox');
+    const previewHeading = document.getElementById('previewHeading');
+    const previewText = document.getElementById('previewText');
+    
+    // Update preview function
+    function updatePreview() {
+        previewBox.style.backgroundColor = bgColorInput.value;
+        previewHeading.style.color = textColorInput.value;
+        previewText.style.color = textColorInput.value;
+        previewBox.style.fontSize = fontSizeInput.value;
+    }
+    
+    // Background color event listeners
+    bgColorInput.addEventListener('input', function() {
+        bgColorPreview.style.backgroundColor = this.value;
+        updatePreview();
+    });
+    
+    bgColorPalette.querySelectorAll('.color-swatch').forEach(swatch => {
+        swatch.addEventListener('click', function() {
+            const color = this.getAttribute('data-color');
+            bgColorInput.value = color;
+            bgColorPreview.style.backgroundColor = color;
+            updatePreview();
+        });
+    });
+    
+    // Text color event listeners
+    textColorInput.addEventListener('input', function() {
+        textColorPreview.style.backgroundColor = this.value;
+        updatePreview();
+    });
+    
+    textColorPalette.querySelectorAll('.color-swatch').forEach(swatch => {
+        swatch.addEventListener('click', function() {
+            const color = this.getAttribute('data-color');
+            textColorInput.value = color;
+            textColorPreview.style.backgroundColor = color;
+            updatePreview();
+        });
+    });
+    
+    // Font size event listeners
+    fontSizeInput.addEventListener('input', updatePreview);
+    
+    fontSizeOptions.forEach(option => {
+        option.addEventListener('click', function(e) {
+            e.preventDefault();
+            const fontSize = this.getAttribute('data-font-size');
+            fontSizeInput.value = fontSize;
+            updatePreview();
+        });
+    });
+    
+    // Initialize preview
+    updatePreview();
+});
+</script>
+{% endblock %}

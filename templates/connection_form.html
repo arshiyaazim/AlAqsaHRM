@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+
+{% block title %}Add Field Connection - Al-Aqsa Security{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Add Field Connection</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{{ url_for('add_connection') }}">
+                        <div class="mb-3">
+                            <label for="source_field_id" class="form-label">Source Field <span class="text-danger">*</span></label>
+                            <select class="form-select" id="source_field_id" name="source_field_id" required>
+                                <option value="">Select Source Field</option>
+                                {% for field in fields %}
+                                <option value="{{ field.id }}" data-form-id="{{ field.form_id }}" data-field-name="{{ field.field_name }}" data-field-type="{{ field.field_type }}">
+                                    {{ field.display_name }} ({{ field.field_name }}) - {{ field.form_id }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                This is the field that will trigger the connection.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="target_field_id" class="form-label">Target Field <span class="text-danger">*</span></label>
+                            <select class="form-select" id="target_field_id" name="target_field_id" required>
+                                <option value="">Select Target Field</option>
+                                {% for field in fields %}
+                                <option value="{{ field.id }}" data-form-id="{{ field.form_id }}" data-field-name="{{ field.field_name }}" data-field-type="{{ field.field_type }}">
+                                    {{ field.display_name }} ({{ field.field_name }}) - {{ field.form_id }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                This is the field that will be updated based on the source field.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="connection_type" class="form-label">Connection Type <span class="text-danger">*</span></label>
+                            <select class="form-select" id="connection_type" name="connection_type" required>
+                                <option value="">Select Connection Type</option>
+                                <option value="show_related">Show Related Value</option>
+                                <option value="copy">Copy Value</option>
+                                <option value="add">Add</option>
+                                <option value="subtract">Subtract</option>
+                                <option value="multiply">Multiply</option>
+                                <option value="divide">Divide</option>
+                                <option value="custom_formula">Custom Formula</option>
+                            </select>
+                        </div>
+                        
+                        <div id="parameters_container" style="display: none;">
+                            <div class="mb-3" id="value_parameter" style="display: none;">
+                                <label for="value_input" class="form-label">Value</label>
+                                <input type="number" class="form-control" id="value_input" placeholder="Enter value">
+                                <div class="form-text" id="value_description"></div>
+                            </div>
+                            
+                            <div class="mb-3" id="formula_parameter" style="display: none;">
+                                <label for="formula_input" class="form-label">Formula</label>
+                                <input type="text" class="form-control" id="formula_input" placeholder="e.g. {source} * 2 + 10">
+                                <div class="form-text">
+                                    Use {source} to reference the source field value in your formula.
+                                    Example: {source} * 1.1 for a 10% increase.
+                                </div>
+                            </div>
+                            
+                            <input type="hidden" id="parameters" name="parameters" value="">
+                        </div>
+                        
+                        <div class="mb-4">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h6 class="card-title">Connection Preview</h6>
+                                    <div id="connection_preview" class="fst-italic text-muted">
+                                        Select source, target, and connection type to see preview.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('admin_connections') }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left me-1"></i> Back to Connections
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-1"></i> Create Connection
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sourceFieldSelect = document.getElementById('source_field_id');
+    const targetFieldSelect = document.getElementById('target_field_id');
+    const connectionTypeSelect = document.getElementById('connection_type');
+    const parametersContainer = document.getElementById('parameters_container');
+    const valueParameter = document.getElementById('value_parameter');
+    const valueInput = document.getElementById('value_input');
+    const valueDescription = document.getElementById('value_description');
+    const formulaParameter = document.getElementById('formula_parameter');
+    const formulaInput = document.getElementById('formula_input');
+    const parametersInput = document.getElementById('parameters');
+    const connectionPreview = document.getElementById('connection_preview');
+    
+    // Handle connection type change
+    connectionTypeSelect.addEventListener('change', function() {
+        updateParametersVisibility();
+        updatePreview();
+    });
+    
+    // Handle field selections
+    sourceFieldSelect.addEventListener('change', updatePreview);
+    targetFieldSelect.addEventListener('change', updatePreview);
+    
+    // Handle parameter inputs
+    valueInput.addEventListener('input', updateParameters);
+    formulaInput.addEventListener('input', updateParameters);
+    
+    // Update parameters visibility based on connection type
+    function updateParametersVisibility() {
+        const connectionType = connectionTypeSelect.value;
+        
+        parametersContainer.style.display = 'none';
+        valueParameter.style.display = 'none';
+        formulaParameter.style.display = 'none';
+        
+        if (connectionType === 'add' || connectionType === 'subtract' || 
+            connectionType === 'multiply' || connectionType === 'divide') {
+            
+            parametersContainer.style.display = 'block';
+            valueParameter.style.display = 'block';
+            
+            // Update value description based on type
+            if (connectionType === 'add') {
+                valueDescription.textContent = 'Amount to add to the source value';
+            } else if (connectionType === 'subtract') {
+                valueDescription.textContent = 'Amount to subtract from the source value';
+            } else if (connectionType === 'multiply') {
+                valueDescription.textContent = 'Factor to multiply the source value by';
+            } else if (connectionType === 'divide') {
+                valueDescription.textContent = 'Divisor to divide the source value by';
+            }
+            
+        } else if (connectionType === 'custom_formula') {
+            parametersContainer.style.display = 'block';
+            formulaParameter.style.display = 'block';
+        }
+        
+        updateParameters();
+    }
+    
+    // Update parameters JSON based on inputs
+    function updateParameters() {
+        const connectionType = connectionTypeSelect.value;
+        let parameters = {};
+        
+        if (connectionType === 'add' || connectionType === 'subtract' || 
+            connectionType === 'multiply' || connectionType === 'divide') {
+            parameters.value = valueInput.value || 0;
+        } else if (connectionType === 'custom_formula') {
+            parameters.formula = formulaInput.value || '';
+        }
+        
+        parametersInput.value = JSON.stringify(parameters);
+        updatePreview();
+    }
+    
+    // Update connection preview
+    function updatePreview() {
+        const sourceOption = sourceFieldSelect.options[sourceFieldSelect.selectedIndex];
+        const targetOption = targetFieldSelect.options[targetFieldSelect.selectedIndex];
+        const connectionType = connectionTypeSelect.value;
+        
+        if (!sourceOption || sourceOption.value === '' || 
+            !targetOption || targetOption.value === '' || 
+            !connectionType) {
+            connectionPreview.textContent = 'Select source, target, and connection type to see preview.';
+            return;
+        }
+        
+        const sourceName = sourceOption.text.split(' (')[0];
+        const targetName = targetOption.text.split(' (')[0];
+        
+        let previewText = `When <strong>${sourceName}</strong> changes, `;
+        
+        switch (connectionType) {
+            case 'show_related':
+                previewText += `show the related value in <strong>${targetName}</strong>.`;
+                break;
+            case 'copy':
+                previewText += `copy its value to <strong>${targetName}</strong>.`;
+                break;
+            case 'add':
+                const addValue = valueInput.value || '0';
+                previewText += `add <strong>${addValue}</strong> to it and display the result in <strong>${targetName}</strong>.`;
+                break;
+            case 'subtract':
+                const subtractValue = valueInput.value || '0';
+                previewText += `subtract <strong>${subtractValue}</strong> from it and display the result in <strong>${targetName}</strong>.`;
+                break;
+            case 'multiply':
+                const multiplyValue = valueInput.value || '1';
+                previewText += `multiply it by <strong>${multiplyValue}</strong> and display the result in <strong>${targetName}</strong>.`;
+                break;
+            case 'divide':
+                const divideValue = valueInput.value || '1';
+                previewText += `divide it by <strong>${divideValue}</strong> and display the result in <strong>${targetName}</strong>.`;
+                break;
+            case 'custom_formula':
+                const formula = formulaInput.value || '{source}';
+                previewText += `calculate <strong>${formula}</strong> and display the result in <strong>${targetName}</strong>.`;
+                break;
+            default:
+                previewText += `update <strong>${targetName}</strong> based on this value.`;
+        }
+        
+        connectionPreview.innerHTML = previewText;
+    }
+    
+    // Check for duplicate source/target fields
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(event) {
+        if (sourceFieldSelect.value === targetFieldSelect.value) {
+            event.preventDefault();
+            alert('Source and target fields cannot be the same.');
+            return false;
+        }
+        
+        // Make sure parameters are set correctly
+        updateParameters();
+        return true;
+    });
+    
+    // Initialize UI
+    updateParametersVisibility();
+});
+</script>
+{% endblock %}

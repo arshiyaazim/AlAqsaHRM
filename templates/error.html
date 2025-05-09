@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Error - Al-Aqsa Security{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i> Error Occurred
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <i class="bi bi-x-circle text-danger" style="font-size: 4rem;"></i>
+                    </div>
+                    
+                    <h4 class="text-center mb-4">{{ error_message }}</h4>
+                    
+                    <div class="alert alert-warning">
+                        <p><strong>Don't worry!</strong> The error has been logged and will be addressed by the administrators.</p>
+                        <p class="mb-0">You can try the following:</p>
+                        <ul class="mb-0 mt-2">
+                            <li>Go back to the <a href="{{ url_for('index') }}">homepage</a></li>
+                            <li>Try refreshing the page</li>
+                            <li>Contact an administrator if the problem persists</li>
+                        </ul>
+                    </div>
+                    
+                    {% if details and session.get('admin_logged_in') %}
+                    <div class="mt-4">
+                        <h5>Technical Details (Admin Only)</h5>
+                        <div class="error-details">{{ details }}</div>
+                        
+                        <div class="d-grid gap-2 mt-3">
+                            <a href="{{ url_for('check_system_health') }}" class="btn btn-primary">
+                                <i class="bi bi-heart-pulse me-2"></i> Check System Health
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="card-footer">
+                    <div class="d-flex justify-content-between">
+                        <a href="javascript:history.back()" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left me-2"></i> Go Back
+                        </a>
+                        <a href="{{ url_for('index') }}" class="btn btn-primary">
+                            <i class="bi bi-house me-2"></i> Go to Homepage
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

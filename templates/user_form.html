@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if user %}Edit User - {{ user.username }}{% else %}Add New User{% endif %} - Al-Aqsa Security
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">{% if user %}Edit User{% else %}Add New User{% endif %}</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{{ request.url }}">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="username" name="username" value="{{ user.username if user else '' }}" required>
+                            <div class="form-text">Username must be unique.</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email Address</label>
+                            <input type="email" class="form-control" id="email" name="email" value="{{ user.email if user else '' }}">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="role" class="form-label">Role <span class="text-danger">*</span></label>
+                            <select class="form-select" id="role" name="role" required>
+                                <option value="">Select Role</option>
+                                <option value="admin" {% if user and user.role == 'admin' %}selected{% endif %}>Admin</option>
+                                <option value="hr" {% if user and user.role == 'hr' %}selected{% endif %}>HR</option>
+                                <option value="viewer" {% if user and user.role == 'viewer' %}selected{% endif %}>Viewer</option>
+                            </select>
+                            <div class="form-text">
+                                <span class="role-badge role-badge-admin me-1">Admin</span> Full access to all features.
+                                <br>
+                                <span class="role-badge role-badge-hr me-1">HR</span> Can manage attendance and projects.
+                                <br>
+                                <span class="role-badge role-badge-viewer me-1">Viewer</span> Read-only access to reports and dashboards.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="password" class="form-label">
+                                {% if user %}New Password (leave blank to keep current password){% else %}Password <span class="text-danger">*</span>{% endif %}
+                            </label>
+                            <input type="password" class="form-control" id="password" name="password" {% if not user %}required{% endif %}>
+                            {% if user %}
+                            <div class="form-text">Leave blank to keep the current password.</div>
+                            {% else %}
+                            <div class="form-text">Choose a strong password.</div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="confirm_password" class="form-label">Confirm Password</label>
+                            <input type="password" class="form-control" id="confirm_password" name="confirm_password">
+                        </div>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('admin_users') }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left me-1"></i> Back to Users
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg me-1"></i> {% if user %}Update User{% else %}Create User{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Password confirmation validation
+    const passwordInput = document.getElementById('password');
+    const confirmPasswordInput = document.getElementById('confirm_password');
+    const form = document.querySelector('form');
+    
+    form.addEventListener('submit', function(event) {
+        // Only validate if password is entered
+        if (passwordInput.value) {
+            if (passwordInput.value !== confirmPasswordInput.value) {
+                event.preventDefault();
+                alert('Passwords do not match!');
+                confirmPasswordInput.focus();
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

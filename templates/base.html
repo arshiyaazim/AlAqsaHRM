@@ -31,11 +31,44 @@
     <!-- Custom CSS -->
     <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
     
+    <!-- Dynamic Styling -->
+    {% if custom_styles %}
+    <style id="dynamic-styles">
+        :root {
+            --custom-bg-color: {{ custom_styles.background_color }};
+            --custom-text-color: {{ custom_styles.text_color }};
+            --custom-font-size: {{ custom_styles.font_size }};
+        }
+        
+        body {
+            background-color: var(--custom-bg-color);
+            color: var(--custom-text-color);
+            font-size: var(--custom-font-size);
+        }
+        
+        .card {
+            background-color: var(--custom-bg-color);
+            border: 1px solid rgba(0,0,0,.125);
+        }
+        
+        .navbar-custom {
+            background-color: var(--custom-bg-color);
+            color: var(--custom-text-color);
+        }
+        
+        /* Custom CSS if provided */
+        {% if custom_styles.custom_css %}
+            {{ custom_styles.custom_css|safe }}
+        {% endif %}
+    </style>
+    {% endif %}
+    
     {% block head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
     <header>
-        <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <!-- Navbar -->
+        <nav class="navbar navbar-expand-lg {% if current_user %}navbar-dark bg-primary{% else %}navbar-light bg-light{% endif %}">
             <div class="container">
                 <a class="navbar-brand" href="{{ url_for('index') }}">
                     <i class="bi bi-shield-check me-1"></i>
@@ -47,11 +80,80 @@
                 </button>
                 
                 <div class="collapse navbar-collapse" id="navbarNav">
+                    <!-- Show dynamic menu items if user is logged in -->
+                    {% if current_user and menu_items %}
+                    <ul class="navbar-nav me-auto">
+                        {% for item in menu_items %}
+                        {% if item.children and item.children|length > 0 %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                {% if item.icon %}<i class="bi {{ item.icon }} me-1"></i>{% endif %}
+                                {{ item.title }}
+                            </a>
+                            <ul class="dropdown-menu">
+                                {% for child in item.children %}
+                                <li>
+                                    <a class="dropdown-item" href="{{ child.url }}">
+                                        {% if child.icon %}<i class="bi {{ child.icon }} me-2"></i>{% endif %}
+                                        {{ child.title }}
+                                    </a>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </li>
+                        {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link{% if request.path == item.url %} active{% endif %}" href="{{ item.url }}">
+                                {% if item.icon %}<i class="bi {{ item.icon }} me-1"></i>{% endif %}
+                                {{ item.title }}
+                            </a>
+                        </li>
+                        {% endif %}
+                        {% endfor %}
+                    </ul>
+                    {% else %}
                     {% block header_content %}
-                    <!-- Navigation links can be added here -->
+                    <!-- Placeholder for non-dynamic nav content -->
                     {% endblock %}
+                    {% endif %}
                     
-                    {% if session.get('admin_logged_in') %}
+                    <!-- User dropdown if logged in -->
+                    {% if current_user %}
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-person-circle"></i> {{ current_user.username }}
+                                <span class="badge bg-secondary">{{ current_user.role }}</span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('admin_dashboard') }}">
+                                        <i class="bi bi-speedometer2 me-2"></i> Dashboard
+                                    </a>
+                                </li>
+                                {% if current_user.role == 'admin' %}
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('admin_users') }}">
+                                        <i class="bi bi-people me-2"></i> Manage Users
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('admin_styling') }}">
+                                        <i class="bi bi-palette me-2"></i> Styling
+                                    </a>
+                                </li>
+                                {% endif %}
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('admin_logout') }}">
+                                        <i class="bi bi-box-arrow-right me-2"></i> Logout
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                    <!-- Legacy admin login check -->
+                    {% elif session.get('admin_logged_in') %}
                     <ul class="navbar-nav ms-auto">
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
@@ -81,9 +183,16 @@
                 </div>
             </div>
         </nav>
+
+        <!-- Offline banner -->
+        <div id="offline-banner" class="bg-warning text-dark py-2 text-center d-none">
+            <i class="bi bi-wifi-off me-2"></i>
+            You are offline. Some features may be limited until you reconnect.
+        </div>
     </header>
 
     <main class="container my-4">
+        <!-- Flash messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -95,6 +204,7 @@
             {% endif %}
         {% endwith %}
         
+        <!-- Main content -->
         {% block content %}{% endblock %}
     </main>
 
@@ -102,7 +212,12 @@
         <div class="container text-center">
             <span class="text-muted">© {{ now.year }} Al-Aqsa Security Services. All rights reserved.</span>
             <div class="mt-2">
-                <small class="text-muted">Version 1.0.0</small>
+                <small class="text-muted">Version 2.0.0</small>
+                <small class="text-muted ms-2">
+                    <a href="{{ url_for('check_system_health') }}" class="text-decoration-none">
+                        <i class="bi bi-heart-pulse"></i> System Health
+                    </a>
+                </small>
             </div>
         </div>
     </footer>
@@ -113,8 +228,15 @@
     <!-- Main JavaScript -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     
+    <!-- Field Connections Script -->
+    <script src="{{ url_for('static', filename='js/field-connections.js') }}"></script>
+    
+    <!-- Autocomplete Script -->
+    <script src="{{ url_for('static', filename='js/autocomplete.js') }}"></script>
+    
     <!-- Service Worker Registration -->
     <script>
+        // Register service worker for PWA support
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/static/js/service-worker.js')
@@ -126,6 +248,36 @@
                     });
             });
         }
+        
+        // Offline detection
+        function updateOnlineStatus() {
+            const offlineBanner = document.getElementById('offline-banner');
+            if (offlineBanner) {
+                if (navigator.onLine) {
+                    offlineBanner.classList.add('d-none');
+                } else {
+                    offlineBanner.classList.remove('d-none');
+                }
+            }
+        }
+
+        window.addEventListener('online', updateOnlineStatus);
+        window.addEventListener('offline', updateOnlineStatus);
+        
+        // Initial check
+        updateOnlineStatus();
+        
+        // Initialize autocomplete for all data-autocomplete fields
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize all autocomplete inputs
+            const autocompleteFields = document.querySelectorAll('[data-autocomplete]');
+            autocompleteFields.forEach(function(field) {
+                initAutocomplete(field);
+            });
+            
+            // Initialize field connections
+            initFieldConnections();
+        });
     </script>
     
     {% block scripts %}{% endblock %}

@@ -1,0 +1,72 @@
+I have a Flask-based project for a "Field Attendance Tracker" web application, already featuring GPS tracking, photo capture, and an admin dashboard for attendance management. I want to extend and upgrade this application with the following features:
+
+✅ 1. Advanced Admin Dashboard:
+The dashboard must be accessible only to users with the admin role.
+
+Admin should be able to:
+
+Add, edit, or remove menu items and submenus in the sidebar dynamically.
+
+Create, rename, or delete form fields (e.g., name, department, location) and specify field types (text, number, date, dropdown, etc.).
+
+Manage users: add/remove/edit Admins, HR, and Viewers.
+
+Fix or update usernames and passwords securely (ensure hashed password storage).
+
+🔍 2. Auto-Suggestion in Forms:
+For all user roles, implement auto-suggestions in input fields if historical data for that field exists in the database (e.g., department names, locations, employee names).
+
+Use JavaScript (with AJAX or Fetch API) to fetch suggestions while typing.
+
+🔗 3. Field Connection Logic:
+Allow Admin to create logical or mathematical connections between field values in different menus or submenus.
+
+Support:
+
+Showing related data
+
+Simple math operations: add, subtract, multiply, divide
+
+Cumulative functions (e.g., running totals)
+
+Make this user-configurable via a UI.
+
+🎨 4. Custom Styling Settings:
+Allow Admin to customize:
+
+Background color
+
+Text color
+
+Font size
+
+Changes should reflect in real time or be saved to apply on future sessions (store in DB or config file).
+
+🛠 5. Error Monitoring and Self-Healing:
+Add a system to detect and log app errors or issues (e.g., database connection problems, missing fields).
+
+If possible, attempt to auto-resolve minor issues (e.g., recreate missing tables, notify admin).
+
+Provide a view in the admin panel for viewing error logs and status reports.
+
+🌐📱 6. Responsive, Multi-Platform UI:
+The application must work:
+
+On desktop browsers (as a full web app)
+
+On mobile devices (responsive layout with Bootstrap 5 or similar)
+
+As a PWA (Progressive Web App) that supports offline access
+
+As an offline local app (e.g., by using Flask with sqlite + PWA for offline support)
+
+💾 Technical Stack Hints (as per existing project):
+Backend: Python + Flask + SQLAlchemy
+
+Frontend: HTML, Bootstrap 5, JS
+
+DB: Likely SQLite
+
+Ensure data persistence and sync logic between online and offline if necessary.
+
+Please generate the required Flask routes, templates, models, JS scripts, and update the existing code structure accordingly to implement all these features.
