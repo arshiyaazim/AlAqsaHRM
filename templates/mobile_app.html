@@ -3,667 +3,823 @@
 {% block title %}Mobile Attendance - Al-Aqsa Security{% endblock %}
 
 {% block head %}
-<!-- Additional meta tags for mobile -->
-<meta name="mobile-web-app-capable" content="yes">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+<meta name="theme-color" content="#0d6efd">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#4e73df">
-<meta name="msapplication-TileColor" content="#4e73df">
-<meta name="msapplication-navbutton-color" content="#4e73df">
-<meta name="application-name" content="Attendance">
-<meta name="apple-mobile-web-app-title" content="Attendance">
-
-<!-- Add icon links for iOS -->
-<link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
-<link rel="apple-touch-startup-image" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
-
-<!-- Add quick action link for iOS -->
-<link rel="apple-touch-icon" sizes="96x96" href="{{ url_for('static', filename='icons/clockin.png') }}" data-action="clockin">
-<link rel="apple-touch-icon" sizes="96x96" href="{{ url_for('static', filename='icons/clockout.png') }}" data-action="clockout">
 
 <style>
-    body {
-        background-color: #f8f9fc;
-        font-family: 'Nunito', sans-serif;
-        color: #5a5c69;
-        overscroll-behavior-y: contain; /* Prevents pull-to-refresh */
-        touch-action: manipulation; /* Prevents double-tap zoom on mobile */
-        user-select: none; /* Prevents text selection for better touch experience */
-        -webkit-tap-highlight-color: transparent; /* Removes tap highlight on iOS */
-    }
-
-    .navbar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 1000;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    }
-    
-    .mobile-container {
-        padding-top: 70px;
-        padding-bottom: 20px;
-        max-width: 100%;
-        overflow-x: hidden;
-    }
-    
-    .clock-card {
-        background-color: white;
-        border-radius: 16px;
-        padding: 20px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-        margin-bottom: 20px;
-        text-align: center;
-    }
-    
-    .current-time {
-        font-size: 2.2rem;
-        font-weight: 700;
-        color: #4e73df;
-        margin-bottom: 0;
-    }
-    
-    .current-date {
-        font-size: 1rem;
-        color: #858796;
-        margin-top: 4px;
-    }
-    
-    .form-card {
-        background-color: white;
-        border-radius: 16px;
-        padding: 20px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-        margin-bottom: 20px;
-    }
-    
-    .form-label {
-        font-weight: 600;
-        font-size: 0.9rem;
-        color: #4e73df;
-        margin-bottom: 8px;
-    }
-    
-    .form-control, .form-select {
-        border-radius: 10px;
-        border: 1px solid #e3e6f0;
-        padding: 12px 15px;
-        font-size: 1rem;
-        margin-bottom: 20px;
-    }
-    
-    .form-control:focus, .form-select:focus {
-        box-shadow: 0 0 0 3px rgba(78, 115, 223, 0.25);
-    }
-    
-    .action-toggles {
-        display: flex;
-        margin: 15px 0 25px;
-        position: relative;
-        background-color: #f1f3fa;
-        border-radius: 50px;
-        height: 50px;
-        padding: 3px;
-    }
-    
-    .action-toggle {
-        flex: 1;
-        position: relative;
-        z-index: 1;
-    }
-    
-    .action-toggle input[type="radio"] {
-        opacity: 0;
-        position: absolute;
-    }
-    
-    .action-toggle label {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 44px;
+    #map {
+        height: 200px;
         width: 100%;
-        border-radius: 50px;
-        cursor: pointer;
-        transition: all 0.3s;
-        font-weight: 600;
-        font-size: 0.95rem;
+        margin-bottom: 15px;
+        border-radius: 0.375rem;
+        border: 1px solid #ced4da;
     }
     
-    .action-toggle input[type="radio"]:checked + label {
-        background-color: white;
-        color: #4e73df;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-    
-    .action-toggle:first-child input[type="radio"]:checked + label {
-        color: #1cc88a;
-    }
-    
-    .action-toggle:last-child input[type="radio"]:checked + label {
-        color: #e74a3b;
-    }
-    
-    .location-card {
-        background-color: #f8f9fc;
-        border-radius: 12px;
-        padding: 15px;
-        margin-bottom: 20px;
-        border: 1px solid #e3e6f0;
-    }
-    
-    .location-header {
+    .location-info {
         display: flex;
         justify-content: space-between;
-        align-items: center;
         margin-bottom: 10px;
-    }
-    
-    .location-title {
-        font-weight: 600;
-        color: #4e73df;
-        display: flex;
-        align-items: center;
-    }
-    
-    .location-title i {
-        margin-right: 8px;
-    }
-    
-    .status-indicator {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        display: inline-block;
-        margin-right: 5px;
-    }
-    
-    .status-acquiring {
-        background-color: #f6c23e;
-        animation: pulse 1.5s infinite;
-    }
-    
-    .status-success {
-        background-color: #1cc88a;
-    }
-    
-    .status-error {
-        background-color: #e74a3b;
-    }
-    
-    .location-content {
-        font-size: 0.9rem;
-        margin-bottom: 15px;
-    }
-    
-    .location-coordinates {
-        font-family: monospace;
-        font-size: 0.8rem;
-        color: #858796;
-        margin-bottom: 10px;
-    }
-    
-    .refresh-button {
-        background-color: #f1f3fa;
-        border: none;
-        border-radius: 50px;
-        padding: 8px 15px;
-        display: flex;
-        align-items: center;
         font-size: 0.85rem;
-        color: #4e73df;
     }
     
-    .refresh-button i {
-        margin-right: 5px;
+    .location-accuracy {
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.75rem;
     }
     
-    .camera-card {
-        background-color: #f8f9fc;
-        border-radius: 12px;
+    .accuracy-high {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .accuracy-medium {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    
+    .accuracy-low {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    .status-panel {
+        border-radius: 0.375rem;
         padding: 15px;
-        margin-bottom: 25px;
-        border: 1px solid #e3e6f0;
-    }
-    
-    .camera-header {
-        font-weight: 600;
-        color: #4e73df;
-        display: flex;
-        align-items: center;
-        margin-bottom: 10px;
-    }
-    
-    .camera-header i {
-        margin-right: 8px;
-    }
-    
-    .camera-description {
-        font-size: 0.85rem;
-        color: #858796;
         margin-bottom: 15px;
     }
     
-    .camera-button {
-        background-color: #4e73df;
-        color: white;
-        border: none;
-        border-radius: 50px;
-        padding: 10px 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-        font-weight: 600;
-    }
-    
-    .camera-button i {
-        margin-right: 8px;
-    }
-    
-    .camera-preview-container {
+    .status-offline {
+        background-color: #fff3cd;
+        border: 1px solid #ffeeba;
         display: none;
-        margin-top: 15px;
-        margin-bottom: 15px;
     }
     
-    .camera-preview {
-        width: 100%;
-        border-radius: 12px;
-        overflow: hidden;
-    }
-    
-    .capture-button {
-        background-color: #1cc88a;
-        color: white;
-        border: none;
-        border-radius: 50px;
-        width: 60px;
-        height: 60px;
-        font-size: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 15px auto;
-        box-shadow: 0 4px 10px rgba(28, 200, 138, 0.3);
-    }
-    
-    .photo-preview-container {
+    .status-online {
+        background-color: #d4edda;
+        border: 1px solid #c3e6cb;
         display: none;
-        margin-top: 15px;
-        margin-bottom: 15px;
     }
     
-    .photo-preview {
-        width: 100%;
-        border-radius: 12px;
-        overflow: hidden;
-    }
-    
-    .retake-button {
-        background-color: #f1f3fa;
-        color: #4e73df;
-        border: none;
-        border-radius: 50px;
-        padding: 10px 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 15px auto;
-        font-weight: 600;
-    }
-    
-    .retake-button i {
-        margin-right: 8px;
-    }
-    
-    .submit-button {
-        background-color: #4e73df;
-        color: white;
-        border: none;
-        border-radius: 12px;
-        padding: 15px;
-        font-size: 1rem;
-        font-weight: 600;
-        box-shadow: 0 4px 15px rgba(78, 115, 223, 0.3);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-        margin-top: 10px;
-    }
-    
-    .submit-button i {
-        margin-right: 10px;
-    }
-    
-    .submit-button:disabled {
-        background-color: #b7bce9;
-        box-shadow: none;
-    }
-    
-    .admin-link {
-        display: block;
-        text-align: center;
-        margin-top: 20px;
-        color: #4e73df;
-        text-decoration: none;
-        font-size: 0.9rem;
-    }
-    
-    .admin-link i {
-        margin-right: 5px;
-    }
-    
-    /* Bottom app bar */
-    .bottom-app-bar {
+    .install-prompt {
         position: fixed;
         bottom: 0;
         left: 0;
         right: 0;
-        background-color: white;
-        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
-        padding: 12px 0;
-        display: flex;
-        justify-content: space-around;
+        background-color: #f8f9fa;
+        border-top: 1px solid #dee2e6;
+        padding: 15px;
         z-index: 1000;
-    }
-    
-    .app-bar-action {
-        text-align: center;
-        font-size: 0.75rem;
-        color: #858796;
-        text-decoration: none;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
-    
-    .app-bar-action i {
-        font-size: 1.5rem;
-        margin-bottom: 4px;
-    }
-    
-    .app-bar-action.active {
-        color: #4e73df;
-    }
-    
-    /* Make room for bottom bar */
-    .bottom-spacer {
-        height: 70px;
-    }
-    
-    @keyframes pulse {
-        0% { opacity: 0.6; }
-        50% { opacity: 1; }
-        100% { opacity: 0.6; }
-    }
-    
-    /* Hide canvas used for photo capture */
-    #captureCanvas {
         display: none;
+    }
+    
+    .modal-fullscreen-sm-down {
+        padding: 0 !important;
+    }
+    
+    @media (max-width: 767.98px) {
+        .modal-fullscreen-sm-down .modal-dialog {
+            width: 100%;
+            max-width: none;
+            height: 100%;
+            margin: 0;
+        }
+        
+        .modal-fullscreen-sm-down .modal-content {
+            height: 100%;
+            border: 0;
+            border-radius: 0;
+        }
+        
+        .modal-fullscreen-sm-down .modal-body {
+            overflow-y: auto;
+        }
+    }
+    
+    .camera-container {
+        position: relative;
+        width: 100%;
+        height: 0;
+        padding-bottom: 75%;
+        overflow: hidden;
+        background-color: #343a40;
+        border-radius: 0.375rem;
+    }
+    
+    #cameraFeed, #capturedPhoto {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .camera-controls {
+        position: absolute;
+        bottom: 10px;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: center;
+        z-index: 10;
+    }
+    
+    .camera-btn {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background-color: rgba(255, 255, 255, 0.8);
+        border: 3px solid white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    }
+    
+    .camera-btn:active {
+        transform: scale(0.95);
+    }
+    
+    #cameraError {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        text-align: center;
+        background-color: rgba(0, 0, 0, 0.7);
+        padding: 10px 15px;
+        border-radius: 5px;
+        max-width: 80%;
+    }
+    
+    @media (max-width: 576px) {
+        .form-label {
+            margin-bottom: 0.2rem;
+        }
+        
+        .form-group {
+            margin-bottom: 0.75rem;
+        }
+        
+        .btn {
+            padding: 0.375rem 0.75rem;
+        }
+    }
+    
+    .offline-badge {
+        display: none;
+    }
+    
+    body.offline-mode .offline-badge {
+        display: inline-block;
+    }
+    
+    .unsynced-records {
+        background-color: #fff3cd;
+        border: 1px solid #ffeeba;
+        border-radius: 0.375rem;
+        padding: 10px 15px;
+        margin-bottom: 15px;
+        display: none;
+    }
+    
+    .unsynced-badge {
+        background-color: #ffc107;
+        color: #212529;
+        padding: 0.25em 0.6em;
+        font-size: 0.75em;
+        font-weight: 700;
+        border-radius: 10rem;
     }
 </style>
 {% endblock %}
 
-{% block body_class %}mobile-body{% endblock %}
-
 {% block content %}
-<div class="container-fluid mobile-container">
+<div class="container">
     <div class="row justify-content-center">
-        <div class="col-12 col-md-8 col-lg-6">
-            <!-- Clock Card -->
-            <div class="clock-card">
-                <div id="currentTime" class="current-time">--:--:-- --</div>
-                <div id="currentDate" class="current-date">Loading date...</div>
+        <div class="col-md-8 col-lg-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-geo-alt me-2"></i> Field Attendance
+                    </h5>
+                    <span class="offline-badge badge bg-warning text-dark">
+                        <i class="bi bi-wifi-off me-1"></i> Offline
+                    </span>
+                </div>
+                
+                <!-- Status Panels -->
+                <div id="offlineStatus" class="status-panel status-offline">
+                    <i class="bi bi-wifi-off me-2"></i>
+                    <strong>You're offline.</strong> Don't worry, your attendance will be saved and synced when you're back online.
+                </div>
+                
+                <div id="onlineStatus" class="status-panel status-online">
+                    <i class="bi bi-wifi me-2"></i>
+                    <strong>You're online.</strong> Your attendance will be submitted immediately.
+                </div>
+                
+                <div id="unsyncedRecords" class="unsynced-records">
+                    <i class="bi bi-arrow-repeat me-2"></i>
+                    <strong>You have <span id="unsyncedBadge" class="unsynced-badge">0</span> unsynced record(s).</strong>
+                    <div class="d-grid gap-2 mt-2">
+                        <button id="syncNowBtn" class="btn btn-sm btn-warning">
+                            <i class="bi bi-cloud-arrow-up me-2"></i> Sync Now
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <form id="attendanceForm" action="{{ url_for('submit') }}" method="post" enctype="multipart/form-data">
+                        <!-- Employee Information -->
+                        <div class="form-group mb-3">
+                            <label for="employee_id" class="form-label">Employee ID <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="employee_id" name="employee_id" required>
+                        </div>
+                        
+                        <div class="form-group mb-3">
+                            <label for="employee_name" class="form-label">Employee Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="employee_name" name="employee_name" required>
+                        </div>
+                        
+                        <!-- Project Selection -->
+                        <div class="form-group mb-3">
+                            <label for="project_id" class="form-label">Project <span class="text-danger">*</span></label>
+                            <select class="form-select" id="project_id" name="project_id" required>
+                                <option value="">Select Project</option>
+                                {% for project in projects %}
+                                <option value="{{ project.id }}">{{ project.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Attendance Type -->
+                        <div class="form-group mb-3">
+                            <label class="form-label">Attendance Type <span class="text-danger">*</span></label>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="status" id="clockIn" value="clock_in" autocomplete="off" checked>
+                                <label class="btn btn-outline-success" for="clockIn">
+                                    <i class="bi bi-box-arrow-in-right me-1"></i> Clock In
+                                </label>
+                                
+                                <input type="radio" class="btn-check" name="status" id="clockOut" value="clock_out" autocomplete="off">
+                                <label class="btn btn-outline-danger" for="clockOut">
+                                    <i class="bi bi-box-arrow-right me-1"></i> Clock Out
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Location Section -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <strong><i class="bi bi-geo-alt me-2"></i> Location</strong>
+                                    <button type="button" id="refreshLocation" class="btn btn-sm btn-primary">
+                                        <i class="bi bi-arrow-clockwise"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="map"></div>
+                                
+                                <div class="location-info">
+                                    <div>
+                                        <i class="bi bi-bullseye me-1"></i> Accuracy:
+                                        <span id="locationAccuracy">--</span>
+                                    </div>
+                                    <div id="accuracyBadge" class="location-accuracy">Unknown</div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="form-group">
+                                            <label for="latitude" class="form-label">Latitude</label>
+                                            <input type="text" class="form-control" id="latitude" name="latitude" readonly required>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="form-group">
+                                            <label for="longitude" class="form-label">Longitude</label>
+                                            <input type="text" class="form-control" id="longitude" name="longitude" readonly required>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Photo Verification -->
+                        <div class="form-group mb-3">
+                            <label for="photo" class="form-label d-flex justify-content-between">
+                                <span>Photo Verification</span>
+                                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#cameraModal">
+                                    <i class="bi bi-camera me-1"></i> Take Photo
+                                </button>
+                            </label>
+                            <input type="file" class="form-control" id="photo" name="photo" accept="image/*" style="display: none;">
+                            <div id="photoPreview" class="mt-2 d-none">
+                                <img id="previewImage" class="img-fluid img-thumbnail" style="max-height: 150px;">
+                                <button type="button" id="removePhoto" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Notes -->
+                        <div class="form-group mb-4">
+                            <label for="notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="2"></textarea>
+                        </div>
+                        
+                        <!-- Custom Fields (if any) -->
+                        {% if custom_fields %}
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <strong><i class="bi bi-list-check me-2"></i> Additional Information</strong>
+                            </div>
+                            <div class="card-body">
+                                {% for field in custom_fields %}
+                                <div class="form-group mb-3">
+                                    <label for="custom_{{ field.field_name }}" class="form-label">
+                                        {{ field.display_name }}
+                                        {% if field.required %}<span class="text-danger">*</span>{% endif %}
+                                    </label>
+                                    
+                                    {% if field.field_type == 'text' %}
+                                    <input type="text" class="form-control" id="custom_{{ field.field_name }}" 
+                                           name="custom_{{ field.field_name }}" 
+                                           {% if field.required %}required{% endif %}>
+                                    
+                                    {% elif field.field_type == 'number' %}
+                                    <input type="number" class="form-control" id="custom_{{ field.field_name }}" 
+                                           name="custom_{{ field.field_name }}" 
+                                           {% if field.required %}required{% endif %}>
+                                    
+                                    {% elif field.field_type == 'date' %}
+                                    <input type="date" class="form-control" id="custom_{{ field.field_name }}" 
+                                           name="custom_{{ field.field_name }}" 
+                                           {% if field.required %}required{% endif %}>
+                                    
+                                    {% elif field.field_type == 'select' %}
+                                    <select class="form-select" id="custom_{{ field.field_name }}" 
+                                            name="custom_{{ field.field_name }}" 
+                                            {% if field.required %}required{% endif %}>
+                                        <option value="">Select {{ field.display_name }}</option>
+                                        {% if field.options %}
+                                            {% set options = field.options|tojson|fromjson %}
+                                            {% for option in options %}
+                                            <option value="{{ option }}">{{ option }}</option>
+                                            {% endfor %}
+                                        {% endif %}
+                                    </select>
+                                    
+                                    {% elif field.field_type == 'checkbox' %}
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="custom_{{ field.field_name }}" 
+                                               name="custom_{{ field.field_name }}" value="1">
+                                        <label class="form-check-label" for="custom_{{ field.field_name }}">
+                                            {{ field.display_name }}
+                                        </label>
+                                    </div>
+                                    
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Submit Button -->
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary submit-btn">
+                                <i class="bi bi-check-lg me-2"></i> Submit
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
-            
-            <!-- Attendance Form -->
-            <form id="attendanceForm" method="post" action="{{ url_for('submit') }}" enctype="multipart/form-data" class="form-card">
-                <h5 class="mb-4 text-center">Track Your Attendance</h5>
-                
-                <!-- Employee ID -->
-                <div class="mb-3">
-                    <label for="employee_id" class="form-label">Employee ID</label>
-                    <input type="text" class="form-control" id="employee_id" name="employee_id" placeholder="Enter your ID" required>
-                </div>
-                
-                <!-- Project Selection -->
-                <div class="mb-3">
-                    <label for="project_id" class="form-label">Select Project</label>
-                    <select class="form-select" id="project_id" name="project_id">
-                        <option value="">-- Select Project --</option>
-                        {% for project in projects %}
-                        <option value="{{ project.id }}">{{ project.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                
-                <!-- Clock In/Out Toggle -->
-                <div class="action-toggles">
-                    <div class="action-toggle">
-                        <input type="radio" id="clockIn" name="action" value="Clock In" checked>
-                        <label for="clockIn">Clock In</label>
-                    </div>
-                    <div class="action-toggle">
-                        <input type="radio" id="clockOut" name="action" value="Clock Out">
-                        <label for="clockOut">Clock Out</label>
-                    </div>
-                </div>
-                
-                <!-- Location Card -->
-                <div class="location-card">
-                    <div class="location-header">
-                        <div class="location-title">
-                            <i class="bi bi-geo-alt"></i> Location
-                        </div>
-                        <div class="location-status">
-                            <span id="locationStatus" class="status-indicator status-acquiring"></span>
-                            <span id="locationStatusText">Acquiring...</span>
-                        </div>
-                    </div>
-                    
-                    <div id="locationInfo" class="location-content">
-                        Acquiring your location...
-                    </div>
-                    
-                    <div id="coordinatesInfo" class="location-coordinates"></div>
-                    
-                    <!-- Hidden location inputs -->
-                    <input type="hidden" id="latitude" name="latitude">
-                    <input type="hidden" id="longitude" name="longitude">
-                    
-                    <button type="button" id="refreshLocationBtn" class="refresh-button">
-                        <i class="bi bi-arrow-clockwise"></i> Refresh Location
-                    </button>
-                </div>
-                
-                <!-- Camera Card -->
-                <div class="camera-card">
-                    <div class="camera-header">
-                        <i class="bi bi-camera"></i> Photo Verification
-                    </div>
-                    
-                    <p class="camera-description">
-                        Take a selfie to verify your identity and location. This helps confirm your physical presence at work.
-                    </p>
-                    
-                    <button type="button" id="toggleCameraBtn" class="camera-button">
-                        <i class="bi bi-camera"></i> Take Photo
-                    </button>
-                    
-                    <div id="cameraContainer" class="camera-preview-container">
-                        <video id="cameraPreview" class="camera-preview" autoplay playsinline></video>
-                        <button type="button" id="captureBtn" class="capture-button">
-                            <i class="bi bi-camera"></i>
-                        </button>
-                    </div>
-                    
-                    <div id="photoPreviewContainer" class="photo-preview-container">
-                        <img id="photoPreview" class="photo-preview" src="">
-                        <button type="button" id="retakePhotoBtn" class="retake-button">
-                            <i class="bi bi-arrow-clockwise"></i> Retake Photo
-                        </button>
-                    </div>
-                    
-                    <canvas id="captureCanvas"></canvas>
-                    <input type="file" id="photoInput" name="photo" accept="image/*" style="display: none;">
-                </div>
-                
-                <!-- Submit Button -->
-                <button type="submit" id="submitBtn" class="submit-button" disabled>
-                    <i class="bi bi-check-circle"></i> Submit Attendance
-                </button>
-            </form>
-            
-            <!-- Link to Admin Login -->
-            <a href="{{ url_for('admin_login') }}" class="admin-link">
-                <i class="bi bi-shield-lock"></i> Admin Login
-            </a>
-            
-            <!-- Bottom Spacer -->
-            <div class="bottom-spacer"></div>
         </div>
     </div>
 </div>
 
-<!-- Bottom App Bar -->
-<div class="bottom-app-bar">
-    <a href="{{ url_for('index') }}" class="app-bar-action active">
-        <i class="bi bi-house"></i>
-        <span>Home</span>
-    </a>
-    <a href="#" class="app-bar-action" id="clockInShortcut">
-        <i class="bi bi-box-arrow-in-right"></i>
-        <span>Clock In</span>
-    </a>
-    <a href="#" class="app-bar-action" id="clockOutShortcut">
-        <i class="bi bi-box-arrow-right"></i>
-        <span>Clock Out</span>
-    </a>
-    <a href="#" class="app-bar-action" id="installAppButton">
-        <i class="bi bi-download"></i>
-        <span>Install</span>
-    </a>
+<!-- Camera Modal -->
+<div class="modal fade modal-fullscreen-sm-down" id="cameraModal" tabindex="-1" aria-labelledby="cameraModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cameraModalLabel">Take Photo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="camera-container">
+                    <video id="cameraFeed" autoplay muted playsinline></video>
+                    <canvas id="capturedPhoto" style="display:none;"></canvas>
+                    <div id="cameraError" style="display:none;">Camera not available</div>
+                    
+                    <div class="camera-controls">
+                        <button id="captureBtn" class="camera-btn">
+                            <i class="bi bi-camera-fill" style="font-size: 1.5rem;"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="usePhotoBtn" disabled>Use Photo</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Install App Banner -->
+<div id="installPrompt" class="install-prompt">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <strong>Add to Home Screen</strong>
+            <p class="mb-0 text-muted">Install this app for quick access even when offline.</p>
+        </div>
+        <div>
+            <button id="installBtn" class="btn btn-primary">Install</button>
+            <button id="dismissInstallBtn" class="btn btn-link">Not Now</button>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<!-- Bootstrap Toast JavaScript for notifications -->
+<!-- Google Maps -->
+<script src="https://maps.googleapis.com/maps/api/js?key={{ maps_api_key }}&callback=initMap" async defer></script>
+
+<!-- Offline Support -->
+<script src="{{ url_for('static', filename='js/offline.js') }}"></script>
+
 <script>
-    // We need to make sure Bootstrap's Toast JS is available
-    window.bootstrap = window.bootstrap || {};
-    if (!window.bootstrap.Toast) {
-        window.bootstrap.Toast = class Toast {
-            constructor(element, options) {
-                this.element = element;
-                this.options = options || {autohide: true, delay: 5000};
-                this.timeout = null;
-            }
-            
-            show() {
-                this.element.classList.add('show');
-                if (this.options.autohide) {
-                    this.timeout = setTimeout(() => {
-                        this.hide();
-                    }, this.options.delay || 5000);
-                }
-            }
-            
-            hide() {
-                this.element.classList.remove('show');
-                setTimeout(() => {
-                    // Trigger hidden event
-                    const event = new Event('hidden.bs.toast');
-                    this.element.dispatchEvent(event);
-                }, 150);
-            }
+let map;
+let marker;
+let deferredPrompt = null;
+let cameraStream = null;
+let photoTaken = false;
+let locationWatchId = null;
+
+// Initialize the map
+function initMap() {
+    // Default location (can be central to your city/area)
+    const defaultLocation = { lat: 31.5017, lng: 34.4668 }; // Gaza City
+    
+    // Map options
+    const mapOptions = {
+        zoom: 15,
+        center: defaultLocation,
+        streetViewControl: false,
+        mapTypeControl: false,
+        fullscreenControl: false,
+        zoomControl: true
+    };
+    
+    // Create the map
+    map = new google.maps.Map(document.getElementById('map'), mapOptions);
+    
+    // Create marker
+    marker = new google.maps.Marker({
+        position: defaultLocation,
+        map: map,
+        animation: google.maps.Animation.DROP
+    });
+    
+    // Get current location
+    getCurrentLocation();
+}
+
+// Get current location
+function getCurrentLocation() {
+    if (navigator.geolocation) {
+        // Show loading state
+        document.getElementById('locationAccuracy').textContent = 'Getting location...';
+        document.getElementById('accuracyBadge').textContent = 'Loading';
+        document.getElementById('accuracyBadge').className = 'location-accuracy';
+        
+        // Clear any existing watch
+        if (locationWatchId !== null) {
+            navigator.geolocation.clearWatch(locationWatchId);
+        }
+        
+        // Options for geolocation
+        const options = {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
         };
+        
+        // Start watching position for better accuracy
+        locationWatchId = navigator.geolocation.watchPosition(
+            updatePosition,
+            showLocationError,
+            options
+        );
+    } else {
+        showLocationError({ code: 0, message: 'Geolocation is not supported by this browser.' });
     }
-</script>
+}
 
-<!-- Toast container for notifications -->
-<div class="toast-container position-fixed bottom-0 start-50 translate-middle-x p-3" style="z-index: 1090;"></div>
+// Update position on the map
+function updatePosition(position) {
+    const latitude = position.coords.latitude;
+    const longitude = position.coords.longitude;
+    const accuracy = position.coords.accuracy;
+    
+    // Update form fields
+    document.getElementById('latitude').value = latitude;
+    document.getElementById('longitude').value = longitude;
+    
+    // Update accuracy display
+    document.getElementById('locationAccuracy').textContent = `${Math.round(accuracy)} meters`;
+    
+    // Update accuracy badge
+    const accuracyBadge = document.getElementById('accuracyBadge');
+    if (accuracy <= 20) {
+        accuracyBadge.textContent = 'High';
+        accuracyBadge.className = 'location-accuracy accuracy-high';
+    } else if (accuracy <= 100) {
+        accuracyBadge.textContent = 'Medium';
+        accuracyBadge.className = 'location-accuracy accuracy-medium';
+    } else {
+        accuracyBadge.textContent = 'Low';
+        accuracyBadge.className = 'location-accuracy accuracy-low';
+    }
+    
+    // Update map
+    const latLng = { lat: latitude, lng: longitude };
+    map.setCenter(latLng);
+    marker.setPosition(latLng);
+    
+    // Add accuracy circle
+    if (window.accuracyCircle) {
+        window.accuracyCircle.setMap(null);
+    }
+    
+    window.accuracyCircle = new google.maps.Circle({
+        map: map,
+        center: latLng,
+        radius: accuracy,
+        fillColor: '#4285F4',
+        fillOpacity: 0.15,
+        strokeColor: '#4285F4',
+        strokeOpacity: 0.3,
+        strokeWeight: 1
+    });
+    
+    // Stop watching if accuracy is good enough (< 20 meters)
+    if (accuracy < 20 && locationWatchId !== null) {
+        navigator.geolocation.clearWatch(locationWatchId);
+        locationWatchId = null;
+    }
+}
 
-<!-- Mobile App JavaScript -->
-<script src="{{ url_for('static', filename='js/mobile-app.js') }}"></script>
+// Show location error
+function showLocationError(error) {
+    let errorMessage = '';
+    
+    switch(error.code) {
+        case error.PERMISSION_DENIED:
+            errorMessage = 'Location permission denied. Please enable location services.';
+            break;
+        case error.POSITION_UNAVAILABLE:
+            errorMessage = 'Location information is unavailable.';
+            break;
+        case error.TIMEOUT:
+            errorMessage = 'The request to get user location timed out.';
+            break;
+        default:
+            errorMessage = 'An unknown error occurred getting location.';
+            break;
+    }
+    
+    // Update UI to show the error
+    document.getElementById('locationAccuracy').textContent = 'Error';
+    document.getElementById('accuracyBadge').textContent = 'Failed';
+    document.getElementById('accuracyBadge').className = 'location-accuracy accuracy-low';
+    
+    // Alert the user
+    alert('Location Error: ' + errorMessage);
+}
 
-<!-- Service Worker Registration for Mobile App -->
-<script>
-    // This script is only needed if our primary JS file fails to load
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function() {
-            navigator.serviceWorker.register('/static/js/mobile-service-worker.js')
-                .then(function(registration) {
-                    console.log('Mobile ServiceWorker registration successful with scope: ', registration.scope);
-                })
-                .catch(function(error) {
-                    console.log('Mobile ServiceWorker registration failed: ', error);
-                });
+// Initialize camera when modal is opened
+document.getElementById('cameraModal').addEventListener('shown.bs.modal', function () {
+    startCamera();
+});
+
+// Stop camera when modal is closed
+document.getElementById('cameraModal').addEventListener('hidden.bs.modal', function () {
+    stopCamera();
+});
+
+// Start the camera
+function startCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showCameraError('Camera API not supported in this browser');
+        return;
+    }
+    
+    // Reset the UI
+    document.getElementById('cameraFeed').style.display = 'block';
+    document.getElementById('capturedPhoto').style.display = 'none';
+    document.getElementById('cameraError').style.display = 'none';
+    document.getElementById('usePhotoBtn').disabled = true;
+    photoTaken = false;
+    
+    // Get camera access
+    navigator.mediaDevices.getUserMedia({ 
+        video: { 
+            facingMode: 'environment', // prefer rear camera
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+        }, 
+        audio: false 
+    })
+    .then(function(stream) {
+        cameraStream = stream;
+        const video = document.getElementById('cameraFeed');
+        video.srcObject = stream;
+    })
+    .catch(function(error) {
+        console.error('Camera error:', error);
+        showCameraError('Could not access the camera: ' + error.message);
+    });
+}
+
+// Show camera error
+function showCameraError(message) {
+    const errorElement = document.getElementById('cameraError');
+    errorElement.textContent = message;
+    errorElement.style.display = 'block';
+    document.getElementById('cameraFeed').style.display = 'none';
+}
+
+// Stop the camera
+function stopCamera() {
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+    }
+}
+
+// Capture a photo
+document.getElementById('captureBtn').addEventListener('click', function() {
+    if (!cameraStream) return;
+    
+    const video = document.getElementById('cameraFeed');
+    const canvas = document.getElementById('capturedPhoto');
+    
+    // Set canvas dimensions to match video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    // Draw the video frame on the canvas
+    const context = canvas.getContext('2d');
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // Show canvas with captured image, hide video
+    video.style.display = 'none';
+    canvas.style.display = 'block';
+    
+    // Enable the "Use Photo" button
+    document.getElementById('usePhotoBtn').disabled = false;
+    photoTaken = true;
+});
+
+// Use the captured photo
+document.getElementById('usePhotoBtn').addEventListener('click', function() {
+    if (!photoTaken) return;
+    
+    const canvas = document.getElementById('capturedPhoto');
+    
+    // Convert canvas to blob
+    canvas.toBlob(function(blob) {
+        // Create a File object
+        const file = new File([blob], 'photo.jpg', { type: 'image/jpeg' });
+        
+        // Set the file to the file input
+        const fileInput = document.getElementById('photo');
+        const container = new DataTransfer();
+        container.items.add(file);
+        fileInput.files = container.files;
+        
+        // Show preview
+        const previewImage = document.getElementById('previewImage');
+        previewImage.src = URL.createObjectURL(blob);
+        document.getElementById('photoPreview').classList.remove('d-none');
+        
+        // Close the modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('cameraModal'));
+        modal.hide();
+    }, 'image/jpeg', 0.8);
+});
+
+// Remove photo
+document.getElementById('removePhoto').addEventListener('click', function() {
+    document.getElementById('photo').value = '';
+    document.getElementById('photoPreview').classList.add('d-none');
+});
+
+// Refresh location button
+document.getElementById('refreshLocation').addEventListener('click', function() {
+    getCurrentLocation();
+});
+
+// Handle install prompt
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Prevent Chrome 67 and earlier from automatically showing the prompt
+    e.preventDefault();
+    // Stash the event so it can be triggered later
+    deferredPrompt = e;
+    // Update UI to show the install button
+    document.getElementById('installPrompt').style.display = 'block';
+});
+
+// Install button
+document.getElementById('installBtn').addEventListener('click', () => {
+    // Hide the install prompt
+    document.getElementById('installPrompt').style.display = 'none';
+    // Show the install prompt
+    if (deferredPrompt) {
+        deferredPrompt.prompt();
+        // Wait for the user to respond to the prompt
+        deferredPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+                console.log('User accepted the install prompt');
+            } else {
+                console.log('User dismissed the install prompt');
+            }
+            deferredPrompt = null;
         });
     }
-</script>
+});
 
-<!-- Additional styles for offline mode -->
-<style>
-    /* Add styles for offline mode */
-    body.offline .offline-indicator {
-        display: block;
+// Dismiss install prompt
+document.getElementById('dismissInstallBtn').addEventListener('click', () => {
+    document.getElementById('installPrompt').style.display = 'none';
+});
+
+// Sync button
+document.getElementById('syncNowBtn').addEventListener('click', function() {
+    if ('serviceWorker' in navigator && 'SyncManager' in window) {
+        navigator.serviceWorker.ready.then(registration => {
+            registration.sync.register('sync-attendance');
+        });
+    } else {
+        // Manual sync implemented in offline.js
+        alert('Syncing your records now...');
+    }
+});
+
+// Helper function to get URL parameters
+function getUrlParameter(name) {
+    name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+    var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+    var results = regex.exec(location.search);
+    return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+}
+
+// Check for action in URL (for PWA shortcuts)
+document.addEventListener('DOMContentLoaded', function() {
+    // Set the appropriate radio button based on URL parameter
+    const action = getUrlParameter('action');
+    if (action === 'clockin') {
+        document.getElementById('clockIn').checked = true;
+    } else if (action === 'clockout') {
+        document.getElementById('clockOut').checked = true;
     }
     
-    .offline-indicator {
-        display: none;
-        position: fixed;
-        top: 1rem;
-        left: 50%;
-        transform: translateX(-50%);
-        background-color: rgba(231, 74, 59, 0.9);
-        color: white;
-        padding: 0.5rem 1rem;
-        border-radius: 10px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-        z-index: 1100;
-        text-align: center;
-        max-width: 90%;
+    // Auto-populate employee info if stored in localStorage
+    const savedEmployeeId = localStorage.getItem('lastEmployeeId');
+    const savedEmployeeName = localStorage.getItem('lastEmployeeName');
+    
+    if (savedEmployeeId) {
+        document.getElementById('employee_id').value = savedEmployeeId;
     }
     
-    .offline-indicator.visible {
-        display: block;
-        animation: bounce 1s;
+    if (savedEmployeeName) {
+        document.getElementById('employee_name').value = savedEmployeeName;
+    }
+});
+
+// Save employee info to localStorage on submit
+document.getElementById('attendanceForm').addEventListener('submit', function() {
+    const employeeId = document.getElementById('employee_id').value;
+    const employeeName = document.getElementById('employee_name').value;
+    
+    if (employeeId) {
+        localStorage.setItem('lastEmployeeId', employeeId);
     }
     
-    /* Toast notifications */
-    .toast {
-        background-color: rgba(255, 255, 255, 0.9);
-        border-radius: 10px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        margin-bottom: 0.75rem;
-        min-width: 250px;
-        max-width: 80vw;
-        overflow: hidden;
-        pointer-events: auto;
+    if (employeeName) {
+        localStorage.setItem('lastEmployeeName', employeeName);
     }
-    
-    .toast.bg-success {
-        background-color: rgba(28, 200, 138, 0.9) !important;
-    }
-    
-    .toast.bg-danger {
-        background-color: rgba(231, 74, 59, 0.9) !important;
-    }
-    
-    .toast.bg-info {
-        background-color: rgba(78, 115, 223, 0.9) !important;
-    }
-    
-    @keyframes bounce {
-        0%, 20%, 50%, 80%, 100% {transform: translateX(-50%) translateY(0);}
-        40% {transform: translateX(-50%) translateY(-5px);}
-        60% {transform: translateX(-50%) translateY(-2px);}
-    }
-</style>
+});
+</script>
 {% endblock %}

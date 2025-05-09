@@ -1,0 +1,475 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Custom Fields - {{ project.name }} - Al-Aqsa Security{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin_projects') }}">Projects</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('edit_project', project_id=project.id) }}">{{ project.name }}</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Custom Fields</li>
+                </ol>
+            </nav>
+            <div class="d-flex justify-content-between align-items-center">
+                <h1 class="h2 mb-0">Custom Fields for {{ project.name }}</h1>
+            </div>
+            <p class="text-muted">Custom fields will appear on the attendance form when this project is selected.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Current Fields</h5>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addFieldModal">
+                        <i class="bi bi-plus-lg me-1"></i> Add Field
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    {% if custom_fields %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Field Name</th>
+                                    <th>Display Name</th>
+                                    <th>Type</th>
+                                    <th>Required</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sortableFields">
+                                {% for field in custom_fields %}
+                                <tr data-field-id="{{ field.id }}">
+                                    <td>
+                                        <i class="bi bi-grip-vertical handle me-2 text-muted"></i>
+                                        {{ field.field_name }}
+                                    </td>
+                                    <td>{{ field.display_name }}</td>
+                                    <td>
+                                        {% if field.field_type == 'text' %}
+                                        <span class="badge bg-secondary">Text</span>
+                                        {% elif field.field_type == 'number' %}
+                                        <span class="badge bg-primary">Number</span>
+                                        {% elif field.field_type == 'date' %}
+                                        <span class="badge bg-info">Date</span>
+                                        {% elif field.field_type == 'select' %}
+                                        <span class="badge bg-success">Select</span>
+                                        {% elif field.field_type == 'checkbox' %}
+                                        <span class="badge bg-warning">Checkbox</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">{{ field.field_type }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if field.required %}
+                                        <span class="badge bg-danger">Required</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Optional</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <button type="button" class="btn btn-sm btn-primary edit-field" 
+                                                    data-field-id="{{ field.id }}"
+                                                    data-field-name="{{ field.field_name }}"
+                                                    data-display-name="{{ field.display_name }}"
+                                                    data-field-type="{{ field.field_type }}"
+                                                    data-options="{{ field.options }}"
+                                                    data-required="{{ field.required|int }}">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteFieldModal{{ field.id }}">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    {% if custom_fields|length > 1 %}
+                    <div class="p-3 bg-light border-top">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted"><i class="bi bi-info-circle me-1"></i> Drag rows to reorder fields</span>
+                            <button type="button" id="saveOrderBtn" class="btn btn-sm btn-success">
+                                <i class="bi bi-save me-1"></i> Save Order
+                            </button>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-list-check" style="font-size: 3rem;"></i>
+                        <p class="mt-3">No custom fields defined for this project.</p>
+                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addFieldModal">
+                            <i class="bi bi-plus-lg me-1"></i> Add First Field
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Field Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h6>Field Types</h6>
+                        <ul class="list-group">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Text
+                                <span class="badge bg-secondary rounded-pill">Free text input</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Number
+                                <span class="badge bg-primary rounded-pill">Numeric input</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Date
+                                <span class="badge bg-info rounded-pill">Date picker</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Select
+                                <span class="badge bg-success rounded-pill">Dropdown list</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Checkbox
+                                <span class="badge bg-warning rounded-pill">Yes/No toggle</span>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6>Best Practices</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="bi bi-check-circle-fill text-success me-2"></i> Keep field names simple and clear</li>
+                            <li><i class="bi bi-check-circle-fill text-success me-2"></i> Only mark fields as required if necessary</li>
+                            <li><i class="bi bi-check-circle-fill text-success me-2"></i> Provide clear options for dropdown fields</li>
+                            <li><i class="bi bi-check-circle-fill text-success me-2"></i> Be consistent with field naming conventions</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <a href="{{ url_for('edit_project', project_id=project.id) }}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left me-1"></i> Back to Project
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Field Modal -->
+<div class="modal fade" id="addFieldModal" tabindex="-1" aria-labelledby="addFieldModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addFieldModalLabel">Add Custom Field</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addFieldForm" action="{{ url_for('add_custom_field', project_id=project.id) }}" method="post">
+                    <div class="mb-3">
+                        <label for="field_name" class="form-label">Field Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="field_name" name="field_name" required>
+                        <div class="form-text">
+                            Internal field name (e.g., 'hours_worked'). No spaces or special characters.
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="display_name" class="form-label">Display Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="display_name" name="display_name" required>
+                        <div class="form-text">
+                            Label shown to users (e.g., 'Hours Worked')
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="field_type" class="form-label">Field Type <span class="text-danger">*</span></label>
+                        <select class="form-select" id="field_type" name="field_type" required>
+                            <option value="text">Text</option>
+                            <option value="number">Number</option>
+                            <option value="date">Date</option>
+                            <option value="select">Select (Dropdown)</option>
+                            <option value="checkbox">Checkbox</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3" id="optionsContainer" style="display: none;">
+                        <label for="options" class="form-label">Options <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="options" name="options" rows="3" placeholder="Enter each option on a new line"></textarea>
+                        <div class="form-text">
+                            For dropdown fields, enter each option on a separate line
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="required" name="required" value="1">
+                        <label class="form-check-label" for="required">Required Field</label>
+                        <div class="form-text">
+                            If checked, users must provide a value for this field
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="addFieldForm" class="btn btn-primary">Add Field</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Field Modal -->
+<div class="modal fade" id="editFieldModal" tabindex="-1" aria-labelledby="editFieldModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editFieldModalLabel">Edit Custom Field</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editFieldForm" action="{{ url_for('edit_custom_field', project_id=project.id) }}" method="post">
+                    <input type="hidden" id="edit_field_id" name="field_id">
+                    
+                    <div class="mb-3">
+                        <label for="edit_field_name" class="form-label">Field Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="edit_field_name" name="field_name" required>
+                        <div class="form-text">
+                            Internal field name (e.g., 'hours_worked'). No spaces or special characters.
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit_display_name" class="form-label">Display Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="edit_display_name" name="display_name" required>
+                        <div class="form-text">
+                            Label shown to users (e.g., 'Hours Worked')
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit_field_type" class="form-label">Field Type <span class="text-danger">*</span></label>
+                        <select class="form-select" id="edit_field_type" name="field_type" required>
+                            <option value="text">Text</option>
+                            <option value="number">Number</option>
+                            <option value="date">Date</option>
+                            <option value="select">Select (Dropdown)</option>
+                            <option value="checkbox">Checkbox</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3" id="editOptionsContainer" style="display: none;">
+                        <label for="edit_options" class="form-label">Options <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="edit_options" name="options" rows="3" placeholder="Enter each option on a new line"></textarea>
+                        <div class="form-text">
+                            For dropdown fields, enter each option on a separate line
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="edit_required" name="required" value="1">
+                        <label class="form-check-label" for="edit_required">Required Field</label>
+                        <div class="form-text">
+                            If checked, users must provide a value for this field
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="editFieldForm" class="btn btn-primary">Update Field</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Field Modals -->
+{% for field in custom_fields %}
+<div class="modal fade" id="deleteFieldModal{{ field.id }}" tabindex="-1" aria-labelledby="deleteFieldModalLabel{{ field.id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteFieldModalLabel{{ field.id }}">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the field <strong>{{ field.display_name }}</strong>?</p>
+                
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Warning:</strong> Deleting this field will remove it from all future attendance records for this project.
+                    Existing attendance records with this field will retain their values.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('delete_custom_field', project_id=project.id, field_name=field.field_name) }}" method="post">
+                    <button type="submit" class="btn btn-danger">Delete Field</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.14.0/Sortable.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Field type options handling
+    const fieldType = document.getElementById('field_type');
+    const optionsContainer = document.getElementById('optionsContainer');
+    
+    fieldType.addEventListener('change', function() {
+        if (this.value === 'select') {
+            optionsContainer.style.display = 'block';
+        } else {
+            optionsContainer.style.display = 'none';
+        }
+    });
+    
+    // Edit field type options handling
+    const editFieldType = document.getElementById('edit_field_type');
+    const editOptionsContainer = document.getElementById('editOptionsContainer');
+    
+    editFieldType.addEventListener('change', function() {
+        if (this.value === 'select') {
+            editOptionsContainer.style.display = 'block';
+        } else {
+            editOptionsContainer.style.display = 'none';
+        }
+    });
+    
+    // Edit field buttons
+    document.querySelectorAll('.edit-field').forEach(button => {
+        button.addEventListener('click', function() {
+            const fieldId = this.getAttribute('data-field-id');
+            const fieldName = this.getAttribute('data-field-name');
+            const displayName = this.getAttribute('data-display-name');
+            const fieldType = this.getAttribute('data-field-type');
+            const options = this.getAttribute('data-options');
+            const required = this.getAttribute('data-required') === '1';
+            
+            // Set values in edit form
+            document.getElementById('edit_field_id').value = fieldId;
+            document.getElementById('edit_field_name').value = fieldName;
+            document.getElementById('edit_display_name').value = displayName;
+            document.getElementById('edit_field_type').value = fieldType;
+            
+            if (options) {
+                try {
+                    const parsedOptions = JSON.parse(options);
+                    document.getElementById('edit_options').value = parsedOptions.join('\n');
+                } catch (e) {
+                    console.error('Error parsing options:', e);
+                    document.getElementById('edit_options').value = '';
+                }
+            } else {
+                document.getElementById('edit_options').value = '';
+            }
+            
+            document.getElementById('edit_required').checked = required;
+            
+            // Show/hide options container based on field type
+            if (fieldType === 'select') {
+                editOptionsContainer.style.display = 'block';
+            } else {
+                editOptionsContainer.style.display = 'none';
+            }
+            
+            // Show modal
+            const editFieldModal = new bootstrap.Modal(document.getElementById('editFieldModal'));
+            editFieldModal.show();
+        });
+    });
+    
+    // Field name formatting
+    function formatFieldName(input) {
+        // Replace spaces and special characters with underscores
+        return input.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    }
+    
+    // Auto-format field name based on display name
+    document.getElementById('display_name').addEventListener('blur', function() {
+        const fieldNameInput = document.getElementById('field_name');
+        if (!fieldNameInput.value) {
+            fieldNameInput.value = formatFieldName(this.value);
+        }
+    });
+    
+    // Make fields sortable
+    const sortableList = document.getElementById('sortableFields');
+    if (sortableList) {
+        new Sortable(sortableList, {
+            handle: '.handle',
+            animation: 150,
+            onEnd: function(evt) {
+                document.getElementById('saveOrderBtn').classList.add('btn-warning');
+                document.getElementById('saveOrderBtn').innerHTML = '<i class="bi bi-save me-1"></i> Save New Order';
+            }
+        });
+    }
+    
+    // Save field order
+    const saveOrderBtn = document.getElementById('saveOrderBtn');
+    if (saveOrderBtn) {
+        saveOrderBtn.addEventListener('click', function() {
+            const rows = document.querySelectorAll('#sortableFields tr');
+            const order = [];
+            
+            rows.forEach((row, index) => {
+                order.push({
+                    id: row.getAttribute('data-field-id'),
+                    position: index + 1
+                });
+            });
+            
+            // Send order to server
+            fetch('{{ url_for("reorder_custom_fields", project_id=project.id) }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ order: order })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    saveOrderBtn.classList.remove('btn-warning');
+                    saveOrderBtn.classList.add('btn-success');
+                    saveOrderBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i> Order Saved';
+                    
+                    setTimeout(() => {
+                        saveOrderBtn.classList.remove('btn-success');
+                        saveOrderBtn.classList.add('btn-secondary');
+                        saveOrderBtn.innerHTML = '<i class="bi bi-save me-1"></i> Save Order';
+                    }, 2000);
+                } else {
+                    alert('Error saving field order: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error saving field order. Please try again.');
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

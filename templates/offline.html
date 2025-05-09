@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Offline - Al-Aqsa Security{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0">
+                        <i class="bi bi-wifi-off me-2"></i> You're Offline
+                    </h5>
+                </div>
+                <div class="card-body text-center">
+                    <img src="{{ url_for('static', filename='images/offline.svg') }}" alt="Offline" class="img-fluid mb-4" style="max-height: 200px;">
+                    
+                    <h4 class="mb-3">No Internet Connection</h4>
+                    
+                    <p class="lead">
+                        You are currently offline. Some features may be limited until you reconnect.
+                    </p>
+                    
+                    <div class="alert alert-info mt-4">
+                        <p class="mb-0">
+                            <strong>Don't worry!</strong> You can still:
+                        </p>
+                        <ul class="mb-0 mt-2 text-start">
+                            <li>View previously loaded pages</li>
+                            <li>Submit attendance records (they will sync when you're back online)</li>
+                            <li>Access basic functionality in the mobile app</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="d-grid gap-2 mt-4">
+                        <button id="retryConnection" class="btn btn-primary">
+                            <i class="bi bi-arrow-repeat me-2"></i> Try Reconnecting
+                        </button>
+                        
+                        <a href="{{ url_for('mobile_app') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-clock me-2"></i> Go to Mobile App
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Offline Mode</h5>
+                </div>
+                <div class="card-body">
+                    <p>
+                        The Al-Aqsa Security Field Attendance application works offline with these capabilities:
+                    </p>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="offline-feature">
+                                <i class="bi bi-clock-history text-primary"></i>
+                                <span>Clock in/out without internet</span>
+                            </div>
+                            <div class="offline-feature">
+                                <i class="bi bi-geo-alt text-primary"></i>
+                                <span>Location capture</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="offline-feature">
+                                <i class="bi bi-clock-history text-primary"></i>
+                                <span>Automatic sync when online</span>
+                            </div>
+                            <div class="offline-feature">
+                                <i class="bi bi-journal-text text-primary"></i>
+                                <span>Access to saved forms</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-warning mt-3">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Note:</strong> Some features like uploading photos and accessing the admin dashboard require an internet connection.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const retryButton = document.getElementById('retryConnection');
+    
+    // Check connection status when button is clicked
+    retryButton.addEventListener('click', function() {
+        // Add spinning animation to button icon
+        const icon = retryButton.querySelector('i');
+        icon.classList.add('spin');
+        
+        // Try to fetch a small resource to check connectivity
+        fetch('/static/ping.txt?' + new Date().getTime())
+            .then(response => {
+                // If successful, reload the page
+                window.location.reload();
+            })
+            .catch(error => {
+                // If still offline, show error message
+                alert('Still offline. Please check your internet connection and try again.');
+                // Remove spinning animation
+                icon.classList.remove('spin');
+            });
+    });
+});
+</script>
+
+<style>
+.offline-feature {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.offline-feature i {
+    font-size: 1.2rem;
+    margin-right: 10px;
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
+{% endblock %}

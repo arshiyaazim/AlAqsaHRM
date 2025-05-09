@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200px" height="200px" viewBox="0 0 200 200" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Offline Mode</title>
+    <defs>
+        <linearGradient x1="50%" y1="0%" x2="50%" y2="100%" id="linearGradient-1">
+            <stop stop-color="#6C757D" offset="0%"></stop>
+            <stop stop-color="#495057" offset="100%"></stop>
+        </linearGradient>
+        <circle id="path-2" cx="100" cy="100" r="100"></circle>
+        <filter x="-7.5%" y="-7.5%" width="115.0%" height="115.0%" filterUnits="objectBoundingBox" id="filter-3">
+            <feGaussianBlur stdDeviation="5" in="SourceAlpha" result="shadowBlurInner1"></feGaussianBlur>
+            <feOffset dx="0" dy="0" in="shadowBlurInner1" result="shadowOffsetInner1"></feOffset>
+            <feComposite in="shadowOffsetInner1" in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1" result="shadowInnerInner1"></feComposite>
+            <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.2 0" type="matrix" in="shadowInnerInner1"></feColorMatrix>
+        </filter>
+    </defs>
+    <g id="Offline-Icon" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Background">
+            <use fill="#F8F9FA" fill-rule="evenodd" xlink:href="#path-2"></use>
+            <use fill="black" fill-opacity="1" filter="url(#filter-3)" xlink:href="#path-2"></use>
+            <circle stroke="#E9ECEF" stroke-width="4" cx="100" cy="100" r="98"></circle>
+        </g>
+        <g id="Wifi-Icon" transform="translate(50.000000, 50.000000)" fill-rule="nonzero">
+            <path d="M100,50 C100,77.6142375 77.6142375,100 50,100 C22.3857625,100 0,77.6142375 0,50 C0,22.3857625 22.3857625,0 50,0 C77.6142375,0 100,22.3857625 100,50 Z" id="Circle" fill="#FFC107" opacity="0.2"></path>
+            <path d="M76.7885822,35.5371901 C62.3825137,21.1311215 38.5288049,21.1311215 24.1227364,35.5371901 C22.9591879,36.7007385 22.9591879,38.5695659 24.1227364,39.7331144 C25.2862848,40.8966629 27.1551122,40.8966629 28.3186607,39.7331144 C40.1432834,27.9084917 60.7680352,27.9084917 72.5926579,39.7331144 C73.7562064,40.8966629 75.6250338,40.8966629 76.7885822,39.7331144 C77.9521307,38.5695659 77.9521307,36.7007385 76.7885822,35.5371901 Z" id="Arc-3" fill="#6C757D"></path>
+            <path d="M67.4556593,44.8701129 C57.6310909,35.0455445 43.2802277,35.0455445 33.4556593,44.8701129 C32.2921109,46.0336614 32.2921109,47.9024888 33.4556593,49.0660372 C34.6192078,50.2295857 36.4880352,50.2295857 37.6515837,49.0660372 C44.8947063,41.8229147 56.0166123,41.8229147 63.2597349,49.0660372 C64.4232834,50.2295857 66.2921109,50.2295857 67.4556593,49.0660372 C68.6192078,47.9024888 68.6192078,46.0336614 67.4556593,44.8701129 Z" id="Arc-2" fill="#6C757D"></path>
+            <path d="M58.1227364,54.2030358 C52.8796138,48.9599132 42.0318048,48.9599132 36.7886822,54.2030358 C35.6251338,55.3665843 35.6251338,57.2354117 36.7886822,58.3989601 C37.9522307,59.5625086 39.8210581,59.5625086 40.9846066,58.3989601 C43.6461834,55.7373833 51.2652352,55.7373833 53.9268121,58.3989601 C55.0903605,59.5625086 56.9591879,59.5625086 58.1227364,58.3989601 C59.2862848,57.2354117 59.2862848,55.3665843 58.1227364,54.2030358 Z" id="Arc-1" fill="#6C757D"></path>
+            <circle id="Dot" fill="#6C757D" cx="50" cy="65" r="5"></circle>
+            <path d="M85,36 L70,51" id="Slash-1" stroke="#DC3545" stroke-width="6" stroke-linecap="round"></path>
+            <path d="M70,36 L85,51" id="Slash-2" stroke="#DC3545" stroke-width="6" stroke-linecap="round"></path>
+        </g>
+    </g>
+</svg>

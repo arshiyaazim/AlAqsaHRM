@@ -1,266 +1,305 @@
 {% extends "base.html" %}
 
-{% block title %}Projects Management - Al-Aqsa Security{% endblock %}
-
-{% block head %}
-<style>
-    .card-project {
-        border-radius: 8px;
-        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
-        margin-bottom: 24px;
-        transition: transform 0.2s;
-    }
-    
-    .card-project:hover {
-        transform: translateY(-5px);
-    }
-    
-    .card-header-project {
-        background-color: #f8f9fc;
-        border-bottom: 1px solid #e3e6f0;
-        padding: 1rem 1.25rem;
-        font-weight: bold;
-        color: #4e73df;
-    }
-    
-    .project-status {
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        display: inline-block;
-        margin-right: 5px;
-    }
-    
-    .project-status-active {
-        background-color: #1cc88a;
-    }
-    
-    .project-status-inactive {
-        background-color: #e74a3b;
-    }
-    
-    .project-date {
-        font-size: 0.85rem;
-        color: #6c757d;
-    }
-    
-    .project-description {
-        color: #5a5c69;
-        font-size: 0.9rem;
-        max-height: 60px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        display: -webkit-box;
-        -webkit-line-clamp: 3;
-        -webkit-box-orient: vertical;
-    }
-    
-    .project-location {
-        font-size: 0.85rem;
-        color: #6c757d;
-        margin-bottom: 15px;
-    }
-    
-    .project-action {
-        width: 38px;
-    }
-    
-    .table-custom-fields th {
-        width: 30%;
-        background-color: #f8f9fc;
-    }
-    
-    .badge-field-type {
-        text-transform: uppercase;
-        font-size: 0.65rem;
-        padding: 0.25em 0.5em;
-        font-weight: 600;
-    }
-    
-    .badge-text {
-        background-color: #4e73df;
-    }
-    
-    .badge-number {
-        background-color: #1cc88a;
-    }
-    
-    .badge-date {
-        background-color: #f6c23e;
-    }
-    
-    .badge-boolean {
-        background-color: #36b9cc;
-    }
-    
-    .badge-select {
-        background-color: #e74a3b;
-    }
-</style>
-{% endblock %}
-
-{% block header_content %}
-<ul class="navbar-nav me-auto">
-    <li class="nav-item">
-        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
-            <i class="bi bi-speedometer2"></i> Dashboard
-        </a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link active" href="{{ url_for('admin_projects') }}">
-            <i class="bi bi-clipboard-check"></i> Projects
-        </a>
-    </li>
-</ul>
-{% endblock %}
+{% block title %}Project Management - Al-Aqsa Security{% endblock %}
 
 {% block content %}
-<div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800">Project Management</h1>
-    <a href="{{ url_for('add_project') }}" class="btn btn-primary">
-        <i class="bi bi-plus-circle"></i> Add New Project
-    </a>
-</div>
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <h1 class="h2 mb-0">Project Management</h1>
+            <a href="{{ url_for('add_project') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-2"></i> Add New Project
+            </a>
+        </div>
+    </div>
 
-{% if projects %}
-<div class="row">
-    {% for project in projects %}
-    <div class="col-xl-4 col-md-6 mb-4">
-        <div class="card card-project h-100">
-            <div class="card-header-project d-flex justify-content-between align-items-center">
-                <span>
-                    <span class="project-status {% if project.active %}project-status-active{% else %}project-status-inactive{% endif %}"></span>
-                    {{ project.name }}
-                </span>
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle project-action" type="button" id="dropdownMenuButton{{ project.id }}" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-three-dots-vertical"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton{{ project.id }}">
-                        <li>
-                            <a class="dropdown-item" href="{{ url_for('edit_project', project_id=project.id) }}">
-                                <i class="bi bi-pencil"></i> Edit
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item" href="{{ url_for('manage_custom_fields', project_id=project.id) }}">
-                                <i class="bi bi-list-check"></i> Custom Fields
-                            </a>
-                        </li>
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-                        <li>
-                            <button class="dropdown-item text-danger" type="button" data-bs-toggle="modal" data-bs-target="#deleteModal{{ project.id }}">
-                                <i class="bi bi-trash"></i> Delete
-                            </button>
-                        </li>
-                    </ul>
+    <!-- Projects Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">All Projects</h5>
+                    <span class="badge bg-primary">{{ projects|length }} Projects</span>
                 </div>
-            </div>
-            <div class="card-body">
-                {% if project.description %}
-                <p class="project-description">{{ project.description }}</p>
-                {% else %}
-                <p class="project-description text-muted">No description available</p>
-                {% endif %}
-                
-                {% if project.location %}
-                <p class="project-location">
-                    <i class="bi bi-geo-alt"></i> {{ project.location }}
-                </p>
-                {% endif %}
-                
-                <div class="row mb-3">
-                    <div class="col-6">
-                        <small class="text-muted d-block">Start Date</small>
-                        <span class="project-date">{{ project.start_date or 'N/A' }}</span>
+                <div class="card-body p-0">
+                    {% if projects %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="projectsTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Address</th>
+                                    <th>Duration</th>
+                                    <th>Status</th>
+                                    <th>Custom Fields</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for project in projects %}
+                                <tr>
+                                    <td>
+                                        <div>{{ project.name }}</div>
+                                        <div class="text-muted small">ID: {{ project.id }}</div>
+                                    </td>
+                                    <td>{{ project.address or 'N/A' }}</td>
+                                    <td>
+                                        {% if project.start_date %}
+                                        <div>From: {{ project.start_date }}</div>
+                                        {% endif %}
+                                        {% if project.end_date %}
+                                        <div>To: {{ project.end_date }}</div>
+                                        {% endif %}
+                                        {% if not project.start_date and not project.end_date %}
+                                        <span class="text-muted">Not specified</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if project.active %}
+                                        <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if project.custom_fields_count > 0 %}
+                                        <span class="badge bg-info">{{ project.custom_fields_count }} Fields</span>
+                                        {% else %}
+                                        <span class="text-muted">None</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('edit_project', project_id=project.id) }}" class="btn btn-sm btn-primary" title="Edit Project">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </a>
+                                            <a href="{{ url_for('manage_custom_fields', project_id=project.id) }}" class="btn btn-sm btn-info" title="Manage Custom Fields">
+                                                <i class="bi bi-list-check"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#deleteProjectModal{{ project.id }}" title="Delete Project">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
-                    <div class="col-6">
-                        <small class="text-muted d-block">End Date</small>
-                        <span class="project-date">{{ project.end_date or 'N/A' }}</span>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-building" style="font-size: 3rem;"></i>
+                        <p class="mt-3">No projects found.</p>
+                        <a href="{{ url_for('add_project') }}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle me-2"></i> Add First Project
+                        </a>
                     </div>
-                </div>
-                
-                {% if project.custom_fields %}
-                {% set custom_fields = project.custom_fields|tojson|fromjson %}
-                {% if custom_fields.keys()|list|length > 0 %}
-                <details>
-                    <summary class="mb-2" style="cursor: pointer;">
-                        <span class="text-primary">
-                            <i class="bi bi-list-check"></i> Custom Fields ({{ custom_fields.keys()|list|length }})
-                        </span>
-                    </summary>
-                    <table class="table table-sm table-bordered table-custom-fields">
-                        <tbody>
-                            {% for field_name, field_info in custom_fields.items() %}
-                            <tr>
-                                <th>
-                                    {{ field_name }}
-                                    <span class="badge badge-field-type badge-{{ field_info.type }}">{{ field_info.type }}</span>
-                                </th>
-                                <td>
-                                    {% if field_info.type == 'select' and field_info.options %}
-                                    <small class="text-muted">Options:</small>
-                                    {% for option in field_info.options %}
-                                    <span class="badge bg-secondary">{{ option }}</span>
-                                    {% endfor %}
-                                    {% else %}
-                                    <small class="text-muted">Field type: {{ field_info.type }}</small>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </details>
-                {% endif %}
-                {% endif %}
-            </div>
-            <div class="card-footer d-flex justify-content-between align-items-center">
-                <small class="text-muted">
-                    Created: {{ project.created_at.split(' ')[0] if project.created_at else 'N/A' }}
-                </small>
-                <div>
-                    <a href="{{ url_for('edit_project', project_id=project.id) }}" class="btn btn-sm btn-outline-primary">
-                        <i class="bi bi-pencil"></i> Edit
-                    </a>
-                    <a href="{{ url_for('manage_custom_fields', project_id=project.id) }}" class="btn btn-sm btn-outline-secondary">
-                        <i class="bi bi-list-check"></i> Fields
-                    </a>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- Delete Confirmation Modal -->
-    <div class="modal fade" id="deleteModal{{ project.id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ project.id }}" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="deleteModalLabel{{ project.id }}">Confirm Delete</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <!-- Project Information -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Project Overview</h5>
                 </div>
-                <div class="modal-body">
-                    <p>Are you sure you want to delete the project <strong>{{ project.name }}</strong>?</p>
-                    <p class="text-danger">
-                        <i class="bi bi-exclamation-triangle"></i> This action cannot be undone!
-                    </p>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h6>Active Projects: {{ stats.active_project_count }}</h6>
+                        <div class="progress">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: {{ stats.active_percentage }}%">
+                                {{ stats.active_percentage }}%
+                            </div>
+                        </div>
+                        <div class="text-muted small mt-1">
+                            {{ stats.active_project_count }} out of {{ stats.total_project_count }} projects are active
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6>Project Timeline</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Project</th>
+                                        <th>Start Date</th>
+                                        <th>End Date</th>
+                                        <th>Duration</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for project in active_projects[:5] %}
+                                    <tr>
+                                        <td>{{ project.name }}</td>
+                                        <td>{{ project.start_date or 'N/A' }}</td>
+                                        <td>{{ project.end_date or 'N/A' }}</td>
+                                        <td>
+                                            {% if project.duration_days %}
+                                            {{ project.duration_days }} days
+                                            {% else %}
+                                            Ongoing
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h6>Common Custom Fields</h6>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for field in common_fields %}
+                            <span class="badge rounded-pill bg-light text-dark">
+                                {{ field.name }} 
+                                <span class="text-muted">({{ field.count }})</span>
+                            </span>
+                            {% endfor %}
+                            
+                            {% if not common_fields %}
+                            <p class="text-muted">No custom fields defined across projects.</p>
+                            {% endif %}
+                        </div>
+                    </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <form action="{{ url_for('delete_project', project_id=project.id) }}" method="post">
-                        <button type="submit" class="btn btn-danger">Delete</button>
-                    </form>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Attendance by Project</h5>
+                </div>
+                <div class="card-body">
+                    {% if project_attendance %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Project</th>
+                                    <th>Clock Ins</th>
+                                    <th>Clock Outs</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in project_attendance %}
+                                <tr>
+                                    <td>{{ item.name }}</td>
+                                    <td>{{ item.clock_ins }}</td>
+                                    <td>{{ item.clock_outs }}</td>
+                                    <td>{{ item.total }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="mt-3 text-center">
+                        <div id="attendanceChart" style="height: 250px;"></div>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-clipboard-data" style="font-size: 2rem;"></i>
+                        <p class="mt-2">No attendance data available for projects.</p>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
-    {% endfor %}
 </div>
-{% else %}
-<div class="alert alert-info">
-    <i class="bi bi-info-circle"></i> No projects found. Click the "Add New Project" button to create your first project.
+
+<!-- Delete Project Modals -->
+{% for project in projects %}
+<div class="modal fade" id="deleteProjectModal{{ project.id }}" tabindex="-1" aria-labelledby="deleteProjectModalLabel{{ project.id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteProjectModalLabel{{ project.id }}">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete the project <strong>{{ project.name }}</strong>?</p>
+                
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Warning:</strong> This will also delete all custom fields associated with this project.
+                    {% if project.attendance_count > 0 %}
+                    <div class="mt-2">
+                        <strong>{{ project.attendance_count }} attendance records</strong> are associated with this project.
+                        These records will remain in the database but will no longer be associated with a project.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('delete_project', project_id=project.id) }}" method="post">
+                    <button type="submit" class="btn btn-danger">Delete Project</button>
+                </form>
+            </div>
+        </div>
+    </div>
 </div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+{% if project_attendance %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Project attendance chart
+    const ctx = document.getElementById('attendanceChart').getContext('2d');
+    
+    // Prepare data
+    const projectNames = [{% for item in project_attendance %}'{{ item.name }}'{% if not loop.last %}, {% endif %}{% endfor %}];
+    const clockIns = [{% for item in project_attendance %}{{ item.clock_ins }}{% if not loop.last %}, {% endif %}{% endfor %}];
+    const clockOuts = [{% for item in project_attendance %}{{ item.clock_outs }}{% if not loop.last %}, {% endif %}{% endfor %}];
+    
+    // Create chart
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: projectNames,
+            datasets: [
+                {
+                    label: 'Clock Ins',
+                    data: clockIns,
+                    backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Clock Outs',
+                    data: clockOuts,
+                    backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        precision: 0
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
 {% endif %}
 {% endblock %}
