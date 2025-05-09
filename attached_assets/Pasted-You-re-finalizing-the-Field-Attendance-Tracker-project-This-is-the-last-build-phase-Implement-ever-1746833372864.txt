@@ -1,0 +1,86 @@
+You're finalizing the Field Attendance Tracker project. This is the last build phase. Implement everything below immediately, without asking for clarification or skipping steps. This must be fully functional, error-free, and ready to deploy.
+
+✅ A. Authentication System
+Login/Register Opening Page (Home route):
+
+Replace any current default page with a clean login/register screen.
+
+Register requires: name, email, role (admin, HR, viewer), password.
+
+Login checks credentials securely (hashed passwords).
+
+Direct users to the correct dashboard based on their role.
+
+Sessions or JWT:
+
+Use session or token-based authentication (whichever is easier to implement with Flask + frontend).
+
+Secure routes and restrict admin features to only admin users.
+
+✅ B. User Management Dashboard (For Admins)
+Add a User Management section to the admin panel:
+
+View all users (list with name, email, role)
+
+Add new user: Admin, HR, or Viewer
+
+Edit user info (name, email, password, role)
+
+Delete user
+
+Validation & Confirmation:
+
+Add confirm prompts before delete
+
+Enforce password rules
+
+Prevent duplicate emails
+
+Store users in database with role field.
+
+✅ C. Offline Error Handling — Finalize
+Implement sync retry, admin view of error logs, toast notifications for user, export functionality, and auto-cleanup as described previously.
+
+Log types: GPS, camera, validation, sync, server, etc.
+
+Store error logs with timestamp, device info, user (if logged in), and error trace.
+
+Admin view must be filterable and exportable.
+
+✅ D. Fix Excel Import Bug
+Auto-create src/lib/fileUtils.ts and export directImportEmployeesFromExcel properly
+
+Update all imports to use the correct path
+
+Restart server and remove the error [plugin:runtime-error-plugin] ...
+
+✅ E. Field Connections & Suggestions
+Complete admin-defined field relationships: data view, math operations (add, subtract, etc.)
+
+Enable auto-suggestion fields based on historical DB data
+
+Ensure it works offline as well (via IndexedDB if needed)
+
+✅ F. UI + Offline Readiness
+Finalize mobile-friendly UI: clock-in, camera, GPS, field entries
+
+Improve offline forms and confirmation messages
+
+Ensure offline data sync is complete and robust (PWA + IndexedDB)
+
+Add “Install App” prompt properly
+
+Display error or fallback if location or camera isn’t available
+
+✅ G. Prepare for Deployment
+Clean up unused routes/files
+
+Fully working build/start scripts
+
+Final schema and migration scripts ready
+
+Export admin data, logs, attendance, errors if needed
+
+Ensure no console errors
+
+📦 Do everything silently, efficiently, and without fail. This is a production system. Do not ask any follow-up questions. Just fully implement and finish.
