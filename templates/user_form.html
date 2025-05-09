@@ -6,39 +6,65 @@
 
 {% block content %}
 <div class="container">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">{% if user %}Edit User{% else %}Add New User{% endif %}</h5>
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin_users') }}">User Management</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">
+                        {% if user %}Edit User{% else %}Add New User{% endif %}
+                    </li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        {% if user %}
+                        <i class="bi bi-person-gear me-2"></i> Edit User: {{ user.username }}
+                        {% else %}
+                        <i class="bi bi-person-plus me-2"></i> Add New User
+                        {% endif %}
+                    </h5>
                 </div>
                 <div class="card-body">
-                    <form method="post" action="{{ request.url }}">
+                    <form method="POST" novalidate>
                         <div class="mb-3">
                             <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="username" name="username" value="{{ user.username if user else '' }}" required>
-                            <div class="form-text">Username must be unique.</div>
+                            <input type="text" class="form-control" id="username" name="username" 
+                                value="{{ user.username if user else '' }}" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Full Name</label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                value="{{ user.name if user else '' }}">
                         </div>
                         
                         <div class="mb-3">
                             <label for="email" class="form-label">Email Address</label>
-                            <input type="email" class="form-control" id="email" name="email" value="{{ user.email if user else '' }}">
+                            <input type="email" class="form-control" id="email" name="email" 
+                                value="{{ user.email if user else '' }}">
                         </div>
                         
                         <div class="mb-3">
                             <label for="role" class="form-label">Role <span class="text-danger">*</span></label>
                             <select class="form-select" id="role" name="role" required>
-                                <option value="">Select Role</option>
-                                <option value="admin" {% if user and user.role == 'admin' %}selected{% endif %}>Admin</option>
-                                <option value="hr" {% if user and user.role == 'hr' %}selected{% endif %}>HR</option>
+                                <option value="admin" {% if user and user.role == 'admin' %}selected{% endif %}>Administrator</option>
+                                <option value="hr" {% if user and user.role == 'hr' %}selected{% endif %}>HR Manager</option>
                                 <option value="viewer" {% if user and user.role == 'viewer' %}selected{% endif %}>Viewer</option>
                             </select>
                             <div class="form-text">
-                                <span class="role-badge role-badge-admin me-1">Admin</span> Full access to all features.
-                                <br>
-                                <span class="role-badge role-badge-hr me-1">HR</span> Can manage attendance and projects.
-                                <br>
-                                <span class="role-badge role-badge-viewer me-1">Viewer</span> Read-only access to reports and dashboards.
+                                <ul class="mb-0">
+                                    <li><strong>Administrator:</strong> Full access to all features and settings</li>
+                                    <li><strong>HR Manager:</strong> Can manage attendance, projects, and reports</li>
+                                    <li><strong>Viewer:</strong> Read-only access to attendance records and reports</li>
+                                </ul>
                             </div>
                         </div>
                         
@@ -59,12 +85,26 @@
                             <input type="password" class="form-control" id="confirm_password" name="confirm_password">
                         </div>
                         
+                        {% if user %}
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="active" name="active" 
+                                    {% if user.active %}checked{% endif %}>
+                                <label class="form-check-label" for="active">
+                                    Active account
+                                </label>
+                            </div>
+                            <div class="form-text">Inactive accounts cannot log in to the system.</div>
+                        </div>
+                        {% endif %}
+                        
                         <div class="d-flex justify-content-between">
-                            <a href="{{ url_for('admin_users') }}" class="btn btn-secondary">
-                                <i class="bi bi-arrow-left me-1"></i> Back to Users
+                            <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left me-2"></i> Back to Users
                             </a>
                             <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-check-lg me-1"></i> {% if user %}Update User{% else %}Create User{% endif %}
+                                <i class="bi bi-save me-2"></i> 
+                                {% if user %}Save Changes{% else %}Create User{% endif %}
                             </button>
                         </div>
                     </form>
@@ -77,22 +117,28 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Password confirmation validation
-    const passwordInput = document.getElementById('password');
-    const confirmPasswordInput = document.getElementById('confirm_password');
-    const form = document.querySelector('form');
-    
-    form.addEventListener('submit', function(event) {
-        // Only validate if password is entered
-        if (passwordInput.value) {
-            if (passwordInput.value !== confirmPasswordInput.value) {
+    document.addEventListener('DOMContentLoaded', function() {
+        // Password validation
+        const passwordInput = document.getElementById('password');
+        const confirmPasswordInput = document.getElementById('confirm_password');
+        const form = document.querySelector('form');
+        
+        form.addEventListener('submit', function(event) {
+            if (passwordInput.value && passwordInput.value !== confirmPasswordInput.value) {
+                confirmPasswordInput.setCustomValidity("Passwords don't match");
                 event.preventDefault();
-                alert('Passwords do not match!');
-                confirmPasswordInput.focus();
+            } else {
+                confirmPasswordInput.setCustomValidity('');
             }
-        }
+        });
+        
+        confirmPasswordInput.addEventListener('input', function() {
+            if (passwordInput.value !== confirmPasswordInput.value) {
+                confirmPasswordInput.setCustomValidity("Passwords don't match");
+            } else {
+                confirmPasswordInput.setCustomValidity('');
+            }
+        });
     });
-});
 </script>
 {% endblock %}

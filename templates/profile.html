@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile - Al-Aqsa Security{% endblock %}
+
+{% block styles %}
+<style>
+    .profile-card {
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        overflow: hidden;
+    }
+    
+    .profile-header {
+        background-color: #2C3E50;
+        color: white;
+        padding: 2rem;
+        position: relative;
+    }
+    
+    .profile-avatar {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background-color: #1ABC9C;
+        color: white;
+        font-size: 3rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        border: 5px solid rgba(255,255,255,0.3);
+    }
+    
+    .profile-role {
+        display: inline-block;
+        background-color: #1ABC9C;
+        color: white;
+        font-size: 0.8rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 30px;
+        margin-top: 0.5rem;
+    }
+    
+    .profile-content {
+        padding: 2rem;
+    }
+    
+    .profile-section {
+        margin-bottom: 2rem;
+    }
+    
+    .profile-section h3 {
+        border-bottom: 1px solid #eee;
+        padding-bottom: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .activity-item {
+        padding: 1rem;
+        border-radius: 5px;
+        background-color: #f8f9fa;
+        margin-bottom: 1rem;
+        border-left: 4px solid #2C3E50;
+    }
+    
+    .activity-item .timestamp {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+    
+    .profile-card .nav-tabs {
+        padding: 0 1rem;
+        background-color: #f8f9fa;
+    }
+    
+    .profile-card .nav-link {
+        padding: 1rem;
+        font-weight: 500;
+    }
+    
+    .profile-card .nav-link.active {
+        font-weight: 600;
+        color: #2C3E50;
+        border-bottom: 2px solid #1ABC9C;
+    }
+    
+    .profile-card .tab-content {
+        padding: 2rem;
+    }
+    
+    .profile-stat {
+        text-align: center;
+        padding: 1.5rem;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+    }
+    
+    .profile-stat .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2C3E50;
+        margin-bottom: 0.5rem;
+    }
+    
+    .profile-stat .stat-label {
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">My Profile</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-4 mb-4">
+            <!-- Profile Summary Card -->
+            <div class="card profile-card mb-4">
+                <div class="profile-header text-center">
+                    <div class="profile-avatar">
+                        <i class="bi bi-person"></i>
+                    </div>
+                    <h3 class="mb-0">{{ g.user.name or g.user.username }}</h3>
+                    <p class="mb-1">{{ g.user.email or 'No email provided' }}</p>
+                    <span class="profile-role">
+                        {% if g.user.role == 'admin' %}
+                            <i class="bi bi-shield-shaded me-1"></i> Administrator
+                        {% elif g.user.role == 'hr' %}
+                            <i class="bi bi-people me-1"></i> HR Manager
+                        {% else %}
+                            <i class="bi bi-eye me-1"></i> Viewer
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Username</label>
+                        <p class="mb-0 fw-bold">{{ g.user.username }}</p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Last Login</label>
+                        <p class="mb-0">
+                            {% if g.user.last_login %}
+                                {{ g.user.last_login }}
+                            {% else %}
+                                Not available
+                            {% endif %}
+                        </p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label text-muted">Account Created</label>
+                        <p class="mb-0">{{ g.user.created_at }}</p>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <a href="{{ url_for('logout') }}" class="btn btn-outline-danger">
+                            <i class="bi bi-box-arrow-right me-2"></i> Logout
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Statistics Card -->
+            <div class="card profile-card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i> Your Activity</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="profile-stat">
+                                <div class="stat-value">{{ attendance_count or 0 }}</div>
+                                <div class="stat-label">Total Records</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="profile-stat">
+                                <div class="stat-value">{{ recent_records or 0 }}</div>
+                                <div class="stat-label">Last 30 Days</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="profile-stat">
+                                <div class="stat-value">{{ projects_count or 0 }}</div>
+                                <div class="stat-label">Projects</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="profile-stat">
+                                <div class="stat-value">{{ error_count or 0 }}</div>
+                                <div class="stat-label">Errors</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-8">
+            <!-- Profile Tabs Card -->
+            <div class="card profile-card">
+                <ul class="nav nav-tabs" id="profileTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="edit-tab" data-bs-toggle="tab" data-bs-target="#edit-pane" type="button" role="tab" aria-controls="edit-pane" aria-selected="true">
+                            <i class="bi bi-pencil-square me-2"></i> Edit Profile
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="activity-tab" data-bs-toggle="tab" data-bs-target="#activity-pane" type="button" role="tab" aria-controls="activity-pane" aria-selected="false">
+                            <i class="bi bi-clock-history me-2"></i> Recent Activity
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings-pane" type="button" role="tab" aria-controls="settings-pane" aria-selected="false">
+                            <i class="bi bi-gear me-2"></i> Settings
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content" id="profileTabsContent">
+                    <!-- Edit Profile Tab -->
+                    <div class="tab-pane fade show active" id="edit-pane" role="tabpanel" aria-labelledby="edit-tab">
+                        <form method="POST" action="{{ url_for('profile') }}">
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Full Name</label>
+                                <input type="text" class="form-control" id="name" name="name" value="{{ g.user.name or '' }}">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email Address</label>
+                                <input type="email" class="form-control" id="email" name="email" value="{{ g.user.email or '' }}">
+                            </div>
+                            
+                            <hr class="my-4">
+                            <h5 class="mb-3">Change Password</h5>
+                            
+                            <div class="mb-3">
+                                <label for="current_password" class="form-label">Current Password</label>
+                                <input type="password" class="form-control" id="current_password" name="current_password">
+                                <div class="form-text">Leave blank if you don't want to change your password</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="new_password" class="form-label">New Password</label>
+                                <input type="password" class="form-control" id="new_password" name="new_password">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="confirm_password" class="form-label">Confirm New Password</label>
+                                <input type="password" class="form-control" id="confirm_password" name="confirm_password">
+                            </div>
+                            
+                            <div class="text-end">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-save me-2"></i> Save Changes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Activity Tab -->
+                    <div class="tab-pane fade" id="activity-pane" role="tabpanel" aria-labelledby="activity-tab">
+                        {% if activities %}
+                            {% for activity in activities %}
+                                <div class="activity-item">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <strong>{{ activity.action }}</strong>
+                                        <span class="timestamp">{{ activity.created_at }}</span>
+                                    </div>
+                                    <p class="mb-0">{{ activity.details }}</p>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center py-5">
+                                <i class="bi bi-calendar2-x text-muted" style="font-size: 3rem;"></i>
+                                <h5 class="mt-3 mb-2">No Recent Activity</h5>
+                                <p class="text-muted">Your recent activities will appear here</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Settings Tab -->
+                    <div class="tab-pane fade" id="settings-pane" role="tabpanel" aria-labelledby="settings-tab">
+                        <form method="POST" action="{{ url_for('save_settings') }}">
+                            <h5 class="mb-3">Display Preferences</h5>
+                            
+                            <div class="mb-3">
+                                <label for="theme" class="form-label">Theme</label>
+                                <select class="form-select" id="theme" name="theme">
+                                    <option value="light" {% if user_settings.theme == 'light' %}selected{% endif %}>Light</option>
+                                    <option value="dark" {% if user_settings.theme == 'dark' %}selected{% endif %}>Dark</option>
+                                    <option value="system" {% if user_settings.theme == 'system' %}selected{% endif %}>System Default</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label for="timezone" class="form-label">Timezone</label>
+                                <select class="form-select" id="timezone" name="timezone">
+                                    <option value="UTC" {% if user_settings.timezone == 'UTC' %}selected{% endif %}>UTC</option>
+                                    <option value="Asia/Jerusalem" {% if user_settings.timezone == 'Asia/Jerusalem' %}selected{% endif %}>Asia/Jerusalem</option>
+                                    <option value="Asia/Riyadh" {% if user_settings.timezone == 'Asia/Riyadh' %}selected{% endif %}>Asia/Riyadh (Arabian Standard Time)</option>
+                                    <option value="Europe/London" {% if user_settings.timezone == 'Europe/London' %}selected{% endif %}>Europe/London (GMT)</option>
+                                </select>
+                            </div>
+                            
+                            <h5 class="mb-3">Notification Settings</h5>
+                            
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="email_notifications" name="email_notifications" {% if user_settings.email_notifications %}checked{% endif %}>
+                                    <label class="form-check-label" for="email_notifications">Email Notifications</label>
+                                </div>
+                                <div class="form-text">Receive email notifications for important events</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="browser_notifications" name="browser_notifications" {% if user_settings.browser_notifications %}checked{% endif %}>
+                                    <label class="form-check-label" for="browser_notifications">Browser Notifications</label>
+                                </div>
+                                <div class="form-text">Receive browser notifications when the app is open</div>
+                            </div>
+                            
+                            <div class="text-end">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-save me-2"></i> Save Settings
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Password validation
+        const currentPassword = document.getElementById('current_password');
+        const newPassword = document.getElementById('new_password');
+        const confirmPassword = document.getElementById('confirm_password');
+        
+        function validatePasswords() {
+            if (currentPassword.value && newPassword.value !== confirmPassword.value) {
+                confirmPassword.setCustomValidity("Passwords don't match");
+            } else {
+                confirmPassword.setCustomValidity('');
+            }
+        }
+        
+        if (newPassword && confirmPassword) {
+            newPassword.addEventListener('change', validatePasswords);
+            confirmPassword.addEventListener('keyup', validatePasswords);
+        }
+    });
+</script>
+{% endblock %}
