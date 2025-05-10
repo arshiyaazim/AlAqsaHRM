@@ -124,13 +124,11 @@ def login():
             )
             db.commit()
             
-            # Redirect to correct page based on user role
-            if user['role'] == 'admin':
-                return redirect(url_for('admin_dashboard'))
-            elif user['role'] == 'hr':
-                return redirect(url_for('admin_dashboard'))
+            # Redirect to correct page based on user role - using direct paths
+            if user['role'] == 'admin' or user['role'] == 'hr':
+                return redirect('/admin/dashboard')
             else:
-                return redirect(url_for('index'))
+                return redirect('/')
                 
         flash(error, 'danger')
         db.close()
@@ -141,7 +139,7 @@ def login():
 def register():
     """Register a new user."""
     if g.user and g.user['role'] != 'admin':
-        return redirect(url_for('index'))
+        return redirect('/')
         
     if request.method == 'POST':
         username = request.form['username']
@@ -197,11 +195,11 @@ def register():
                     # If registered by admin, redirect to users page
                     if g.user and g.user['role'] == 'admin':
                         flash(f"User {username} was successfully registered.", 'success')
-                        return redirect(url_for('auth.users'))
+                        return redirect('/auth/users')
                     
                     # Otherwise, redirect to login page
                     flash(f"Registration successful. You can now log in.", 'success')
-                    return redirect(url_for('auth.login'))
+                    return redirect('/login')
             except db.IntegrityError:
                 error = f"User {username} is already registered."
             finally:
@@ -288,8 +286,8 @@ def forgot_password():
                 )
                 db.commit()
                 
-                # Redirect to enter code page
-                return redirect(url_for('auth.reset_password'))
+                # Redirect to enter code page using direct path
+                return redirect('/auth/reset-password')
             except Exception as e:
                 flash(f'Error sending reset code. Please contact an administrator.', 'danger')
         else:
