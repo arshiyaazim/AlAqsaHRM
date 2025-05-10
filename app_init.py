@@ -55,7 +55,7 @@ def create_app(test_config=None):
     def index():
         """Main page with clock in/out form or redirect to login."""
         if g.user is None:
-            return redirect(url_for('auth.login'))
+            return redirect('/login')
         
         projects = get_projects()
         return render_template('index.html', projects=projects)
@@ -63,14 +63,14 @@ def create_app(test_config=None):
     @app.route('/admin')
     def admin_redirect():
         """Redirect to admin dashboard."""
-        return redirect(url_for('admin_dashboard'))
+        return redirect('/admin/dashboard')
     
     @app.route('/admin/dashboard')
     def admin_dashboard():
         """Admin dashboard to view attendance records."""
         if g.user is None or g.user['role'] not in ['admin', 'hr']:
             flash('You do not have permission to access this page.', 'danger')
-            return redirect(url_for('index'))
+            return redirect('/')
         
         # Get recent attendance records
         db = get_db()
