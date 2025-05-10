@@ -1824,9 +1824,9 @@ def api_submit():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # Admin routes for field connections
-@app.route('/admin/connections')
+@app.route('/admin/connections', endpoint='admin_connections_view')
 @admin_required
-def admin_connections():
+def admin_connections_view():
     """Field connections management page"""
     db = get_db()
     
@@ -1859,12 +1859,12 @@ def admin_connections():
                            target_fields=target_fields,
                            suggestion_fields=suggestion_fields)
 
-@app.route('/admin/connections/add', methods=['POST'])
+@app.route('/admin/connections/add', methods=['POST'], endpoint='add_field_connection_api')
 @admin_required
 def add_field_connection():
     """Add a new field connection"""
     if request.method != 'POST':
-        return redirect(url_for('admin_connections'))
+        return redirect(url_for('admin_connections_view'))
     
     # Get form data
     source_field_id = request.form.get('source_field_id')
