@@ -33,6 +33,9 @@ export interface UploadedFile {
 }
 
 export interface IStorage {
+  // Database health check
+  testDatabaseConnection(): Promise<boolean>;
+  
   // User operations
   getAllUsers(): Promise<User[]>;
   getUser(id: number): Promise<User | undefined>;
@@ -162,6 +165,18 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  // Database health check
+  async testDatabaseConnection(): Promise<boolean> {
+    try {
+      // Run a simple query to verify database connectivity
+      await db.execute(sql`SELECT 1`);
+      return true;
+    } catch (error) {
+      console.error("Database connection test failed:", error);
+      return false;
+    }
+  }
+
   // User operations
   async getAllUsers(): Promise<User[]> {
     return await db.select().from(users);

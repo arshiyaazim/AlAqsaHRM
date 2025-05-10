@@ -72,6 +72,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return res.status(500).json({ message: err.message || "Internal server error" });
   };
   
+  // Health check endpoint for monitoring the application
+  app.get("/api/health", async (req: Request, res: Response) => {
+    try {
+      // Basic connectivity check - just run a simple query
+      await storage.testDatabaseConnection();
+      
+      return res.json({
+        status: "healthy",
+        timestamp: new Date().toISOString(),
+        database: {
+          connected: true,
+          message: "Database connection successful"
+        },
+        environment: process.env.NODE_ENV || "development",
+        uptime: process.uptime()
+      });
+    } catch (error) {
+      console.error("Health check failed:", error);
+      
+      return res.status(500).json({
+        status: "unhealthy",
+        timestamp: new Date().toISOString(),
+        database: {
+          connected: false,
+          error: error.message
+        },
+        environment: process.env.NODE_ENV || "development",
+        uptime: process.uptime()
+      });
+    }
+  });
+  
     // Auth middleware and token generator are imported from './middleware/auth'
   
   // Auth routes
