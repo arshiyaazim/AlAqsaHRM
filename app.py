@@ -1952,12 +1952,12 @@ def api_submit():
         timestamp = None
         is_offline_record = False
         
-        if data.get('offline_sync') == 'true':
+        if data and data.get('offline_sync') == 'true':
             is_offline_record = True
             # Use the original timestamp if provided
-            if data.get('offline_timestamp'):
+            if data and data.get('offline_timestamp'):
                 timestamp = data.get('offline_timestamp')
-            else:
+            elif data:
                 timestamp = data.get('client_timestamp')
         
         # If no valid timestamp provided, use current time
@@ -1994,14 +1994,14 @@ def api_submit():
         
         # Get project details if provided
         project_name = None
-        project_id = data.get('project_id')
+        project_id = data.get('project_id') if data else None
         if project_id:
             project = db.execute('SELECT name FROM projects WHERE id = ?', (project_id,)).fetchone()
             if project:
                 project_name = project['name']
         
         # Extract employee name if not provided
-        employee_name = data.get('employee_name', '')
+        employee_name = data.get('employee_name', '') if data else ''
         if not employee_name and employee_id:
             employee_record = db.execute('SELECT name FROM employees WHERE id = ?', (employee_id,)).fetchone()
             if employee_record:
@@ -2009,13 +2009,14 @@ def api_submit():
         
         # Process custom fields
         custom_fields = {}
-        for key in data:
-            if key.startswith('custom_'):
-                custom_fields[key.replace('custom_', '', 1)] = data[key]
+        if data:
+            for key in data:
+                if key.startswith('custom_'):
+                    custom_fields[key.replace('custom_', '', 1)] = data[key]
         
         # Extract device info if provided
-        device_info = data.get('device_info')
-        if not device_info and data.get('useragent'):
+        device_info = data.get('device_info') if data else None
+        if not device_info and data and data.get('useragent'):
             device_info = json.dumps({'userAgent': data.get('useragent')})
         elif device_info and isinstance(device_info, dict):
             device_info = json.dumps(device_info)
@@ -2045,10 +2046,10 @@ def api_submit():
             project_id,
             project_name,
             action,
-            data.get('latitude'), 
-            data.get('longitude'),
+            data.get('latitude') if data else None, 
+            data.get('longitude') if data else None,
             photo_path,
-            data.get('notes'),
+            data.get('notes') if data else None,
             json.dumps(custom_fields),
             timestamp,
             datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') if is_offline_record else None,
