@@ -2485,18 +2485,36 @@ def disable_field_suggestions():
 @app.route('/health', methods=['GET'])
 def health_check():
     """Health check endpoint for application status monitoring."""
+    diagnostics = {
+        'database_path': os.path.abspath(DATABASE),
+        'database_exists': os.path.exists(DATABASE),
+        'schema_path': os.path.abspath('schema.sql'),
+        'schema_exists': os.path.exists('schema.sql'),
+        'app_directory': os.path.abspath(os.path.dirname(__file__)),
+        'working_directory': os.path.abspath(os.getcwd())
+    }
+    
     try:
         # Verify database connection
         db = get_db()
         db.execute('SELECT 1').fetchone()
+        diagnostics['connection'] = 'successful'
         
         # Check if critical tables exist
-        users_exist = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").fetchone()
+        tables = db.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+        tables_list = [table['name'] for table in tables]
+        diagnostics['tables'] = tables_list
+        
+        users_exist = 'users' in tables_list
+        diagnostics['users_table'] = users_exist
+        
         if not users_exist:
             return jsonify({
                 'status': 'warning',
                 'message': 'Users table does not exist',
-                'database': 'warning'
+                'database': 'warning',
+                'diagnostics': diagnostics,
+                'timestamp': datetime.datetime.now().isoformat()
             }), 200
         
         # Return healthy status
@@ -2505,15 +2523,18 @@ def health_check():
             'status': 'healthy',
             'message': 'Application is running normally',
             'database': 'connected',
+            'diagnostics': diagnostics,
             'timestamp': current_time
         }), 200
     except Exception as e:
         # Return unhealthy status
         current_time = datetime.datetime.now().isoformat()
+        diagnostics['error'] = str(e)
         return jsonify({
             'status': 'unhealthy',
             'message': str(e),
             'database': 'disconnected',
+            'diagnostics': diagnostics,
             'timestamp': current_time
         }), 500
 
