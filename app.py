@@ -1965,7 +1965,7 @@ def delete_field_connection():
 def enable_field_suggestions():
     """Enable suggestions for a field"""
     if request.method != 'POST':
-        return redirect(url_for('admin_connections'))
+        return redirect(url_for('admin_connections_view'))
     
     field_id = request.form.get('field_id')
     
@@ -1978,14 +1978,14 @@ def enable_field_suggestions():
     except Exception as e:
         flash(f'Error enabling field suggestions: {str(e)}', 'danger')
     
-    return redirect(url_for('admin_connections'))
+    return redirect(url_for('admin_connections_view'))
 
 @app.route('/admin/suggestions/disable', methods=['POST'])
 @admin_required
 def disable_field_suggestions():
     """Disable suggestions for a field"""
     if request.method != 'POST':
-        return redirect(url_for('admin_connections'))
+        return redirect(url_for('admin_connections_view'))
     
     field_id = request.form.get('field_id')
     
@@ -1998,7 +1998,7 @@ def disable_field_suggestions():
     except Exception as e:
         flash(f'Error disabling field suggestions: {str(e)}', 'danger')
     
-    return redirect(url_for('admin_connections'))
+    return redirect(url_for('admin_connections_view'))
 
 @app.route('/api/form-fields')
 def api_form_fields():
