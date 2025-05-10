@@ -893,7 +893,8 @@ def manage_custom_fields(project_id):
             if not options:
                 flash('Select fields must have at least one option.', 'danger')
                 return redirect(f"/admin/projects/{project_id}/fields")
-            field_info['options'] = options
+            # Store options as JSON string to avoid type issues
+            field_info['options'] = json.dumps(options)
         
         # Add to custom fields
         custom_fields[field_name] = field_info
@@ -1920,17 +1921,25 @@ def api_related_field_value():
 def api_submit():
     """API endpoint for submitting attendance records"""
     try:
+        # Initialize default data
+        data = {}
+        is_form_data = False
+        
         # Determine if request is JSON or form data
         if request.is_json:
-            data = request.json
+            if request.json is not None:
+                data = request.json
             is_form_data = False
         else:
-            data = request.form.to_dict()
+            if request.form is not None:
+                data = request.form.to_dict()
             is_form_data = True
         
         # For backward compatibility with both data formats
-        employee_id = data.get('employee_id')
-        action = data.get('action', data.get('status'))  # Support both action and status fields
+        employee_id = data.get('employee_id') if data else None
+        action = data.get('action') if data else None
+        if action is None and data and 'status' in data:
+            action = data.get('status')  # Support both action and status fields
         
         # Validate required fields
         if not employee_id or not action:
