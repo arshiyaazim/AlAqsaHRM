@@ -25,6 +25,7 @@ import { readEmployeeExcel } from "./utils/excelImport";
 import { upload, handleFileUploadErrors } from "./utils/fileUpload";
 import path from "path";
 import fs from "fs";
+import { exec } from "child_process";
 
 // Helper to generate the next employee ID in format EMP-1001, EMP-1002, etc.
 async function getNextEmployeeId(storage: any): Promise<number> {

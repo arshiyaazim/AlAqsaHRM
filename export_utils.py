@@ -45,6 +45,7 @@ def ensure_exports_dir():
 
 def export_to_csv(table_name, output_path):
     """Export a table to CSV format."""
+    conn = None
     try:
         conn = get_db_connection()
         
@@ -80,6 +81,7 @@ def export_to_csv(table_name, output_path):
 
 def export_to_json(table_name, output_path):
     """Export a table to JSON format."""
+    conn = None
     try:
         conn = get_db_connection()
         
@@ -128,8 +130,8 @@ def export_database(output_path):
 
 def export_all(output_path):
     """Export the complete database and files as a ZIP."""
+    temp_dir = f"temp_export_{TIMESTAMP}"
     try:
-        temp_dir = f"temp_export_{TIMESTAMP}"
         if not os.path.exists(temp_dir):
             os.makedirs(temp_dir)
         

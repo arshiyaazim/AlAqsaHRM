@@ -129,18 +129,16 @@ def build_executable():
         logger.info(f"Running command: {' '.join(cmd)}")
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         
-        # Display output in real-time
-        for line in process.stdout:
+        stdout_data, stderr_data = process.communicate()
+        
+        # Log the output
+        for line in stdout_data.splitlines():
             line = line.strip()
             if line:
                 logger.info(line)
         
-        # Wait for process to complete
-        process.wait()
-        
         if process.returncode != 0:
-            stderr = process.stderr.read()
-            logger.error(f"Build failed with return code {process.returncode}: {stderr}")
+            logger.error(f"Build failed with return code {process.returncode}: {stderr_data}")
             return False
         
         logger.info("Build process completed successfully.")
