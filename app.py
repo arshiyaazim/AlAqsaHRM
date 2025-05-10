@@ -478,8 +478,21 @@ def get_menu_items(role=None):
         '/admin/reports'
     ]
     
-    # Check if menu_items table exists
+    # Check if menu_items table exists and initialize if needed
     try:
+        # First check if the menu_items table exists
+        table_exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='menu_items'").fetchone()
+        if not table_exists:
+            # If menu_items table doesn't exist, try to initialize database
+            logging.warning("Menu items table not found in get_menu_items(). Attempting to initialize database.")
+            init_db()
+            # Check again if menu_items table exists after initialization
+            table_exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='menu_items'").fetchone()
+            if not table_exists:
+                logging.error("Menu items table still not found after initialization.")
+                # Return empty list if no menu items table
+                return []
+                
         # Get parent menu items first (those with null parent_id)
         parents = db.execute(
             'SELECT * FROM menu_items WHERE parent_id IS NULL ORDER BY position'
@@ -544,7 +557,25 @@ def get_menu_items(role=None):
 def get_projects():
     """Get all active projects from database."""
     db = get_db()
-    return db.execute('SELECT * FROM projects WHERE active = 1').fetchall()
+    try:
+        # First check if the projects table exists
+        table_exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='projects'").fetchone()
+        if not table_exists:
+            # If projects table doesn't exist, try to initialize database
+            logging.warning("Projects table not found in get_projects(). Attempting to initialize database.")
+            init_db()
+            # Check again if projects table exists after initialization
+            table_exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='projects'").fetchone()
+            if not table_exists:
+                logging.error("Projects table still not found after initialization.")
+                # Return empty list if no projects table
+                return []
+                
+        return db.execute('SELECT * FROM projects WHERE active = 1').fetchall()
+    except sqlite3.Error as e:
+        logging.error(f"Error in get_projects(): {str(e)}")
+        # Return empty list on error
+        return []
 
 def get_form_fields(form_id):
     """Get form fields for a specific form"""
