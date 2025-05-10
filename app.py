@@ -1421,7 +1421,7 @@ def add_connection():
             )
             db.commit()
             flash('Field connection added successfully.', 'success')
-            return redirect(url_for('admin_connections'))
+            return redirect(url_for('admin_connections_view'))
         except sqlite3.Error as e:
             flash(f'Database error: {str(e)}', 'danger')
             return redirect(url_for('add_connection'))
@@ -1899,12 +1899,12 @@ def add_field_connection():
     
     return redirect(url_for('admin_connections'))
 
-@app.route('/admin/connections/edit', methods=['POST'])
+@app.route('/admin/connections/edit', methods=['POST'], endpoint='edit_field_connection_api')
 @admin_required
 def edit_field_connection():
     """Edit an existing field connection"""
     if request.method != 'POST':
-        return redirect(url_for('admin_connections'))
+        return redirect(url_for('admin_connections_view'))
     
     # Get form data
     connection_id = request.form.get('connection_id')
@@ -1940,12 +1940,12 @@ def edit_field_connection():
     
     return redirect(url_for('admin_connections'))
 
-@app.route('/admin/connections/delete', methods=['POST'])
+@app.route('/admin/connections/delete', methods=['POST'], endpoint='delete_field_connection_api')
 @admin_required
 def delete_field_connection():
     """Delete a field connection"""
     if request.method != 'POST':
-        return redirect(url_for('admin_connections'))
+        return redirect(url_for('admin_connections_view'))
     
     connection_id = request.form.get('connection_id')
     
