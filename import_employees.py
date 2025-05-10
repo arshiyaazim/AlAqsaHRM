@@ -272,7 +272,7 @@ def upload_file():
         else:
             flash(result['message'], 'error')
         
-        return redirect(url_for('index'))
+        return redirect('/')
     
     flash('Invalid file type. Please upload an Excel file (.xlsx, .xls)', 'error')
     return redirect(request.url)

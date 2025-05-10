@@ -186,7 +186,7 @@ def resolve_error(error_id):
         log_error('Database', 'Error resolving error log', str(e))
         flash('An error occurred while resolving the error.', 'danger')
         
-    return redirect(url_for('errors.error_logs'))
+    return redirect("/errors/logs")
 
 @bp.route('/export', methods=['GET'])
 @login_required
@@ -309,7 +309,7 @@ def export_error_logs():
     except Exception as e:
         log_error('Export', 'Error exporting error logs', str(e))
         flash('An error occurred while exporting error logs.', 'danger')
-        return redirect(url_for('errors.error_logs'))
+        return redirect("/errors/logs")
 
 @bp.route('/cleanup', methods=['POST'])
 @login_required
@@ -333,7 +333,7 @@ def cleanup_error_logs():
             query = 'DELETE FROM error_logs WHERE created_at < ?'
         else:
             flash('Invalid cleanup type.', 'danger')
-            return redirect(url_for('errors.error_logs'))
+            return redirect("/errors/logs")
             
         # Execute cleanup
         cursor.execute(query, (cutoff_date,))
@@ -354,7 +354,7 @@ def cleanup_error_logs():
         log_error('Database', 'Error cleaning up error logs', str(e))
         flash('An error occurred while cleaning up error logs.', 'danger')
         
-    return redirect(url_for('errors.error_logs'))
+    return redirect("/errors/logs")
 
 @bp.route('/api/sync-errors', methods=['POST'])
 @login_required
