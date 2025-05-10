@@ -23,7 +23,19 @@ services:
   - key: JWT_SECRET
     generateValue: true
   region: oregon
-  buildCommand: pip install -r requirements.txt && if [ ! -d "exports" ]; then mkdir exports; fi
+  buildCommand: >
+    pip install -r requirements.txt && 
+    if [ ! -d "exports" ]; then mkdir exports; fi && 
+    if [ ! -d "logs" ]; then mkdir logs; fi
+  preDeployCommand: >
+    python -c "import os, sqlite3; 
+    os.makedirs('instance', exist_ok=True); 
+    if not os.path.exists('instance/attendance.db'): 
+      from app import init_db, app; 
+      with app.app_context(): 
+        init_db(); 
+        print('Database initialized successfully')"
   startCommand: python app.py
   healthCheckPath: /
+  envVarsFile: .env.render
 version: "1"

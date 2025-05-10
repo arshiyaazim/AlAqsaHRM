@@ -2218,8 +2218,40 @@ def admin_panel():
 
 # Initialize database when the app starts
 with app.app_context():
-    if not os.path.exists(DATABASE):
-        init_db()
+    try:
+        # Always ensure database tables exist
+        db = get_db()
+        # First check if admins table exists
+        try:
+            db.execute("SELECT 1 FROM admins LIMIT 1")
+        except sqlite3.OperationalError:
+            # If error, initialize all tables
+            logging.info("Running database initialization to create missing tables")
+            init_db()
+            logging.info("Database initialization completed successfully")
+        
+        # Additional verification for other critical tables
+        critical_tables = ['admins', 'users', 'employees', 'projects', 'attendance', 'form_fields']
+        for table in critical_tables:
+            try:
+                db.execute(f"SELECT 1 FROM {table} LIMIT 1")
+            except sqlite3.OperationalError:
+                # If a specific table is missing, recreate it from schema
+                logging.warning(f"Table {table} is missing, attempting to recreate")
+                with app.open_resource('schema.sql') as f:
+                    schema_sql = f.read().decode('utf8')
+                    # Find and execute the CREATE TABLE statement for this table
+                    create_stmt = re.search(f"(CREATE TABLE.*?{table}.*?);", schema_sql, re.IGNORECASE | re.DOTALL)
+                    if create_stmt:
+                        db.execute(create_stmt.group(1))
+                        db.commit()
+                        logging.info(f"Table {table} was recreated successfully")
+    except Exception as e:
+        logging.error(f"Error during database initialization: {str(e)}")
+        # If database doesn't exist at all, create it
+        if not os.path.exists(DATABASE):
+            logging.info("Database file not found, creating new database")
+            init_db()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True)
