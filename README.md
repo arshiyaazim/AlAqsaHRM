@@ -162,26 +162,146 @@ The application consists of the following pages:
 
 ## Development
 
+### Project Structure
+
+```
+.
+├── app.py                  # Main application entry point
+├── app_auth_routes.py      # Authentication routes and functions
+├── app_error_routes.py     # Error handling and logging routes
+├── app_init.py             # Application initialization and configuration
+├── app_main.py             # Application bootstrapping
+├── client/                 # Frontend React/TypeScript application
+│   ├── src/                # Source code
+│   │   ├── components/     # UI components
+│   │   ├── hooks/          # Custom React hooks
+│   │   ├── lib/            # Utility functions and helpers
+│   │   ├── pages/          # Page components
+│   │   └── App.tsx         # Main React application
+├── data/                   # Data storage directory
+├── instance/               # Flask instance directory
+├── migrations/             # Database migration scripts
+├── server/                 # Backend server code
+│   ├── middleware/         # Express middleware
+│   ├── routes.ts           # API routes
+│   ├── storage.ts          # Storage interface implementations
+│   └── vite.ts             # Vite frontend integration
+├── shared/                 # Shared code between frontend and backend
+│   └── schema.ts           # Database schema definitions
+├── static/                 # Static assets
+│   ├── css/                # CSS stylesheets
+│   ├── js/                 # JavaScript files
+│   └── icons/              # Application icons
+├── templates/              # HTML templates
+├── uploads/                # File upload directory
+├── render.yaml             # Render.com deployment configuration
+├── requirements.txt        # Python dependencies
+└── .env.example            # Example environment variables
+```
+
 ### Customization
 
 - Update icons in static/icons/
 - Modify CSS in static/css/style.css
 - Configure database in app.py
+- React component styling in client/src/components/
+- Page layouts in client/src/pages/
 
 ### Google Maps Integration
 
 Replace the API key in templates/index.html with your own Google Maps API key for proper map functionality.
 
-## Deployment
+### Adding New Features
 
-### Render.com Deployment
+1. Backend Routes:
+   - Add new routes to app.py or create a new module
+   - Register routes in app_init.py
 
-The application can be deployed to Render.com using the included render.yaml configuration file:
+2. Frontend Components:
+   - Create new components in client/src/components/
+   - Add new pages in client/src/pages/
+   - Update navigation in client/src/components/layout/
 
-1. Push the code to a GitHub repository
-2. Connect your Render.com account to GitHub
-3. Create a new Web Service and select the repository
-4. Render will automatically detect the configuration and deploy the application
+3. Database Changes:
+   - Create a migration script in migrations/
+   - Apply changes to shared/schema.ts
+
+## Deployment Options
+
+### Desktop Application (.exe)
+
+The Field Attendance Tracker can be packaged as a standalone desktop application using PyInstaller, which includes all the necessary components for offline operation.
+
+#### Creating a Desktop Application
+
+1. Install PyInstaller:
+   ```
+   pip install pyinstaller
+   ```
+
+2. Generate the executable:
+   ```
+   pyinstaller --onefile --add-data "static;static" --add-data "templates;templates" --add-data "migrations;migrations" --hidden-import=flask_sqlalchemy app.py
+   ```
+
+3. The executable will be created in the `dist` directory
+   
+#### System Requirements for Desktop App
+
+- Windows 10 or later (64-bit)
+- 4GB RAM minimum (8GB recommended)
+- 500MB free disk space
+- Camera and GPS hardware for full functionality
+- Internet connection for initial setup and synchronization
+
+#### Offline Capabilities
+
+The desktop application supports:
+- Local database for attendance records
+- Offline camera capture
+- GPS location caching
+- Automatic synchronization when internet is restored
+- IndexedDB storage for form data
+
+### Web Deployment Options
+
+#### Render.com Deployment
+
+The application is preconfigured for easy deployment to Render.com using the included `render.yaml` file:
+
+1. Push the code to a GitHub repository:
+   ```
+   git add .
+   git commit -m "Prepare for deployment"
+   git push origin main
+   ```
+
+2. In your Render.com dashboard:
+   - Create a new Web Service
+   - Connect to your GitHub repository
+   - Select "Use render.yaml"
+   - Review settings and click "Create Web Service"
+
+3. Render will automatically:
+   - Install dependencies from requirements.txt
+   - Set up the environment
+   - Start the application with `python app.py`
+
+4. Set the required environment variables in Render dashboard:
+   - SECRET_KEY
+   - DATABASE_URL (if using PostgreSQL)
+   - ADMIN_EMAIL
+   - GOOGLE_MAPS_API_KEY
+
+#### Replit Deployment (Development/Testing)
+
+For quick testing or development environments:
+
+1. Import the repository into Replit
+2. Replit will automatically detect Python requirements
+3. Set the run command to `python app.py`
+4. Set necessary environment variables in the Replit Secrets tab
+5. Click "Run" to start the application
 
 ### Environment Variables
 
@@ -191,6 +311,20 @@ The following environment variables should be set in production:
 - `DATABASE_URL`: The PostgreSQL database connection string (when using PostgreSQL)
 - `ADMIN_EMAIL`: The email address for system notifications (asls.guards@gmail.com)
 - `GOOGLE_MAPS_API_KEY`: Your Google Maps API key for location services
+- `FLASK_ENV`: Set to "production" for production deployments
+
+## Production Readiness Checklist
+
+Before deploying to production, ensure the following:
+
+- [ ] Default admin password has been changed
+- [ ] SECRET_KEY is set to a strong random value
+- [ ] Database migrations have been applied
+- [ ] Form fields and connections are properly configured
+- [ ] File upload directories have proper permissions
+- [ ] Error logging is properly configured
+- [ ] Backup strategy is in place
+- [ ] SSL/TLS is enabled (automatic with Render.com)
 
 ## Support and Contact
 
