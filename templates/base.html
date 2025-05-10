@@ -56,10 +56,13 @@
             color: var(--custom-text-color);
         }
         
-        /* Custom CSS if provided */
-{% if custom_styles and custom_styles.custom_css %}
-{{ custom_styles.custom_css|safe }}
-{% endif %}
+    </style>
+    {% endif %}
+    
+    {% if custom_styles and custom_styles.custom_css %}
+    <style>
+        /* Custom styles */
+        {{ custom_styles.custom_css|safe }}
     </style>
     {% endif %}
     
