@@ -4,7 +4,7 @@ hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
 [nix]
 channel = "stable-24_05"
-packages = ["cairo", "glibcLocales", "libxcrypt", "pkg-config"]
+packages = ["cairo", "freefont_ttf", "freetype", "gdk-pixbuf", "glib", "glibcLocales", "lcms2", "libffi", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "openjpeg", "pkg-config", "tcl", "tk", "zlib"]
 
 [deployment]
 deploymentTarget = "autoscale"

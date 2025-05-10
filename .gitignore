@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 *.so
 .Python
+env/
 build/
 develop-eggs/
 dist/
@@ -15,61 +16,62 @@ lib64/
 parts/
 sdist/
 var/
-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-venv/
-env/
-ENV/
+
+# Environment files
 .env
+.venv
+env/
+venv/
+ENV/
 
-# Node.js
-node_modules/
-npm-debug.log
-yarn-debug.log
-yarn-error.log
+# Replit
+.replit
+replit.nix
+.breakpoints
 
-# Build files
-dist/
-build/
-server/public/
+# Standalone build files
+*.exe
+*.spec
 
 # Database
-*.sqlite3
 *.db
 *.db-journal
 
-# Logs and temp
+# Logs
 *.log
 logs/
-tmp/
-temp/
-.cache/
+export.log
+company_import.log
+employee_import.log
+manage.log
+migrations.log
+direct_import.log
 
-# IDE and editor files
+# Export files
+exports/
+*.csv
+*.json
+temp_export_*/
+
+# IDE
 .idea/
 .vscode/
 *.swp
 *.swo
-.DS_Store
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
 
-# Testing
-.coverage
-htmlcov/
-.pytest_cache/
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+.yarn-integrity
 
-# Misc
-vite.config.ts.*
-*.tar.gz
-uploads/
-instance/
-.fuse_hidden*
+# Build
+dist/
+build/
 
-# PyInstaller
-*.spec
-*.exe
+# Generated files
+generated-icon.png
+imported_employees.json

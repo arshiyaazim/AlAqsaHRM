@@ -1,4 +1,4 @@
-# Exported from Render on 2025-05-10T12:02:53Z
+# Render Configuration for AlAqsaHRM - Updated 2025-05-10
 services:
 - type: web
   name: AlAqsaHRM
@@ -17,8 +17,13 @@ services:
   - key: SECRET_KEY
     sync: false
   - key: FLASK_ENV
-    sync: false
+    value: production
+  - key: SESSION_SECRET
+    generateValue: true
+  - key: JWT_SECRET
+    generateValue: true
   region: oregon
-  buildCommand: pip install -r requirements.txt
+  buildCommand: pip install -r requirements.txt && if [ ! -d "exports" ]; then mkdir exports; fi
   startCommand: python app.py
+  healthCheckPath: /
 version: "1"
