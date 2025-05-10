@@ -82,7 +82,7 @@ services:
         traceback.print_exc()
         sys.exit(1)  # Fail deployment if critical setup fails
     "
-  startCommand: python app.py
+  startCommand: gunicorn wsgi:application --bind 0.0.0.0:$PORT --log-file -
   healthCheckPath: /health
   healthCheckTimeout: 15
   envVarsFile: .env.render
