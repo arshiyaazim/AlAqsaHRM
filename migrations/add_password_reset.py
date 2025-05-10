@@ -32,6 +32,7 @@ def check_table_exists(cursor, table):
 
 def add_password_reset():
     """Add password reset table."""
+    conn = None
     try:
         # Connect to the database
         conn = sqlite3.connect(DB_PATH)
@@ -86,7 +87,7 @@ def add_password_reset():
         return False
     
     finally:
-        if 'conn' in locals():
+        if conn:
             conn.close()
 
 if __name__ == "__main__":
