@@ -647,14 +647,24 @@ def get_custom_styles():
     """Get custom styling from database"""
     db = get_db()
     try:
+        # Check if custom_styles table exists and initialize if needed
+        if not check_table_exists('custom_styles'):
+            # Return default styles if table doesn't exist
+            return {
+                'background_color': '#ffffff',
+                'text_color': '#333333',
+                'font_size': '16px'
+            }
+            
         style = db.execute('SELECT * FROM custom_styles ORDER BY id DESC LIMIT 1').fetchone()
         return style if style else {
             'background_color': '#ffffff',
             'text_color': '#333333',
             'font_size': '16px'
         }
-    except sqlite3.Error:
-        # Table might not exist yet
+    except sqlite3.Error as e:
+        logging.error(f"Error in get_custom_styles(): {str(e)}")
+        # Table might not exist yet or other error occurred
         return {
             'background_color': '#ffffff',
             'text_color': '#333333',
@@ -665,45 +675,65 @@ def get_suggestions(field, partial_input, form_id=None):
     """Get suggestions for auto-complete fields"""
     db = get_db()
     
-    # For attendance-related fields
-    if field == 'employee_id':
-        results = db.execute(
-            'SELECT DISTINCT employee_id FROM attendance WHERE employee_id LIKE ? ORDER BY employee_id LIMIT 10',
-            (f'{partial_input}%',)
-        ).fetchall()
-        return [row['employee_id'] for row in results]
-    
-    # For project-related fields
-    elif field == 'project':
-        results = db.execute(
-            'SELECT id, name FROM projects WHERE name LIKE ? AND active = 1 ORDER BY name LIMIT 10',
-            (f'{partial_input}%',)
-        ).fetchall()
-        return [{'id': row['id'], 'name': row['name']} for row in results]
-    
-    # For location
-    elif field == 'location':
-        results = db.execute(
-            'SELECT DISTINCT location FROM projects WHERE location LIKE ? ORDER BY location LIMIT 10',
-            (f'{partial_input}%',)
-        ).fetchall()
-        return [row['location'] for row in results]
-    
-    # For custom form fields
-    elif form_id:
-        # Get form field information
-        form_field = db.execute(
-            'SELECT * FROM form_fields WHERE form_id = ? AND field_name = ?',
-            (form_id, field)
-        ).fetchone()
+    try:
+        # For attendance-related fields
+        if field == 'employee_id':
+            # Check if attendance table exists
+            if not check_table_exists('attendance'):
+                return [] # Return empty list if table doesn't exist
+                
+            results = db.execute(
+                'SELECT DISTINCT employee_id FROM attendance WHERE employee_id LIKE ? ORDER BY employee_id LIMIT 10',
+                (f'{partial_input}%',)
+            ).fetchall()
+            return [row['employee_id'] for row in results]
         
-        if form_field and form_field['field_type'] == 'select':
-            # For select fields, return options from the field definition
-            try:
-                options = json.loads(form_field['options'])
-                return [opt for opt in options if opt.lower().startswith(partial_input.lower())]
-            except (json.JSONDecodeError, TypeError):
-                return []
+        # For project-related fields
+        elif field == 'project':
+            # Check if projects table exists
+            if not check_table_exists('projects'):
+                return [] # Return empty list if table doesn't exist
+                
+            results = db.execute(
+                'SELECT id, name FROM projects WHERE name LIKE ? AND active = 1 ORDER BY name LIMIT 10',
+                (f'{partial_input}%',)
+            ).fetchall()
+            return [{'id': row['id'], 'name': row['name']} for row in results]
+        
+        # For location
+        elif field == 'location':
+            # Check if projects table exists
+            if not check_table_exists('projects'):
+                return [] # Return empty list if table doesn't exist
+                
+            results = db.execute(
+                'SELECT DISTINCT location FROM projects WHERE location LIKE ? ORDER BY location LIMIT 10',
+                (f'{partial_input}%',)
+            ).fetchall()
+            return [row['location'] for row in results]
+        
+        # For custom form fields
+        elif form_id:
+            # Check if form_fields table exists
+            if not check_table_exists('form_fields'):
+                return [] # Return empty list if table doesn't exist
+                
+            # Get form field information
+            form_field = db.execute(
+                'SELECT * FROM form_fields WHERE form_id = ? AND field_name = ?',
+                (form_id, field)
+            ).fetchone()
+            
+            if form_field and form_field['field_type'] == 'select':
+                # For select fields, return options from the field definition
+                try:
+                    options = json.loads(form_field['options'])
+                    return [opt for opt in options if opt.lower().startswith(partial_input.lower())]
+                except (json.JSONDecodeError, TypeError):
+                    return []
+    except sqlite3.Error as e:
+        logging.error(f"Error in get_suggestions() for field {field}: {str(e)}")
+        return []  # Return empty list on error
     
     return []
 
@@ -732,13 +762,9 @@ def index():
     """Main page with clock in/out form"""
     # Check if database is initialized with required tables
     try:
-        db = get_db()
         # Check for projects table, as it's needed for this page
-        projects_exist = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='projects'").fetchone()
-        if not projects_exist:
-            # Projects table doesn't exist - initialize database
-            logging.warning("Projects table not found during index page load. Initializing database.")
-            init_db()
+        if not check_table_exists('projects'):
+            logging.warning("Projects table not found during index page load, but this was handled by check_table_exists().")
     except Exception as e:
         logging.error(f"Error checking database status on index page: {str(e)}")
         
@@ -792,12 +818,22 @@ def submit():
     # Insert record into database
     db = get_db()
     
+    # Check if attendance table exists
+    if not check_table_exists('attendance'):
+        flash('Database error: Unable to record attendance. Please try again or contact administrator.', 'danger')
+        return redirect("/")
+    
     # Check for duplicate entry (same employee, same action, same day)
     today = datetime.datetime.now().strftime('%Y-%m-%d')
-    duplicate = db.execute('''
-        SELECT id FROM attendance 
-        WHERE employee_id = ? AND action = ? AND date(timestamp) = date(?)
-    ''', (employee_id, action, today)).fetchone()
+    try:
+        duplicate = db.execute('''
+            SELECT id FROM attendance 
+            WHERE employee_id = ? AND action = ? AND date(timestamp) = date(?)
+        ''', (employee_id, action, today)).fetchone()
+    except sqlite3.Error as e:
+        logging.error(f"Error checking duplicate entries: {str(e)}")
+        flash('Error checking attendance records. Please try again.', 'danger')
+        return redirect("/")
     
     if duplicate:
         flash(f'You have already {action.lower()}ed today.', 'warning')
