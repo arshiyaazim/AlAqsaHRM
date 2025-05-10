@@ -55,13 +55,20 @@ services:
         from app import app, get_db, generate_password_hash
         with app.app_context():
             db = get_db()
-            admin_count = db.execute('SELECT COUNT(*) as count FROM admins').fetchone()['count']
+            # Check if users table exists
+            table_exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").fetchone()
+            if not table_exists:
+                logging.error('Users table does not exist. Database initialization may have failed.')
+                sys.exit(1)
+                
+            # Check if admin user exists
+            admin_count = db.execute('SELECT COUNT(*) as count FROM users WHERE role = "admin"').fetchone()['count']
             if admin_count == 0:
                 admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
                 admin_password = os.environ.get('ADMIN_PASSWORD', 'admin')
                 db.execute(
-                    'INSERT INTO admins (username, password) VALUES (?, ?)',
-                    (admin_username, generate_password_hash(admin_password))
+                    'INSERT INTO users (username, password, role, email) VALUES (?, ?, ?, ?)',
+                    (admin_username, generate_password_hash(admin_password), 'admin', os.environ.get('EMAIL_FOR_RESET', 'admin@example.com'))
                 )
                 db.commit()
                 logging.info(f'Created admin user: {admin_username}')
@@ -76,8 +83,8 @@ services:
         sys.exit(1)  # Fail deployment if critical setup fails
     "
   startCommand: python app.py
-  healthCheckPath: /
-  healthCheckTimeout: 10
+  healthCheckPath: /health
+  healthCheckTimeout: 15
   envVarsFile: .env.render
   autoDeploy: true
   disk:

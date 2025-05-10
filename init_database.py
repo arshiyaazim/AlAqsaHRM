@@ -13,6 +13,7 @@ Usage:
 
 import os
 import sys
+import sqlite3
 import logging
 import traceback
 

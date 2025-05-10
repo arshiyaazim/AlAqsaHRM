@@ -2500,19 +2500,21 @@ def health_check():
             }), 200
         
         # Return healthy status
+        current_time = datetime.datetime.now().isoformat()
         return jsonify({
             'status': 'healthy',
             'message': 'Application is running normally',
             'database': 'connected',
-            'timestamp': datetime.datetime.now().isoformat()
+            'timestamp': current_time
         }), 200
     except Exception as e:
         # Return unhealthy status
+        current_time = datetime.datetime.now().isoformat()
         return jsonify({
             'status': 'unhealthy',
             'message': str(e),
             'database': 'disconnected',
-            'timestamp': datetime.datetime.now().isoformat()
+            'timestamp': current_time
         }), 500
 
 @app.route('/api/form-fields')
