@@ -1,55 +1,58 @@
 {% extends "base.html" %}
 
-{% block title %}Error - Al-Aqsa Security{% endblock %}
+{% block title %}Error - Field Attendance Tracker{% endblock %}
 
 {% block content %}
-<div class="container">
+<div class="container py-5">
     <div class="row justify-content-center">
         <div class="col-md-8">
-            <div class="card">
+            <div class="card border-danger">
                 <div class="card-header bg-danger text-white">
-                    <h5 class="mb-0">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i> Error Occurred
-                    </h5>
+                    <h4 class="mb-0"><i class="bi bi-exclamation-triangle-fill me-2"></i> Error Occurred</h4>
                 </div>
                 <div class="card-body">
-                    <div class="text-center mb-4">
-                        <i class="bi bi-x-circle text-danger" style="font-size: 4rem;"></i>
+                    <div class="mb-4 text-center">
+                        <div class="display-1 text-danger mb-3">
+                            <i class="bi bi-emoji-frown"></i>
+                        </div>
+                        <h5 class="text-danger">We're sorry, but something went wrong.</h5>
                     </div>
                     
-                    <h4 class="text-center mb-4">{{ error_message }}</h4>
+                    <p class="mb-3">{{ error }}</p>
                     
-                    <div class="alert alert-warning">
-                        <p><strong>Don't worry!</strong> The error has been logged and will be addressed by the administrators.</p>
-                        <p class="mb-0">You can try the following:</p>
-                        <ul class="mb-0 mt-2">
-                            <li>Go back to the <a href="{{ url_for('index') }}">homepage</a></li>
+                    {% if error_id %}
+                    <div class="alert alert-secondary">
+                        <p class="mb-0 small">This error has been logged. Error Reference: #{{ error_id }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mt-4">
+                        <h6>What you can do:</h6>
+                        <ul>
                             <li>Try refreshing the page</li>
-                            <li>Contact an administrator if the problem persists</li>
+                            <li>Check your internet connection</li>
+                            <li>Clear your browser cache and cookies</li>
+                            <li>Try again later</li>
                         </ul>
                     </div>
                     
-                    {% if details and session.get('admin_logged_in') %}
-                    <div class="mt-4">
-                        <h5>Technical Details (Admin Only)</h5>
-                        <div class="error-details">{{ details }}</div>
-                        
-                        <div class="d-grid gap-2 mt-3">
-                            <a href="{{ url_for('check_system_health') }}" class="btn btn-primary">
-                                <i class="bi bi-heart-pulse me-2"></i> Check System Health
-                            </a>
-                        </div>
-                    </div>
-                    {% endif %}
-                </div>
-                <div class="card-footer">
-                    <div class="d-flex justify-content-between">
-                        <a href="javascript:history.back()" class="btn btn-secondary">
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="javascript:history.back()" class="btn btn-outline-secondary">
                             <i class="bi bi-arrow-left me-2"></i> Go Back
                         </a>
                         <a href="{{ url_for('index') }}" class="btn btn-primary">
-                            <i class="bi bi-house me-2"></i> Go to Homepage
+                            <i class="bi bi-house-door me-2"></i> Go Home
                         </a>
+                    </div>
+                </div>
+                <div class="card-footer bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">Field Attendance Tracker</small>
+                        {% if g.user and g.user.role == 'admin' %}
+                        <a href="{{ url_for('errors.error_logs') }}" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-list-ul me-1"></i> View Error Logs
+                        </a>
+                        {% endif %}
                     </div>
                 </div>
             </div>

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Field Attendance Tracker Application - Main Entry Point
 
@@ -6,49 +6,37 @@ This file combines all the components and runs the Flask application.
 """
 
 import os
-import logging
-from datetime import datetime
-from flask import Flask, g, flash, redirect, url_for, render_template, jsonify, request
-from werkzeug.security import check_password_hash
-from werkzeug.middleware.proxy_fix import ProxyFix
+import sys
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('app.log'),
-        logging.StreamHandler()
-    ]
-)
+# Add the current directory to the Python path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-# Import our application modules
-import app_init
+# Import the application factory
+from app_init import create_app
 from app_auth_routes import bp as auth_bp
-from app_error_routes import bp as error_bp
+from app_error_routes import bp as error_bp, init_app as init_error_app
 
-# Create and configure the app
-app = app_init.create_app()
+# Create the application
+app = create_app()
 
 # Register blueprints
 app.register_blueprint(auth_bp)
 app.register_blueprint(error_bp)
 
-# Add error handling
-error_bp.init_app(app)
+# Initialize error handling
+init_error_app(app)
 
-# Start the server
+# Run the application
 if __name__ == '__main__':
-    # Make sure the instance folder exists
-    try:
-        os.makedirs(app.instance_path)
-    except OSError:
-        pass
+    # Determine host and port
+    host = os.environ.get('HOST', '0.0.0.0')
+    port = int(os.environ.get('PORT', 5000))
+    debug = os.environ.get('FLASK_ENV') == 'development'
     
-    # Check if running in production
-    if os.environ.get('FLASK_ENV') == 'production':
-        # Production settings
-        app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
-    else:
-        # Development settings
-        app.run(host='0.0.0.0', port=5000, debug=True)
+    # Check if we should run with SSL
+    ssl_context = None
+    if os.environ.get('USE_SSL', 'false').lower() == 'true':
+        ssl_context = 'adhoc'
+    
+    # Run the app
+    app.run(host=host, port=port, debug=debug, ssl_context=ssl_context)

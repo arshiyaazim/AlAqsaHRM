@@ -1,491 +1,317 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Field Attendance Tracker - Login">
-    <meta name="theme-color" content="#2C3E50">
+{% extends "base.html" %}
+
+{% block title %}Login - Field Attendance Tracker{% endblock %}
+
+{% block styles %}
+<style>
+    .login-container {
+        min-height: 100vh;
+        background-color: #f8f9fa;
+    }
     
-    <title>Login - Al-Aqsa Security Field Attendance Tracker</title>
+    .login-card {
+        border: none;
+        border-radius: 10px;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        overflow: hidden;
+    }
     
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    .login-form-container {
+        padding: 3rem;
+    }
     
-    <!-- PWA manifest -->
-    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192x192.png') }}">
+    .login-hero {
+        background-color: var(--bs-primary);
+        color: white;
+        padding: 3rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
     
-    <style>
-        :root {
-            --primary-color: #2C3E50;
-            --secondary-color: #1ABC9C;
-            --dark-color: #1a252f;
-            --light-color: #f8f9fa;
+    .login-brand {
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+    }
+    
+    .login-brand-icon {
+        font-size: 2.5rem;
+        margin-right: 0.5rem;
+    }
+    
+    .login-form-logo {
+        width: 80px;
+        height: 80px;
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-label {
+        font-weight: 500;
+    }
+    
+    .btn-login {
+        padding: 0.6rem 0;
+        font-weight: 500;
+    }
+    
+    .auth-tabs {
+        border-bottom: 2px solid #dee2e6;
+        margin-bottom: 1.5rem;
+    }
+    
+    .auth-tab {
+        font-weight: 500;
+        color: #6c757d;
+        padding: 0.75rem 0;
+        margin-right: 1.5rem;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -2px;
+    }
+    
+    .auth-tab.active {
+        color: var(--bs-primary);
+        border-bottom-color: var(--bs-primary);
+    }
+    
+    .hero-features {
+        margin-top: 2rem;
+    }
+    
+    .hero-feature-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .hero-feature-icon {
+        background-color: rgba(255, 255, 255, 0.2);
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+    }
+    
+    @media (max-width: 991.98px) {
+        .login-form-container, .login-hero {
+            padding: 2rem;
         }
         
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--light-color);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
+        .login-hero {
+            order: -1;
         }
-        
-        .login-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        
-        .logo-section {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 2rem;
-        }
-        
-        .logo-icon {
-            font-size: 2.5rem;
-            color: var(--primary-color);
-            margin-right: 0.5rem;
-        }
-        
-        .logo-text {
-            font-weight: 700;
-            font-size: 1.8rem;
-            color: var(--primary-color);
-        }
-        
-        .login-card {
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-        }
-        
-        .login-card .card-body {
-            padding: 2.5rem;
-        }
-        
-        .login-form label {
-            font-weight: 500;
-            margin-bottom: 0.5rem;
-            color: var(--dark-color);
-        }
-        
-        .login-form .form-control {
-            padding: 0.75rem 1rem;
-            border-radius: 8px;
-            border: 1px solid #ced4da;
-            transition: border-color 0.2s ease;
-        }
-        
-        .login-form .form-control:focus {
-            border-color: var(--secondary-color);
-            box-shadow: 0 0 0 0.25rem rgba(26, 188, 156, 0.25);
-        }
-        
-        .login-btn {
-            background-color: var(--primary-color);
-            border: none;
-            color: white;
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            font-weight: 500;
-            transition: background-color 0.2s ease;
-        }
-        
-        .login-btn:hover {
-            background-color: var(--dark-color);
-        }
-        
-        .login-options {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 1rem;
-        }
-        
-        .tab-pane {
-            padding: 1.5rem 0;
-        }
-        
-        .nav-tabs .nav-link {
-            font-weight: 500;
-            color: var(--dark-color);
-            padding: 0.75rem 1.5rem;
-        }
-        
-        .nav-tabs .nav-link.active {
-            font-weight: 600;
-            color: var(--primary-color);
-            border-color: var(--secondary-color);
-            border-bottom-width: 3px;
-        }
-        
-        .auth-hero {
-            background-color: var(--primary-color);
-            color: white;
-            height: 100%;
-            padding: 3rem;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-        
-        .auth-hero h2 {
-            font-weight: 700;
-            margin-bottom: 1.5rem;
-        }
-        
-        .auth-hero p {
-            font-size: 1.1rem;
-            margin-bottom: 2rem;
-            opacity: 0.9;
-        }
-        
-        .auth-feature {
-            display: flex;
-            align-items: center;
-            margin-bottom: 1.25rem;
-        }
-        
-        .auth-feature i {
-            font-size: 1.5rem;
-            margin-right: 1rem;
-            color: var(--secondary-color);
-        }
-        
-        .register-success {
-            background-color: #d1e7dd;
-            color: #0f5132;
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            font-weight: 500;
-        }
-        
-        .register-success i {
-            font-size: 1.5rem;
-            margin-right: 0.75rem;
-        }
-        
-        @media (max-width: 991.98px) {
-            .auth-hero {
-                display: none;
-            }
-        }
-        
-        .flash-messages {
-            margin-bottom: 1.5rem;
-        }
-        
-        .password-requirements {
-            margin-top: 0.5rem;
-            font-size: 0.85rem;
-            color: #6c757d;
-        }
-        
-        .password-requirements li {
-            margin-bottom: 0.25rem;
-        }
-        
-        .already-registered {
-            text-align: center;
-            margin-top: 1.5rem;
-            font-size: 0.95rem;
-        }
-        
-        .already-registered a {
-            color: var(--secondary-color);
-            font-weight: 500;
-            text-decoration: none;
-        }
-        
-        .already-registered a:hover {
-            text-decoration: underline;
-        }
-        
-        #passwordStrength {
-            height: 5px;
-            margin-top: 5px;
-            background-color: #e9ecef;
-        }
-        
-        #passwordStrength div {
-            height: 100%;
-            width: 0%;
-            transition: width 0.3s ease;
-        }
-        
-        .strength-weak {
-            background-color: #dc3545 !important;
-        }
-        
-        .strength-medium {
-            background-color: #ffc107 !important;
-        }
-        
-        .strength-strong {
-            background-color: #198754 !important;
-        }
-    </style>
-</head>
-<body>
-    <div class="container login-container">
-        <div class="logo-section">
-            <div class="logo-icon">
-                <i class="bi bi-shield-check"></i>
-            </div>
-            <div class="logo-text">Al-Aqsa Security</div>
-        </div>
-        
-        <div class="card login-card">
-            <div class="row g-0">
-                <div class="col-lg-6">
-                    <div class="card-body">
-                        <!-- Flash Messages -->
-                        <div class="flash-messages">
-                            {% with messages = get_flashed_messages(with_categories=true) %}
-                                {% if messages %}
-                                    {% for category, message in messages %}
-                                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                                            {{ message }}
-                                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                                        </div>
-                                    {% endfor %}
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <div class="container">
+        <div class="row justify-content-center align-items-center min-vh-100 py-5">
+            <div class="col-lg-10">
+                <div class="card login-card">
+                    <div class="row g-0">
+                        <div class="col-lg-6">
+                            <div class="login-form-container">
+                                <div class="text-center mb-4">
+                                    <div class="d-inline-block p-3 rounded-circle bg-light mb-3">
+                                        <i class="bi bi-shield-check text-primary login-brand-icon"></i>
+                                    </div>
+                                    <h2 class="login-brand">Al-Aqsa Security</h2>
+                                    <p class="text-muted">Field Attendance Tracker</p>
+                                </div>
+                                
+                                {% with messages = get_flashed_messages(with_categories=true) %}
+                                    {% if messages %}
+                                        {% for category, message in messages %}
+                                            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                                {{ message }}
+                                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                            </div>
+                                        {% endfor %}
+                                    {% endif %}
+                                {% endwith %}
+                                
+                                {% if registration_success %}
+                                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                        <strong>Registration successful!</strong> You can now log in with your credentials.
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                    </div>
                                 {% endif %}
-                            {% endwith %}
-                            
-                            {% if registration_success %}
-                            <div class="register-success">
-                                <i class="bi bi-check-circle-fill"></i>
-                                Registration successful! You can now log in with your credentials.
+                                
+                                <div class="auth-tabs d-flex">
+                                    <div class="auth-tab active" id="tab-login">Login</div>
+                                    <div class="auth-tab" id="tab-register">Register</div>
+                                </div>
+                                
+                                <!-- Login Form -->
+                                <div id="login-form">
+                                    <form method="post" action="{{ url_for('auth.login') }}">
+                                        <div class="mb-3">
+                                            <label for="username" class="form-label">Username</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                                <input type="text" class="form-control" id="username" name="username" placeholder="Enter your username" required autofocus>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="password" class="form-label">Password</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                                                <input type="password" class="form-control" id="password" name="password" placeholder="Enter your password" required>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-4 form-check">
+                                            <input type="checkbox" class="form-check-input" id="remember_me" name="remember_me">
+                                            <label class="form-check-label" for="remember_me">Remember me</label>
+                                        </div>
+                                        
+                                        <div class="d-grid">
+                                            <button type="submit" class="btn btn-primary btn-login">
+                                                <i class="bi bi-box-arrow-in-right me-2"></i> Login
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                                
+                                <!-- Register Form (initially hidden) -->
+                                <div id="register-form" style="display: none;">
+                                    <form method="post" action="{{ url_for('auth.register') }}">
+                                        <div class="mb-3">
+                                            <label for="reg-name" class="form-label">Full Name</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text"><i class="bi bi-person-badge"></i></span>
+                                                <input type="text" class="form-control" id="reg-name" name="name" placeholder="Enter your full name" required>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="reg-username" class="form-label">Username</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                                <input type="text" class="form-control" id="reg-username" name="username" placeholder="Choose a username" required>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="reg-email" class="form-label">Email Address</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                                                <input type="email" class="form-control" id="reg-email" name="email" placeholder="Enter your email" required>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="reg-password" class="form-label">Password</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                                                <input type="password" class="form-control" id="reg-password" name="password" placeholder="Create a password" required>
+                                            </div>
+                                            <div class="form-text">Password must be at least 8 characters with uppercase, lowercase, and numbers or special characters.</div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="reg-confirm-password" class="form-label">Confirm Password</label>
+                                            <div class="input-group">
+                                                <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+                                                <input type="password" class="form-control" id="reg-confirm-password" name="confirm_password" placeholder="Confirm your password" required>
+                                            </div>
+                                        </div>
+                                        
+                                        <input type="hidden" name="role" value="viewer">
+                                        
+                                        <div class="d-grid">
+                                            <button type="submit" class="btn btn-primary btn-login">
+                                                <i class="bi bi-person-plus me-2"></i> Register
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
                             </div>
-                            {% endif %}
                         </div>
                         
-                        <!-- Login/Register Tabs -->
-                        <ul class="nav nav-tabs" id="authTabs" role="tablist">
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="login-tab" data-bs-toggle="tab" data-bs-target="#login-pane" type="button" role="tab" aria-controls="login-pane" aria-selected="true">Login</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="register-tab" data-bs-toggle="tab" data-bs-target="#register-pane" type="button" role="tab" aria-controls="register-pane" aria-selected="false">Register</button>
-                            </li>
-                        </ul>
-                        
-                        <div class="tab-content" id="authTabsContent">
-                            <!-- Login Form -->
-                            <div class="tab-pane fade show active" id="login-pane" role="tabpanel" aria-labelledby="login-tab">
-                                <form method="POST" action="{{ url_for('login') }}" class="login-form">
-                                    <div class="mb-3">
-                                        <label for="username" class="form-label">Username</label>
-                                        <input type="text" class="form-control" id="username" name="username" required autocomplete="username">
-                                    </div>
-                                    
-                                    <div class="mb-4">
-                                        <label for="password" class="form-label">Password</label>
-                                        <input type="password" class="form-control" id="password" name="password" required autocomplete="current-password">
-                                    </div>
-                                    
-                                    <div class="login-options mb-4">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" id="rememberMe" name="remember_me">
-                                            <label class="form-check-label" for="rememberMe">
-                                                Remember me
-                                            </label>
+                        <div class="col-lg-6">
+                            <div class="login-hero h-100">
+                                <h3 class="mb-3">Track Field Attendance with Ease</h3>
+                                <p class="mb-4">Our system helps you efficiently manage employee attendance in the field with GPS tracking and photo verification.</p>
+                                
+                                <div class="hero-features">
+                                    <div class="hero-feature-item">
+                                        <div class="hero-feature-icon">
+                                            <i class="bi bi-geo-alt"></i>
                                         </div>
-                                        <a href="#" class="text-decoration-none">Forgot password?</a>
+                                        <div>GPS Location Tracking</div>
                                     </div>
                                     
-                                    <div class="d-grid">
-                                        <button type="submit" class="btn login-btn">Sign In</button>
-                                    </div>
-                                </form>
-                            </div>
-                            
-                            <!-- Register Form -->
-                            <div class="tab-pane fade" id="register-pane" role="tabpanel" aria-labelledby="register-tab">
-                                <form method="POST" action="{{ url_for('register') }}" class="login-form">
-                                    <div class="mb-3">
-                                        <label for="reg_name" class="form-label">Full Name</label>
-                                        <input type="text" class="form-control" id="reg_name" name="name" required>
+                                    <div class="hero-feature-item">
+                                        <div class="hero-feature-icon">
+                                            <i class="bi bi-camera"></i>
+                                        </div>
+                                        <div>Photo Verification</div>
                                     </div>
                                     
-                                    <div class="mb-3">
-                                        <label for="reg_username" class="form-label">Username</label>
-                                        <input type="text" class="form-control" id="reg_username" name="username" required autocomplete="username">
+                                    <div class="hero-feature-item">
+                                        <div class="hero-feature-icon">
+                                            <i class="bi bi-wifi-off"></i>
+                                        </div>
+                                        <div>Offline Support</div>
                                     </div>
                                     
-                                    <div class="mb-3">
-                                        <label for="reg_email" class="form-label">Email</label>
-                                        <input type="email" class="form-control" id="reg_email" name="email" required autocomplete="email">
+                                    <div class="hero-feature-item">
+                                        <div class="hero-feature-icon">
+                                            <i class="bi bi-graph-up"></i>
+                                        </div>
+                                        <div>Comprehensive Reports</div>
                                     </div>
                                     
-                                    <div class="mb-3">
-                                        <label for="reg_role" class="form-label">Role</label>
-                                        <select class="form-select" id="reg_role" name="role" required>
-                                            <option value="viewer">Viewer</option>
-                                            <option value="hr">HR</option>
-                                            <option value="admin">Admin</option>
-                                        </select>
+                                    <div class="hero-feature-item">
+                                        <div class="hero-feature-icon">
+                                            <i class="bi bi-shield-check"></i>
+                                        </div>
+                                        <div>Secure Authentication</div>
                                     </div>
-                                    
-                                    <div class="mb-4">
-                                        <label for="reg_password" class="form-label">Password</label>
-                                        <input type="password" class="form-control" id="reg_password" name="password" required autocomplete="new-password" oninput="checkPasswordStrength()">
-                                        <div id="passwordStrength"><div></div></div>
-                                        
-                                        <ul class="password-requirements">
-                                            <li>At least 8 characters long</li>
-                                            <li>Includes uppercase and lowercase letters</li>
-                                            <li>Includes at least one number or special character</li>
-                                        </ul>
-                                    </div>
-                                    
-                                    <div class="mb-4">
-                                        <label for="reg_confirm_password" class="form-label">Confirm Password</label>
-                                        <input type="password" class="form-control" id="reg_confirm_password" name="confirm_password" required autocomplete="new-password" oninput="checkPasswordMatch()">
-                                        <div id="passwordMatch" class="mt-1 small"></div>
-                                    </div>
-                                    
-                                    <div class="d-grid">
-                                        <button type="submit" class="btn login-btn" id="registerBtn">Create Account</button>
-                                    </div>
-                                </form>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Hero Section -->
-                <div class="col-lg-6">
-                    <div class="auth-hero">
-                        <h2>Field Attendance Tracker</h2>
-                        <p>A comprehensive solution for tracking employee attendance in the field with advanced features for accurate time and location tracking.</p>
-                        
-                        <div class="auth-feature">
-                            <i class="bi bi-geo-alt"></i>
-                            <div>GPS location verification</div>
-                        </div>
-                        
-                        <div class="auth-feature">
-                            <i class="bi bi-camera"></i>
-                            <div>Photo verification option</div>
-                        </div>
-                        
-                        <div class="auth-feature">
-                            <i class="bi bi-wifi-off"></i>
-                            <div>Works offline with auto-sync</div>
-                        </div>
-                        
-                        <div class="auth-feature">
-                            <i class="bi bi-graph-up"></i>
-                            <div>Comprehensive reporting</div>
-                        </div>
-                        
-                        <div class="auth-feature">
-                            <i class="bi bi-shield-check"></i>
-                            <div>Secure and reliable</div>
-                        </div>
-                    </div>
+                <div class="text-center mt-4">
+                    <p class="text-muted small mb-0">
+                        &copy; 2025 Al-Aqsa Security. All rights reserved.
+                    </p>
                 </div>
             </div>
         </div>
     </div>
-    
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- PWA Service Worker Registration -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/static/js/service-worker.js')
-                    .then(function(registration) {
-                        console.log('Service Worker registered with scope:', registration.scope);
-                    })
-                    .catch(function(error) {
-                        console.log('Service Worker registration failed:', error);
-                    });
-            });
-        }
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const loginTab = document.getElementById('tab-login');
+        const registerTab = document.getElementById('tab-register');
+        const loginForm = document.getElementById('login-form');
+        const registerForm = document.getElementById('register-form');
         
-        // Password strength checker
-        function checkPasswordStrength() {
-            const password = document.getElementById('reg_password').value;
-            const strengthBar = document.querySelector('#passwordStrength div');
-            
-            // Reset the strength bar
-            strengthBar.className = '';
-            
-            if (password.length === 0) {
-                strengthBar.style.width = '0%';
-                return;
-            }
-            
-            // Calculate password strength
-            let strength = 0;
-            
-            // Length check
-            if (password.length >= 8) {
-                strength += 25;
-            }
-            
-            // Uppercase check
-            if (/[A-Z]/.test(password)) {
-                strength += 25;
-            }
-            
-            // Lowercase check
-            if (/[a-z]/.test(password)) {
-                strength += 25;
-            }
-            
-            // Number or special character check
-            if (/[0-9!@#$%^&*]/.test(password)) {
-                strength += 25;
-            }
-            
-            // Update the strength bar
-            strengthBar.style.width = strength + '%';
-            
-            // Update the strength class
-            if (strength < 50) {
-                strengthBar.className = 'strength-weak';
-            } else if (strength < 75) {
-                strengthBar.className = 'strength-medium';
-            } else {
-                strengthBar.className = 'strength-strong';
-            }
-        }
+        loginTab.addEventListener('click', function() {
+            loginTab.classList.add('active');
+            registerTab.classList.remove('active');
+            loginForm.style.display = 'block';
+            registerForm.style.display = 'none';
+        });
         
-        // Password match checker
-        function checkPasswordMatch() {
-            const password = document.getElementById('reg_password').value;
-            const confirmPassword = document.getElementById('reg_confirm_password').value;
-            const matchText = document.getElementById('passwordMatch');
-            const registerBtn = document.getElementById('registerBtn');
-            
-            if (confirmPassword.length === 0) {
-                matchText.textContent = '';
-                matchText.className = 'mt-1 small';
-                return;
-            }
-            
-            if (password === confirmPassword) {
-                matchText.textContent = 'Passwords match';
-                matchText.className = 'mt-1 small text-success';
-                registerBtn.disabled = false;
-            } else {
-                matchText.textContent = 'Passwords do not match';
-                matchText.className = 'mt-1 small text-danger';
-                registerBtn.disabled = true;
-            }
-        }
-    </script>
-</body>
-</html>
+        registerTab.addEventListener('click', function() {
+            registerTab.classList.add('active');
+            loginTab.classList.remove('active');
+            registerForm.style.display = 'block';
+            loginForm.style.display = 'none';
+        });
+    });
+</script>
+{% endblock %}
