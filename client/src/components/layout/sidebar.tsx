@@ -13,10 +13,12 @@ import {
   CreditCard,
   ArrowDownCircle,
   ArrowUpCircle,
+  ArrowLeftRight,
   ShieldCheck,
   FolderKanban,
   Anchor,
-  Receipt
+  Receipt,
+  Palette
 } from "lucide-react";
 
 // Define navigation items with role-based access
@@ -33,6 +35,10 @@ const allNavigationItems = [
   { name: "Reports", href: "/reports", icon: FileText, roles: ["admin", "hr", "viewer"] },
   { name: "Users", href: "/users", icon: ShieldCheck, roles: ["admin"] },
   { name: "Settings", href: "/settings", icon: Settings, roles: ["admin"] },
+  // Admin-only pages
+  { name: "Admin Dashboard", href: "/admin/dashboard", icon: ShieldCheck, roles: ["admin"] },
+  { name: "Field Connections", href: "/admin/field-connections", icon: ArrowLeftRight, roles: ["admin"] },
+  { name: "Theme Editor", href: "/admin/theme-editor", icon: Palette, roles: ["admin"] },
 ];
 
 export default function Sidebar() {

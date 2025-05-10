@@ -35,6 +35,10 @@ import EditShipDuty from "@/pages/ship-duties/edit/[id]";
 import BillList from "@/pages/bills/index";
 import GenerateBill from "@/pages/bills/generate";
 import { CompanyProvider } from "@/hooks/useCompanySettings";
+// Admin pages
+import AdminDashboard from "@/pages/admin/dashboard";
+import FieldConnections from "@/pages/admin/field-connections";
+import ThemeEditor from "@/pages/admin/theme-editor";
 
 function Router() {
   const [location] = useLocation();
@@ -105,6 +109,10 @@ function Router() {
       <Route path="/reports/templates/edit/:id" component={TemplateEditor} />
       <Route path="/settings" component={Settings} />
       <Route path="/users" component={UsersPage} />
+      {/* Admin routes */}
+      <Route path="/admin/dashboard" component={AdminDashboard} />
+      <Route path="/admin/field-connections" component={FieldConnections} />
+      <Route path="/admin/theme-editor" component={ThemeEditor} />
       <Route component={NotFound} />
     </Switch>
   );
