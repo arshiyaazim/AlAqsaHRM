@@ -28,14 +28,51 @@ services:
     if [ ! -d "exports" ]; then mkdir exports; fi && 
     if [ ! -d "logs" ]; then mkdir logs; fi
   preDeployCommand: >
-    python -c "import os, sqlite3; 
-    os.makedirs('instance', exist_ok=True); 
-    if not os.path.exists('instance/attendance.db'): 
-      from app import init_db, app; 
-      with app.app_context(): 
-        init_db(); 
-        print('Database initialized successfully')"
+    python -c "
+    import os, sys, logging
+    print('Starting pre-deployment script')
+    
+    # Setup logging
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    
+    # Create required directories
+    dirs = ['instance', 'logs', 'exports', 'uploads']
+    for directory in dirs:
+        logging.info(f'Creating directory: {directory}')
+        os.makedirs(directory, exist_ok=True)
+    
+    # Verify file permissions
+    try:
+        with open('instance/test_write.txt', 'w') as f:
+            f.write('Test write permission')
+        os.remove('instance/test_write.txt')
+        logging.info('Directory permissions verified')
+    except Exception as e:
+        logging.error(f'Permission check failed: {str(e)}')
+    
+    # Initialize database if needed
+    try:
+        if not os.path.exists('instance/attendance.db'):
+            logging.info('Database not found, initializing...')
+            sys.path.append('.')
+            from app import init_db, app
+            with app.app_context():
+                init_db()
+                logging.info('Database initialized successfully')
+        else:
+            logging.info('Database exists, skipping initialization')
+    except Exception as e:
+        logging.error(f'Database initialization error: {str(e)}')
+        
+    print('Pre-deployment script completed')
+    "
   startCommand: python app.py
   healthCheckPath: /
+  healthCheckTimeout: 10
   envVarsFile: .env.render
+  autoDeploy: true
+  disk:
+    name: data
+    mountPath: /var/data
+    sizeGB: 1
 version: "1"
