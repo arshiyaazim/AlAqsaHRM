@@ -22,7 +22,11 @@ def login_required(view):
     @functools.wraps(view)
     def wrapped_view(**kwargs):
         if g.user is None:
-            return redirect(url_for('auth.login'))
+            try:
+                return redirect(url_for('auth.login'))
+            except:
+                # Fallback to main app login route
+                return redirect(url_for('login'))
         return view(**kwargs)
     return wrapped_view
 
@@ -32,7 +36,11 @@ def role_required(roles):
         @functools.wraps(view)
         def wrapped_view(**kwargs):
             if g.user is None:
-                return redirect(url_for('auth.login'))
+                try:
+                    return redirect(url_for('auth.login'))
+                except:
+                    # Fallback to main app login route
+                    return redirect(url_for('login'))
             
             if isinstance(roles, str):
                 role_list = [roles]
@@ -41,7 +49,10 @@ def role_required(roles):
                 
             if g.user['role'] not in role_list:
                 flash('You do not have permission to access this page.', 'danger')
-                return redirect(url_for('index'))
+                try:
+                    return redirect(url_for('index'))
+                except:
+                    return redirect('/')
             
             return view(**kwargs)
         return wrapped_view
@@ -226,7 +237,14 @@ def logout():
     
     session.clear()
     flash('You have been logged out.', 'info')
-    return redirect(url_for('auth.login'))
+    try:
+        return redirect(url_for('auth.login'))
+    except:
+        # Fallback to main app login route
+        try:
+            return redirect(url_for('login'))
+        except:
+            return redirect('/')
 
 @bp.route('/forgot-password', methods=('GET', 'POST'))
 def forgot_password():

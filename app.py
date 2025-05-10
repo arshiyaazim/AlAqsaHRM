@@ -35,6 +35,20 @@ app.config.from_mapping(
     UPLOAD_FOLDER=UPLOAD_FOLDER
 )
 
+# Register blueprints
+try:
+    from app_auth_routes import bp as auth_bp
+    app.register_blueprint(auth_bp)
+    logging.info("Successfully registered auth blueprint")
+except Exception as e:
+    logging.error(f"Failed to register auth blueprint: {str(e)}")
+    
+# Direct login route in case blueprint fails
+@app.route('/login')
+def login():
+    """Direct login route that will redirect to auth.login"""
+    return redirect(url_for('auth.login'))
+
 # Set up logging
 if not os.path.exists('logs'):
     os.makedirs('logs')
