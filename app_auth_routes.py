@@ -83,7 +83,7 @@ def load_logged_in_user():
 def login():
     """Log in a registered user by adding the user id to the session."""
     if g.user:
-        return redirect(url_for('index'))
+        return redirect("/auth/users")
         
     if request.method == 'POST':
         username = request.form['username']
@@ -460,7 +460,7 @@ def edit_user(user_id):
     if user is None:
         db.close()
         flash('User not found.', 'danger')
-        return redirect(url_for('auth.users'))
+        return redirect("/auth/users")
         
     if request.method == 'POST':
         username = request.form['username']
@@ -543,7 +543,7 @@ def delete_user(user_id):
     if user is None:
         db.close()
         flash('User not found.', 'danger')
-        return redirect(url_for('auth.users'))
+        return redirect("/auth/users")
         
     # Prevent deleting the last admin user
     if user['role'] == 'admin':
@@ -552,7 +552,7 @@ def delete_user(user_id):
         if admin_count <= 1:
             db.close()
             flash('Cannot delete the last admin user.', 'danger')
-            return redirect(url_for('auth.users'))
+            return redirect("/auth/users")
     
     try:
         # Delete the user
@@ -573,7 +573,7 @@ def delete_user(user_id):
     finally:
         db.close()
         
-    return redirect(url_for('auth.users'))
+    return redirect("/auth/users")
 
 @bp.route('/profile', methods=('GET', 'POST'))
 @login_required
@@ -632,7 +632,7 @@ def profile():
                 db.commit()
                 
                 flash('Your profile has been updated.', 'success')
-                return redirect(url_for('auth.profile'))
+                return redirect('/auth/profile')
             except db.Error as e:
                 error = f"An error occurred: {e}"
             finally:
