@@ -28,43 +28,52 @@ services:
     if [ ! -d "exports" ]; then mkdir exports; fi && 
     if [ ! -d "logs" ]; then mkdir logs; fi
   preDeployCommand: >
+    echo "Starting pre-deployment process" &&
+    chmod +x init_database.py &&
+    python init_database.py &&
+    echo "Setting up admin user" &&
     python -c "
     import os, sys, logging
-    print('Starting pre-deployment script')
-    
-    # Setup logging
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-    
-    # Create required directories
-    dirs = ['instance', 'logs', 'exports', 'uploads']
-    for directory in dirs:
-        logging.info(f'Creating directory: {directory}')
-        os.makedirs(directory, exist_ok=True)
-    
-    # Verify file permissions
     try:
-        with open('instance/test_write.txt', 'w') as f:
-            f.write('Test write permission')
-        os.remove('instance/test_write.txt')
-        logging.info('Directory permissions verified')
-    except Exception as e:
-        logging.error(f'Permission check failed: {str(e)}')
-    
-    # Initialize database if needed
-    try:
-        if not os.path.exists('instance/attendance.db'):
-            logging.info('Database not found, initializing...')
-            sys.path.append('.')
-            from app import init_db, app
-            with app.app_context():
-                init_db()
-                logging.info('Database initialized successfully')
-        else:
-            logging.info('Database exists, skipping initialization')
-    except Exception as e:
-        logging.error(f'Database initialization error: {str(e)}')
+        # Setup basic logging
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
         
-    print('Pre-deployment script completed')
+        # Check for persistent disk and ensure it's properly configured
+        render_disk = '/var/data'
+        if os.path.exists(render_disk):
+            logging.info(f'Persistent disk found at {render_disk}')
+            # Ensure database will use the persistent disk
+            db_path = os.path.join(render_disk, 'db')
+            if not os.path.exists('instance'):
+                logging.info('Creating symlink for instance directory')
+                os.symlink(db_path, 'instance')
+        else:
+            logging.info('No persistent disk found, using standard directories')
+            
+        # Verify admin user exists
+        logging.info('Verifying admin user exists')
+        from app import app, get_db, generate_password_hash
+        with app.app_context():
+            db = get_db()
+            admin_count = db.execute('SELECT COUNT(*) as count FROM admins').fetchone()['count']
+            if admin_count == 0:
+                admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
+                admin_password = os.environ.get('ADMIN_PASSWORD', 'admin')
+                db.execute(
+                    'INSERT INTO admins (username, password) VALUES (?, ?)',
+                    (admin_username, generate_password_hash(admin_password))
+                )
+                db.commit()
+                logging.info(f'Created admin user: {admin_username}')
+            else:
+                logging.info(f'Admin users found: {admin_count}')
+        
+        print('Pre-deployment completed successfully')
+    except Exception as e:
+        logging.error(f'Error in pre-deployment: {str(e)}')
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)  # Fail deployment if critical setup fails
     "
   startCommand: python app.py
   healthCheckPath: /

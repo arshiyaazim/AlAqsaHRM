@@ -122,6 +122,31 @@ def init_db():
                 logging.error(f"Failed to create admin user: {str(admin_err)}")
                 db.rollback()
             
+            # Add default menu items if menu_items table exists but is empty
+            try:
+                menu_count = db.execute('SELECT COUNT(*) as count FROM menu_items').fetchone()['count']
+                if menu_count == 0:
+                    # Add some default menu items
+                    logging.info("Adding default menu items")
+                    menu_items = [
+                        (1, 'Dashboard', '/', 'dashboard', 'admin,hr,viewer', 1),
+                        (2, 'Projects', '/projects', 'briefcase', 'admin,hr,viewer', 2),
+                        (3, 'Employees', '/employees', 'users', 'admin,hr,viewer', 3),
+                        (4, 'Attendance', '/attendance', 'clock', 'admin,hr,viewer', 4),
+                        (5, 'Reports', '/reports', 'file-text', 'admin,hr', 5),
+                        (6, 'Users', '/users', 'user-check', 'admin', 6),
+                        (7, 'Settings', '/settings', 'settings', 'admin', 7)
+                    ]
+                    db.executemany(
+                        'INSERT INTO menu_items (id, name, url, icon, roles, display_order) VALUES (?, ?, ?, ?, ?, ?)',
+                        menu_items
+                    )
+                    db.commit()
+            except sqlite3.Error as e:
+                logging.warning(f"Could not add default menu items: {str(e)}")
+                # Non-critical error, continue
+                pass
+            
             # Log successful initialization
             logging.info("Database initialized successfully")
             return True
@@ -2266,11 +2291,31 @@ def admin_panel():
 # Initialize database when the app starts
 with app.app_context():
     try:
-        # Always ensure database tables exist
+        # Always ensure database parent directories exist
+        db_dir = os.path.dirname(DATABASE)
+        if db_dir:
+            os.makedirs(db_dir, exist_ok=True)
+            
+        # Check if we're running on Render.com with a persistent disk
+        render_disk = '/var/data'
+        if os.path.exists(render_disk) and os.access(render_disk, os.W_OK):
+            logging.info(f"Detected Render.com persistent disk at {render_disk}")
+            # Check if we need to use the persistent disk for our database
+            if not os.path.exists('instance') or not os.path.isdir('instance'):
+                db_path = os.path.join(render_disk, 'db')
+                os.makedirs(db_path, exist_ok=True)
+                if os.path.islink('instance'):
+                    os.unlink('instance')
+                os.symlink(db_path, 'instance')
+                logging.info(f"Created symlink: instance -> {db_path}")
+                
+        # Get database connection
         db = get_db()
+        
         # First check if admins table exists
         try:
             db.execute("SELECT 1 FROM admins LIMIT 1")
+            logging.info("Admin table exists, database appears to be initialized")
         except sqlite3.OperationalError:
             # If error, initialize all tables
             logging.info("Running database initialization to create missing tables")
@@ -2278,27 +2323,41 @@ with app.app_context():
             logging.info("Database initialization completed successfully")
         
         # Additional verification for other critical tables
-        critical_tables = ['admins', 'users', 'employees', 'projects', 'attendance', 'form_fields']
+        critical_tables = ['admins', 'users', 'employees', 'projects', 'attendance', 'form_fields', 'menu_items']
+        missing_tables = []
+        
         for table in critical_tables:
             try:
                 db.execute(f"SELECT 1 FROM {table} LIMIT 1")
             except sqlite3.OperationalError:
-                # If a specific table is missing, recreate it from schema
-                logging.warning(f"Table {table} is missing, attempting to recreate")
-                with app.open_resource('schema.sql') as f:
-                    schema_sql = f.read().decode('utf8')
-                    # Find and execute the CREATE TABLE statement for this table
-                    create_stmt = re.search(f"(CREATE TABLE.*?{table}.*?);", schema_sql, re.IGNORECASE | re.DOTALL)
-                    if create_stmt:
-                        db.execute(create_stmt.group(1))
-                        db.commit()
-                        logging.info(f"Table {table} was recreated successfully")
+                missing_tables.append(table)
+                
+        if missing_tables:
+            logging.warning(f"Missing tables detected: {', '.join(missing_tables)}")
+            # Try to recreate missing tables from schema
+            with open('schema.sql', 'r') as f:
+                schema_sql = f.read()
+                for table in missing_tables:
+                    try:
+                        # Find and execute the CREATE TABLE statement for this table
+                        create_stmt = re.search(f"(CREATE TABLE.*?{table}.*?);", schema_sql, re.IGNORECASE | re.DOTALL)
+                        if create_stmt:
+                            db.execute(create_stmt.group(1))
+                            db.commit()
+                            logging.info(f"Table {table} was recreated successfully")
+                    except Exception as table_err:
+                        logging.error(f"Failed to recreate table {table}: {str(table_err)}")
+                        
     except Exception as e:
         logging.error(f"Error during database initialization: {str(e)}")
         # If database doesn't exist at all, create it
         if not os.path.exists(DATABASE):
             logging.info("Database file not found, creating new database")
-            init_db()
+            try:
+                init_db()
+                logging.info("Database created successfully")
+            except Exception as init_err:
+                logging.error(f"Failed to create database: {str(init_err)}")
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=True)
