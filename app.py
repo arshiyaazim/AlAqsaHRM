@@ -321,15 +321,16 @@ def init_db_command():
     init_db()
     click.echo('Initialized the database.')
 
-# Initialize the database at application startup
-with app.app_context():
+# Function to initialize the database at startup
+def init_app_db():
+    """Initialize the database when the app starts, including under Gunicorn in production."""
     try:
         # Check if users table exists
         db = get_db()
         users_exist = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").fetchone()
         
         if not users_exist:
-            logging.warning("Users table does not exist. Initializing database.")
+            logging.warning("Users table does not exist. Initializing database at startup.")
             success = init_db()
             if success:
                 logging.info("Database initialized successfully at startup")
@@ -337,7 +338,36 @@ with app.app_context():
                 logging.error("Database initialization failed at startup, but continuing")
         else:
             logging.info("Users table already exists. Database ready.")
-            
+    except Exception as e:
+        logging.error(f"Error during database check at startup: {str(e)}")
+        logging.error("Application will continue but may encounter database errors")
+        # Do not raise the exception so the application can still start
+        
+# Global flag to track if database has been initialized
+_DATABASE_INITIALIZED = False
+
+# Function to run before each request to ensure database is ready
+@app.before_request
+def ensure_db_exists():
+    """Ensure database exists before processing requests."""
+    global _DATABASE_INITIALIZED
+    # Only check once per application lifecycle
+    if not _DATABASE_INITIALIZED:
+        with app.app_context():
+            try:
+                init_app_db()
+                # Mark as initialized so we don't do this on every request
+                _DATABASE_INITIALIZED = True
+            except Exception as e:
+                logging.error(f"Error initializing database before request: {str(e)}")
+                # Don't raise the exception to allow the app to continue
+
+# Also initialize at application startup to support CLI commands
+with app.app_context():
+    try:
+        init_app_db()
+        # Mark as initialized if successful
+        _DATABASE_INITIALIZED = True
     except Exception as e:
         logging.error(f"Error checking database status at startup: {str(e)}")
         logging.warning("Will attempt to initialize database when needed")
@@ -2450,6 +2480,40 @@ def disable_field_suggestions():
         flash(f'Error disabling field suggestions: {str(e)}', 'danger')
     
     return redirect("/admin/connections")
+
+# Health check endpoint for monitoring
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint for application status monitoring."""
+    try:
+        # Verify database connection
+        db = get_db()
+        db.execute('SELECT 1').fetchone()
+        
+        # Check if critical tables exist
+        users_exist = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").fetchone()
+        if not users_exist:
+            return jsonify({
+                'status': 'warning',
+                'message': 'Users table does not exist',
+                'database': 'warning'
+            }), 200
+        
+        # Return healthy status
+        return jsonify({
+            'status': 'healthy',
+            'message': 'Application is running normally',
+            'database': 'connected',
+            'timestamp': datetime.datetime.now().isoformat()
+        }), 200
+    except Exception as e:
+        # Return unhealthy status
+        return jsonify({
+            'status': 'unhealthy',
+            'message': str(e),
+            'database': 'disconnected',
+            'timestamp': datetime.datetime.now().isoformat()
+        }), 500
 
 @app.route('/api/form-fields')
 def api_form_fields():
