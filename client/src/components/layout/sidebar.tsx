@@ -44,32 +44,36 @@ const allNavigationItems = [
 export default function Sidebar() {
   const [location] = useLocation();
   const { settings } = useCompanySettings();
-  const [userRole, setUserRole] = useState('admin'); // Default to admin for now
-  const [navigationItems, setNavigationItems] = useState(allNavigationItems);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [navigationItems, setNavigationItems] = useState<typeof allNavigationItems>([]);
   
-  // Get user role from localStorage
+  // Get user role from localStorage and apply navigation filtering
   useEffect(() => {
     // First try to get user data from localStorage
     const userStr = localStorage.getItem('user');
+    let role = null;
+    
     if (userStr) {
       try {
         const userData = JSON.parse(userStr);
         if (userData && userData.role) {
-          setUserRole(userData.role);
+          role = userData.role;
           console.log("User role set from localStorage user data:", userData.role);
         }
       } catch (error) {
         console.error('Error parsing user data from localStorage:', error);
       }
-    } else {
-      // Fallback to token if no user data
+    }
+    
+    // Fallback to token if no user data or role
+    if (!role) {
       const token = localStorage.getItem('token');
       if (token) {
         try {
           // Decode JWT token to get user role
           const tokenPayload = JSON.parse(atob(token.split('.')[1]));
           if (tokenPayload && tokenPayload.role) {
-            setUserRole(tokenPayload.role);
+            role = tokenPayload.role;
             console.log("User role set from token:", tokenPayload.role);
           }
         } catch (error) {
@@ -77,32 +81,45 @@ export default function Sidebar() {
         }
       }
     }
+    
+    // Set user role and filter navigation items
+    setUserRole(role);
+    
+    // Filter items based on role
+    if (role) {
+      const filteredItems = allNavigationItems.filter(item => 
+        item.roles.includes(role)
+      );
+      setNavigationItems(filteredItems);
+      console.log(`Filtered navigation items for role ${role}:`, filteredItems);
+    } else {
+      // If no role found, show public items only
+      const publicItems = allNavigationItems.filter(item => 
+        item.roles.includes('viewer')
+      );
+      setNavigationItems(publicItems);
+    }
   }, []);
-  
-  // Filter navigation items based on user role
-  useEffect(() => {
-    const filteredItems = allNavigationItems.filter(item => 
-      item.roles.includes(userRole)
-    );
-    setNavigationItems(filteredItems);
-  }, [userRole]);
 
-  return (
-    <div className="hidden md:block w-64 bg-white shadow-md overflow-y-auto">
-      <div className="px-6 py-4 border-b border-gray-200">
-        <div className="flex items-center">
-          <UserPlus className="h-6 w-6 mr-2 text-[#2C5282]" />
-          <h1 className="text-xl font-bold text-[#2C5282]">
-            {settings.companyName}
-          </h1>
-        </div>
-      </div>
-      
-      <nav className="px-3 py-4">
-        <div className="space-y-1">
-          {navigationItems.map((item) => {
+  // Group navigation items by category
+  const renderNavItems = () => {
+    // Separate admin-specific pages
+    const adminPages = navigationItems.filter(item => 
+      item.href.startsWith('/admin/')
+    );
+    
+    // Regular pages
+    const regularPages = navigationItems.filter(item => 
+      !item.href.startsWith('/admin/')
+    );
+    
+    return (
+      <>
+        {/* Regular navigation items */}
+        <div className="space-y-1 mb-6">
+          {regularPages.map((item) => {
             const isActive = location === item.href || 
-                             (item.href !== "/" && location.startsWith(item.href));
+                            (item.href !== "/" && location.startsWith(item.href));
             
             return (
               <Link 
@@ -126,6 +143,61 @@ export default function Sidebar() {
             );
           })}
         </div>
+        
+        {/* Admin pages section */}
+        {adminPages.length > 0 && (
+          <>
+            <div className="px-3 pt-2 pb-1">
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Admin Tools
+              </h3>
+            </div>
+            <div className="space-y-1">
+              {adminPages.map((item) => {
+                const isActive = location === item.href || 
+                                (item.href !== "/" && location.startsWith(item.href));
+                
+                return (
+                  <Link 
+                    key={item.name}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center px-3 py-2 text-sm font-medium rounded-md w-full",
+                      isActive
+                        ? "bg-[#2C5282] bg-opacity-10 border-l-4 border-[#2C5282] text-[#2C5282]"
+                        : "text-[#2D3748] hover:bg-gray-100"
+                    )}
+                  >
+                    <item.icon 
+                      className={cn(
+                        "h-5 w-5 mr-3",
+                        isActive ? "text-[#2C5282]" : "text-gray-500"
+                      )}
+                    />
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </>
+    );
+  };
+
+  return (
+    <div className="hidden md:block w-64 bg-white shadow-md overflow-y-auto">
+      <div className="px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center">
+          <UserPlus className="h-6 w-6 mr-2 text-[#2C5282]" />
+          <h1 className="text-xl font-bold text-[#2C5282]">
+            {settings.companyName}
+          </h1>
+        </div>
+      </div>
+      
+      <nav className="px-3 py-4">
+        {renderNavItems()}
       </nav>
     </div>
   );
