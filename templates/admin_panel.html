@@ -1,249 +1,216 @@
-{% extends "base.html" %}
+{% extends 'base.html' %}
 
-{% block title %}Admin Panel - Al-Aqsa Security{% endblock %}
-
-{% block styles %}
-<style>
-    .admin-card {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        height: 100%;
-    }
-    
-    .admin-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-    }
-    
-    .admin-icon {
-        font-size: 2rem;
-        width: 60px;
-        height: 60px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 50%;
-        margin: 0 auto 1rem auto;
-    }
-    
-    .section-title {
-        position: relative;
-        padding-bottom: 0.5rem;
-        margin-bottom: 1.5rem;
-    }
-    
-    .section-title::after {
-        content: '';
-        position: absolute;
-        left: 0;
-        bottom: 0;
-        height: 3px;
-        width: 50px;
-        background-color: var(--bs-primary);
-    }
-</style>
-{% endblock %}
+{% block title %}Admin Panel - Al-Aqsa HRM{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <div class="row mb-4">
+<div class="container-fluid my-4">
+    <div class="row">
         <div class="col-12">
-            <h2 class="fw-bold mb-0"><i class="bi bi-shield-lock me-2"></i>Admin Panel</h2>
-            <p class="text-muted">Manage system settings, users, and configurations</p>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3"><i class="bi bi-shield-lock me-2"></i>Admin Panel</h1>
+                <div>
+                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-arrow-left"></i> Return to Dashboard
+                    </a>
+                </div>
+            </div>
+            
+            <!-- System Status Card -->
+            <div class="card border-primary mb-4 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-cpu"></i> System Status
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-md-4">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Users</h5>
+                                    <div class="d-flex justify-content-between my-3">
+                                        <div class="text-center px-3">
+                                            <h3 class="text-primary">{{ admin_count }}</h3>
+                                            <small>Admins</small>
+                                        </div>
+                                        <div class="text-center px-3">
+                                            <h3 class="text-primary">{{ hr_count }}</h3>
+                                            <small>HR Staff</small>
+                                        </div>
+                                        <div class="text-center px-3">
+                                            <h3 class="text-primary">{{ viewer_count }}</h3>
+                                            <small>Viewers</small>
+                                        </div>
+                                    </div>
+                                    <div class="mt-3">
+                                        <a href="{{ url_for('admin_users') }}" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-people"></i> Manage Users
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">Projects</h5>
+                                    <div class="d-flex justify-content-center my-3">
+                                        <div class="text-center px-3">
+                                            <h3 class="text-primary">{{ active_projects }}/{{ total_projects }}</h3>
+                                            <small>Active/Total Projects</small>
+                                        </div>
+                                    </div>
+                                    <div class="mt-3">
+                                        <a href="{{ url_for('admin_projects') }}" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-building"></i> Manage Projects
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-body text-center">
+                                    <h5 class="card-title">System Errors</h5>
+                                    <div class="d-flex justify-content-center my-3">
+                                        <div class="text-center px-3">
+                                            <h3 class="text-{{ 'danger' if unresolved_errors > 0 else 'success' }}">
+                                                {{ unresolved_errors }}
+                                            </h3>
+                                            <small>Unresolved Errors</small>
+                                        </div>
+                                    </div>
+                                    <div class="mt-3">
+                                        <a href="{{ url_for('error_logs') }}" class="btn btn-sm btn-{{ 'danger' if unresolved_errors > 0 else 'primary' }}">
+                                            <i class="bi bi-bug"></i> View Error Logs
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Configuration Card -->
+            <div class="card border-primary mb-4 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-gear"></i> System Configuration
+                </div>
+                <div class="card-body">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-body">
+                                    <h5 class="card-title"><i class="bi bi-ui-checks me-2"></i>Form Management</h5>
+                                    <p class="card-text">Manage form fields, field connections, and field suggestions.</p>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <a href="{{ url_for('admin_fields') }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-input-cursor-text"></i> Form Fields
+                                            <span class="badge bg-primary ms-1">{{ form_fields }}</span>
+                                        </a>
+                                        <a href="{{ url_for('admin_connections_view') }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-link-45deg"></i> Field Connections
+                                            <span class="badge bg-primary ms-1">{{ field_connections }}</span>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-body">
+                                    <h5 class="card-title"><i class="bi bi-sliders me-2"></i>System Settings</h5>
+                                    <p class="card-text">Configure UI appearance, menu items, and system behavior.</p>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <a href="{{ url_for('admin_menu') }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-list"></i> Menu Items
+                                        </a>
+                                        <a href="{{ url_for('admin_styling') }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-palette"></i> UI Styling
+                                        </a>
+                                        <a href="{{ url_for('check_system_health') }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-heart-pulse"></i> Health Check
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Data Management Card -->
+            <div class="card border-primary mb-4 shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-database"></i> Data Management
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-body">
+                                    <h5 class="card-title"><i class="bi bi-file-earmark-excel me-2"></i>Data Import/Export</h5>
+                                    <p class="card-text">Import data from Excel files or export system data.</p>
+                                    
+                                    <div class="alert alert-info">
+                                        <small>
+                                            <i class="bi bi-info-circle"></i> Use these tools to import employee data or
+                                            export system records.
+                                        </small>
+                                    </div>
+                                    
+                                    <a href="{{ url_for('index', _external=True) + 'employee-importer' }}" class="btn btn-sm btn-outline-primary me-2">
+                                        <i class="bi bi-file-earmark-person"></i> Employee Importer
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-body">
+                                    <h5 class="card-title"><i class="bi bi-shield-check me-2"></i>System Security</h5>
+                                    <p class="card-text">Manage security settings and access controls.</p>
+                                    
+                                    <div class="alert alert-warning">
+                                        <small>
+                                            <i class="bi bi-exclamation-triangle"></i> Make changes to security settings carefully.
+                                        </small>
+                                    </div>
+                                    
+                                    <button type="button" class="btn btn-sm btn-outline-danger me-2" data-bs-toggle="modal" data-bs-target="#resetPasswordModal">
+                                        <i class="bi bi-key"></i> Reset Admin Password
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-    
-    <!-- User Management Section -->
-    <h4 class="section-title">User Management</h4>
-    <div class="row g-4 mb-5">
-        <div class="col-md-4">
-            <div class="card admin-card">
-                <div class="card-body text-center p-4">
-                    <div class="admin-icon bg-primary bg-opacity-10 text-primary">
-                        <i class="bi bi-people"></i>
-                    </div>
-                    <h5 class="card-title">Manage Users</h5>
-                    <p class="card-text">Add, edit, or remove users and manage their access levels.</p>
-                    <a href="{{ url_for('admin_users') }}" class="btn btn-primary mt-2">
-                        <i class="bi bi-person-plus me-1"></i> Manage Users
-                    </a>
-                </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-labelledby="resetPasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="resetPasswordModalLabel"><i class="bi bi-exclamation-triangle"></i> Reset Admin Password</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-        </div>
-        
-        <div class="col-md-4">
-            <div class="card admin-card">
-                <div class="card-body text-center p-4">
-                    <div class="admin-icon bg-success bg-opacity-10 text-success">
-                        <i class="bi bi-person-badge"></i>
-                    </div>
-                    <h5 class="card-title">User Roles</h5>
-                    <p class="card-text">Define role permissions and access privileges for users.</p>
-                    <a href="{{ url_for('admin_users') }}" class="btn btn-success mt-2">
-                        <i class="bi bi-key me-1"></i> Manage Roles
-                    </a>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i> This feature is disabled in the production environment.
+                    Please contact system support for password resets.
                 </div>
+                <p>In a development environment, you can reset the admin password using the command:</p>
+                <pre class="bg-light p-2"><code>flask reset-admin-password</code></pre>
             </div>
-        </div>
-        
-        <div class="col-md-4">
-            <div class="card admin-card">
-                <div class="card-body text-center p-4">
-                    <div class="admin-icon bg-info bg-opacity-10 text-info">
-                        <i class="bi bi-activity"></i>
-                    </div>
-                    <h5 class="card-title">User Activity</h5>
-                    <p class="card-text">View user login history and system interaction logs.</p>
-                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-info mt-2">
-                        <i class="bi bi-graph-up me-1"></i> View Activity
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- System Configuration Section -->
-    <h4 class="section-title">System Configuration</h4>
-    <div class="row g-4 mb-5">
-        <div class="col-md-4">
-            <div class="card admin-card">
-                <div class="card-body text-center p-4">
-                    <div class="admin-icon bg-warning bg-opacity-10 text-warning">
-                        <i class="bi bi-palette"></i>
-                    </div>
-                    <h5 class="card-title">Theme Settings</h5>
-                    <p class="card-text">Customize application appearance, colors, and branding.</p>
-                    <a href="{{ url_for('admin_styling') }}" class="btn btn-warning mt-2">
-                        <i class="bi bi-brush me-1"></i> Edit Theme
-                    </a>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4">
-            <div class="card admin-card">
-                <div class="card-body text-center p-4">
-                    <div class="admin-icon bg-danger bg-opacity-10 text-danger">
-                        <i class="bi bi-menu-button-wide"></i>
-                    </div>
-                    <h5 class="card-title">Menu Management</h5>
-                    <p class="card-text">Customize navigation menu structure and visibility.</p>
-                    <a href="{{ url_for('admin_menu') }}" class="btn btn-danger mt-2">
-                        <i class="bi bi-list me-1"></i> Edit Menu
-                    </a>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4">
-            <div class="card admin-card">
-                <div class="card-body text-center p-4">
-                    <div class="admin-icon bg-secondary bg-opacity-10 text-secondary">
-                        <i class="bi bi-gear"></i>
-                    </div>
-                    <h5 class="card-title">System Settings</h5>
-                    <p class="card-text">Configure global application settings and parameters.</p>
-                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary mt-2">
-                        <i class="bi bi-sliders me-1"></i> System Settings
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Data Management Section -->
-    <h4 class="section-title">Data Management</h4>
-    <div class="row g-4 mb-5">
-        <div class="col-md-4">
-            <div class="card admin-card">
-                <div class="card-body text-center p-4">
-                    <div class="admin-icon bg-primary bg-opacity-10 text-primary">
-                        <i class="bi bi-input-cursor-text"></i>
-                    </div>
-                    <h5 class="card-title">Form Fields</h5>
-                    <p class="card-text">Manage custom form fields and input validations.</p>
-                    <a href="{{ url_for('admin_fields') }}" class="btn btn-primary mt-2">
-                        <i class="bi bi-input-cursor me-1"></i> Manage Fields
-                    </a>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4">
-            <div class="card admin-card">
-                <div class="card-body text-center p-4">
-                    <div class="admin-icon bg-success bg-opacity-10 text-success">
-                        <i class="bi bi-diagram-3"></i>
-                    </div>
-                    <h5 class="card-title">Field Connections</h5>
-                    <p class="card-text">Configure relationships and logic between form fields.</p>
-                    <a href="{{ url_for('admin_connections_view') }}" class="btn btn-success mt-2">
-                        <i class="bi bi-link me-1"></i> Manage Connections
-                    </a>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4">
-            <div class="card admin-card">
-                <div class="card-body text-center p-4">
-                    <div class="admin-icon bg-info bg-opacity-10 text-info">
-                        <i class="bi bi-database"></i>
-                    </div>
-                    <h5 class="card-title">Data Export</h5>
-                    <p class="card-text">Export system data for backup or reporting purposes.</p>
-                    <a href="{{ url_for('admin_reports') }}" class="btn btn-info mt-2">
-                        <i class="bi bi-download me-1"></i> Export Data
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- System Monitoring Section -->
-    <h4 class="section-title">System Monitoring</h4>
-    <div class="row g-4">
-        <div class="col-md-4">
-            <div class="card admin-card">
-                <div class="card-body text-center p-4">
-                    <div class="admin-icon bg-danger bg-opacity-10 text-danger">
-                        <i class="bi bi-bug"></i>
-                    </div>
-                    <h5 class="card-title">Error Logs</h5>
-                    <p class="card-text">View and manage system error logs and exceptions.</p>
-                    <a href="{{ url_for('admin_error_logs') }}" class="btn btn-danger mt-2">
-                        <i class="bi bi-journal-code me-1"></i> View Logs
-                    </a>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4">
-            <div class="card admin-card">
-                <div class="card-body text-center p-4">
-                    <div class="admin-icon bg-warning bg-opacity-10 text-warning">
-                        <i class="bi bi-heart-pulse"></i>
-                    </div>
-                    <h5 class="card-title">System Health</h5>
-                    <p class="card-text">Monitor system performance and resource utilization.</p>
-                    <a href="{{ url_for('check_system_health') }}" class="btn btn-warning mt-2">
-                        <i class="bi bi-speedometer me-1"></i> System Health
-                    </a>
-                </div>
-            </div>
-        </div>
-        
-        <div class="col-md-4">
-            <div class="card admin-card">
-                <div class="card-body text-center p-4">
-                    <div class="admin-icon bg-secondary bg-opacity-10 text-secondary">
-                        <i class="bi bi-clock-history"></i>
-                    </div>
-                    <h5 class="card-title">Backup & Restore</h5>
-                    <p class="card-text">Manage system backups and restoration points.</p>
-                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary mt-2">
-                        <i class="bi bi-archive me-1"></i> Manage Backups
-                    </a>
-                </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>

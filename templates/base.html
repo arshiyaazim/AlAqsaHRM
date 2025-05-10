@@ -57,9 +57,9 @@
         }
         
         /* Custom CSS if provided */
-        {% if custom_styles.custom_css %}
-            {{ custom_styles.custom_css|safe }}
-        {% endif %}
+{% if custom_styles and custom_styles.custom_css %}
+{{ custom_styles.custom_css|safe }}
+{% endif %}
     </style>
     {% endif %}
     
@@ -132,6 +132,11 @@
                                     </a>
                                 </li>
                                 {% if current_user.role == 'admin' %}
+                                <li>
+                                    <a class="dropdown-item" href="{{ url_for('admin_panel') }}">
+                                        <i class="bi bi-shield-lock me-2"></i> Admin Panel
+                                    </a>
+                                </li>
                                 <li>
                                     <a class="dropdown-item" href="{{ url_for('admin_users') }}">
                                         <i class="bi bi-people me-2"></i> Manage Users
