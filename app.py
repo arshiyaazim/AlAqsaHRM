@@ -35,19 +35,55 @@ app.config.from_mapping(
     UPLOAD_FOLDER=UPLOAD_FOLDER
 )
 
-# Register blueprints
+# Add an index route that will always exist
+@app.route('/')
+def index():
+    """Main route that shows the clock in/out form"""
+    return render_template('index.html', projects=get_projects())
+
+# Direct login routes for authentication
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Login route that handles both GET and POST"""
+    if 'admin_id' in session:
+        return redirect(url_for('admin_dashboard'))
+    
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        if not username or not password:
+            flash('Username and password are required.', 'danger')
+            return render_template('login.html')
+            
+        db = get_db()
+        user = db.execute('SELECT * FROM users WHERE username = ?', 
+                          (username,)).fetchone()
+                          
+        if user and check_password_hash(user['password'], password):
+            session.clear()
+            session['user_id'] = user['id']
+            flash('Login successful!', 'success')
+            return redirect(url_for('index'))
+        
+        flash('Invalid username or password.', 'danger')
+    
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    """Logout route that clears the session"""
+    session.clear()
+    flash('You have been logged out.', 'info')
+    return redirect(url_for('login'))
+
+# Now try to register the auth blueprint
 try:
     from app_auth_routes import bp as auth_bp
     app.register_blueprint(auth_bp)
     logging.info("Successfully registered auth blueprint")
 except Exception as e:
     logging.error(f"Failed to register auth blueprint: {str(e)}")
-    
-# Direct login route in case blueprint fails
-@app.route('/login')
-def login():
-    """Direct login route that will redirect to auth.login"""
-    return redirect(url_for('auth.login'))
 
 # Set up logging
 if not os.path.exists('logs'):

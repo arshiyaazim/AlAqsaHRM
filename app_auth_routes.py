@@ -22,11 +22,8 @@ def login_required(view):
     @functools.wraps(view)
     def wrapped_view(**kwargs):
         if g.user is None:
-            try:
-                return redirect(url_for('auth.login'))
-            except:
-                # Fallback to main app login route
-                return redirect(url_for('login'))
+            # Always use app-level login route
+            return redirect('/login')
         return view(**kwargs)
     return wrapped_view
 
@@ -36,11 +33,8 @@ def role_required(roles):
         @functools.wraps(view)
         def wrapped_view(**kwargs):
             if g.user is None:
-                try:
-                    return redirect(url_for('auth.login'))
-                except:
-                    # Fallback to main app login route
-                    return redirect(url_for('login'))
+                # Always use app-level login route
+                return redirect('/login')
             
             if isinstance(roles, str):
                 role_list = [roles]
@@ -49,10 +43,7 @@ def role_required(roles):
                 
             if g.user['role'] not in role_list:
                 flash('You do not have permission to access this page.', 'danger')
-                try:
-                    return redirect(url_for('index'))
-                except:
-                    return redirect('/')
+                return redirect('/')
             
             return view(**kwargs)
         return wrapped_view
@@ -237,20 +228,15 @@ def logout():
     
     session.clear()
     flash('You have been logged out.', 'info')
-    try:
-        return redirect(url_for('auth.login'))
-    except:
-        # Fallback to main app login route
-        try:
-            return redirect(url_for('login'))
-        except:
-            return redirect('/')
+    # Always use direct path for reliability
+    return redirect('/login')
 
 @bp.route('/forgot-password', methods=('GET', 'POST'))
 def forgot_password():
     """Handle forgot password requests."""
     if g.user:
-        return redirect(url_for('index'))
+        # Always use direct path
+        return redirect('/')
         
     if request.method == 'POST':
         email = request.form['email']
@@ -318,7 +304,8 @@ def forgot_password():
 def reset_password():
     """Reset password using a code."""
     if g.user:
-        return redirect(url_for('index'))
+        # Always use direct path
+        return redirect('/')
         
     if request.method == 'POST':
         code = request.form['code']
