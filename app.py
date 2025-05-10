@@ -150,9 +150,38 @@ def role_required(roles):
                 return redirect(url_for('admin_login'))
             
             user = get_current_user()
-            if not user or user['role'] not in roles:
-                flash(f'You need {" or ".join(roles)} privileges to access this page.', 'danger')
+            if not user:
+                flash('Authentication error. Please log in again.', 'danger')
                 return redirect(url_for('admin_login'))
+                
+            # Convert to list if single role string is provided
+            required_roles = [roles] if isinstance(roles, str) else roles
+            
+            # Check if user has one of the required roles
+            if user['role'] not in required_roles:
+                flash(f'You need {" or ".join(required_roles)} privileges to access this page.', 'danger')
+                
+                # Admin-specific pages should redirect to a special access denied page
+                # This prevents URL guessing for sensitive pages
+                admin_only_paths = [
+                    'admin_users', 'admin_connections_view', 'admin_fields', 
+                    'admin_menu', 'admin_styling', 'admin_settings'
+                ]
+                
+                # Check if function name matches any admin-only paths
+                func_name = f.__name__
+                if any(admin_path in func_name for admin_path in admin_only_paths) and user['role'] != 'admin':
+                    # Log unauthorized access attempt
+                    log_error('security', f"Unauthorized access attempt to {func_name} by {user['username']} with role {user['role']}")
+                    return render_template('access_denied.html', user=user)
+                    
+                return redirect(url_for('index'))
+            
+            # For admin-only pages, perform an extra check to ensure admin role specifically
+            if 'admin' in required_roles and user['role'] != 'admin' and ('user' in f.__name__ or 'connection' in f.__name__ or 'style' in f.__name__):
+                flash('This page requires administrator privileges.', 'danger')
+                log_error('security', f"Elevated privilege access attempt to {f.__name__} by {user['username']} with role {user['role']}")
+                return render_template('access_denied.html', user=user)
             
             return f(*args, **kwargs)
         return decorated_function
@@ -170,9 +199,18 @@ def admin_required(f):
         # Check if using new user system
         if session.get('user_id'):
             user = get_current_user()
-            if not user or user['role'] != 'admin':
-                flash('Admin privileges required.', 'danger')
+            if not user:
+                flash('Authentication error. Please log in again.', 'danger')
                 return redirect(url_for('admin_login'))
+                
+            if user['role'] != 'admin':
+                # Log unauthorized access attempt
+                log_error('security', f"Unauthorized admin access attempt to {f.__name__} by {user['username']} with role {user['role']}")
+                flash('This page requires administrator privileges.', 'danger')
+                
+                # Return a dedicated access denied page instead of redirecting
+                # This prevents sensitive information disclosure and makes access attempts more visible
+                return render_template('access_denied.html', user=user)
         
         return f(*args, **kwargs)
     return decorated_function

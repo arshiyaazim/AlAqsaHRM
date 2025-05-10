@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Panel - Al-Aqsa Security{% endblock %}
+
+{% block styles %}
+<style>
+    .admin-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        height: 100%;
+    }
+    
+    .admin-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    
+    .admin-icon {
+        font-size: 2rem;
+        width: 60px;
+        height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        margin: 0 auto 1rem auto;
+    }
+    
+    .section-title {
+        position: relative;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .section-title::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        height: 3px;
+        width: 50px;
+        background-color: var(--bs-primary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="fw-bold mb-0"><i class="bi bi-shield-lock me-2"></i>Admin Panel</h2>
+            <p class="text-muted">Manage system settings, users, and configurations</p>
+        </div>
+    </div>
+    
+    <!-- User Management Section -->
+    <h4 class="section-title">User Management</h4>
+    <div class="row g-4 mb-5">
+        <div class="col-md-4">
+            <div class="card admin-card">
+                <div class="card-body text-center p-4">
+                    <div class="admin-icon bg-primary bg-opacity-10 text-primary">
+                        <i class="bi bi-people"></i>
+                    </div>
+                    <h5 class="card-title">Manage Users</h5>
+                    <p class="card-text">Add, edit, or remove users and manage their access levels.</p>
+                    <a href="{{ url_for('admin_users') }}" class="btn btn-primary mt-2">
+                        <i class="bi bi-person-plus me-1"></i> Manage Users
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card admin-card">
+                <div class="card-body text-center p-4">
+                    <div class="admin-icon bg-success bg-opacity-10 text-success">
+                        <i class="bi bi-person-badge"></i>
+                    </div>
+                    <h5 class="card-title">User Roles</h5>
+                    <p class="card-text">Define role permissions and access privileges for users.</p>
+                    <a href="{{ url_for('admin_users') }}" class="btn btn-success mt-2">
+                        <i class="bi bi-key me-1"></i> Manage Roles
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card admin-card">
+                <div class="card-body text-center p-4">
+                    <div class="admin-icon bg-info bg-opacity-10 text-info">
+                        <i class="bi bi-activity"></i>
+                    </div>
+                    <h5 class="card-title">User Activity</h5>
+                    <p class="card-text">View user login history and system interaction logs.</p>
+                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-info mt-2">
+                        <i class="bi bi-graph-up me-1"></i> View Activity
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- System Configuration Section -->
+    <h4 class="section-title">System Configuration</h4>
+    <div class="row g-4 mb-5">
+        <div class="col-md-4">
+            <div class="card admin-card">
+                <div class="card-body text-center p-4">
+                    <div class="admin-icon bg-warning bg-opacity-10 text-warning">
+                        <i class="bi bi-palette"></i>
+                    </div>
+                    <h5 class="card-title">Theme Settings</h5>
+                    <p class="card-text">Customize application appearance, colors, and branding.</p>
+                    <a href="{{ url_for('admin_styling') }}" class="btn btn-warning mt-2">
+                        <i class="bi bi-brush me-1"></i> Edit Theme
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card admin-card">
+                <div class="card-body text-center p-4">
+                    <div class="admin-icon bg-danger bg-opacity-10 text-danger">
+                        <i class="bi bi-menu-button-wide"></i>
+                    </div>
+                    <h5 class="card-title">Menu Management</h5>
+                    <p class="card-text">Customize navigation menu structure and visibility.</p>
+                    <a href="{{ url_for('admin_menu') }}" class="btn btn-danger mt-2">
+                        <i class="bi bi-list me-1"></i> Edit Menu
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card admin-card">
+                <div class="card-body text-center p-4">
+                    <div class="admin-icon bg-secondary bg-opacity-10 text-secondary">
+                        <i class="bi bi-gear"></i>
+                    </div>
+                    <h5 class="card-title">System Settings</h5>
+                    <p class="card-text">Configure global application settings and parameters.</p>
+                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary mt-2">
+                        <i class="bi bi-sliders me-1"></i> System Settings
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Data Management Section -->
+    <h4 class="section-title">Data Management</h4>
+    <div class="row g-4 mb-5">
+        <div class="col-md-4">
+            <div class="card admin-card">
+                <div class="card-body text-center p-4">
+                    <div class="admin-icon bg-primary bg-opacity-10 text-primary">
+                        <i class="bi bi-input-cursor-text"></i>
+                    </div>
+                    <h5 class="card-title">Form Fields</h5>
+                    <p class="card-text">Manage custom form fields and input validations.</p>
+                    <a href="{{ url_for('admin_fields') }}" class="btn btn-primary mt-2">
+                        <i class="bi bi-input-cursor me-1"></i> Manage Fields
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card admin-card">
+                <div class="card-body text-center p-4">
+                    <div class="admin-icon bg-success bg-opacity-10 text-success">
+                        <i class="bi bi-diagram-3"></i>
+                    </div>
+                    <h5 class="card-title">Field Connections</h5>
+                    <p class="card-text">Configure relationships and logic between form fields.</p>
+                    <a href="{{ url_for('admin_connections_view') }}" class="btn btn-success mt-2">
+                        <i class="bi bi-link me-1"></i> Manage Connections
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card admin-card">
+                <div class="card-body text-center p-4">
+                    <div class="admin-icon bg-info bg-opacity-10 text-info">
+                        <i class="bi bi-database"></i>
+                    </div>
+                    <h5 class="card-title">Data Export</h5>
+                    <p class="card-text">Export system data for backup or reporting purposes.</p>
+                    <a href="{{ url_for('admin_reports') }}" class="btn btn-info mt-2">
+                        <i class="bi bi-download me-1"></i> Export Data
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- System Monitoring Section -->
+    <h4 class="section-title">System Monitoring</h4>
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card admin-card">
+                <div class="card-body text-center p-4">
+                    <div class="admin-icon bg-danger bg-opacity-10 text-danger">
+                        <i class="bi bi-bug"></i>
+                    </div>
+                    <h5 class="card-title">Error Logs</h5>
+                    <p class="card-text">View and manage system error logs and exceptions.</p>
+                    <a href="{{ url_for('admin_error_logs') }}" class="btn btn-danger mt-2">
+                        <i class="bi bi-journal-code me-1"></i> View Logs
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card admin-card">
+                <div class="card-body text-center p-4">
+                    <div class="admin-icon bg-warning bg-opacity-10 text-warning">
+                        <i class="bi bi-heart-pulse"></i>
+                    </div>
+                    <h5 class="card-title">System Health</h5>
+                    <p class="card-text">Monitor system performance and resource utilization.</p>
+                    <a href="{{ url_for('check_system_health') }}" class="btn btn-warning mt-2">
+                        <i class="bi bi-speedometer me-1"></i> System Health
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card admin-card">
+                <div class="card-body text-center p-4">
+                    <div class="admin-icon bg-secondary bg-opacity-10 text-secondary">
+                        <i class="bi bi-clock-history"></i>
+                    </div>
+                    <h5 class="card-title">Backup & Restore</h5>
+                    <p class="card-text">Manage system backups and restoration points.</p>
+                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary mt-2">
+                        <i class="bi bi-archive me-1"></i> Manage Backups
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
