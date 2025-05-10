@@ -39,6 +39,7 @@ import { CompanyProvider } from "@/hooks/useCompanySettings";
 import AdminDashboard from "@/pages/admin/dashboard";
 import FieldConnections from "@/pages/admin/field-connections";
 import ThemeEditor from "@/pages/admin/theme-editor";
+import ExportData from "@/pages/admin/export-data";
 
 function Router() {
   const [location] = useLocation();
@@ -113,6 +114,7 @@ function Router() {
       <Route path="/admin/dashboard" component={AdminDashboard} />
       <Route path="/admin/field-connections" component={FieldConnections} />
       <Route path="/admin/theme-editor" component={ThemeEditor} />
+      <Route path="/admin/export-data" component={ExportData} />
       <Route component={NotFound} />
     </Switch>
   );

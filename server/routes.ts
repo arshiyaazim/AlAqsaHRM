@@ -1940,6 +1940,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create a server instance
+  // Data export API endpoints
+  app.post("/api/admin/export", authenticateJWT, authorize(["admin"]), async (req: Request, res: Response) => {
+    try {
+      const { exportType } = req.body;
+      
+      if (!exportType) {
+        return res.status(400).json({ error: "Export type is required" });
+      }
+      
+      // Create exports directory if it doesn't exist
+      const exportsDir = path.join(process.cwd(), "exports");
+      if (!fs.existsSync(exportsDir)) {
+        fs.mkdirSync(exportsDir, { recursive: true });
+      }
+      
+      // Generate a timestamp for the filename
+      const timestamp = new Date().toISOString().replace(/:/g, "-").replace(/\..+/, "");
+      
+      // Determine file extension based on export type
+      let fileExtension = "csv";
+      if (exportType.includes("json")) {
+        fileExtension = "json";
+      } else if (exportType === "database") {
+        fileExtension = "sql";
+      } else if (exportType === "all") {
+        fileExtension = "zip";
+      }
+      
+      // Generate export filename
+      const fileName = `${exportType}_${timestamp}.${fileExtension}`;
+      const outputPath = path.join(exportsDir, fileName);
+      
+      // Import our export utility functions - we'll use child_process to run it
+      const exportScriptPath = path.join(process.cwd(), "export_utils.py");
+      const { exec } = require("child_process");
+      
+      // Run the Python export script
+      const command = `python ${exportScriptPath} ${exportType} ${outputPath}`;
+      
+      exec(command, (error: any, stdout: string, stderr: string) => {
+        if (error) {
+          console.error(`Export error: ${error.message}`);
+          console.error(`stderr: ${stderr}`);
+          return res.status(500).json({ error: "Export failed", details: error.message });
+        }
+        
+        console.log(`Export output: ${stdout}`);
+        
+        // Check if file was created
+        if (!fs.existsSync(outputPath)) {
+          return res.status(500).json({ error: "Export file not created" });
+        }
+        
+        // Return the download URL
+        const downloadUrl = `/api/admin/export/download/${fileName}`;
+        res.status(200).json({ success: true, fileName, downloadUrl });
+      });
+    } catch (error) {
+      console.error("Export error:", error);
+      res.status(500).json({ error: "Failed to process export request" });
+    }
+  });
+  
+  // Download endpoint for exported files
+  app.get("/api/admin/export/download/:filename", authenticateJWT, authorize(["admin"]), (req: Request, res: Response) => {
+    try {
+      const { filename } = req.params;
+      
+      // Security check - prevent path traversal attacks
+      if (filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
+        return res.status(400).json({ error: "Invalid filename" });
+      }
+      
+      const filePath = path.join(process.cwd(), "exports", filename);
+      
+      // Check if file exists
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: "File not found" });
+      }
+      
+      // Set content type based on file extension
+      const ext = path.extname(filename).toLowerCase();
+      let contentType = "text/plain";
+      
+      switch (ext) {
+        case ".csv":
+          contentType = "text/csv";
+          break;
+        case ".json":
+          contentType = "application/json";
+          break;
+        case ".sql":
+          contentType = "application/sql";
+          break;
+        case ".zip":
+          contentType = "application/zip";
+          break;
+      }
+      
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
+      
+      // Stream the file
+      const fileStream = fs.createReadStream(filePath);
+      fileStream.pipe(res);
+    } catch (error) {
+      console.error("Download error:", error);
+      res.status(500).json({ error: "Failed to download file" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
