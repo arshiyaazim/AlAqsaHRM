@@ -824,14 +824,14 @@ def edit_project(project_id):
         # Validate inputs
         if not name:
             flash('Project name is required.', 'danger')
-            return redirect(url_for('edit_project', project_id=project_id))
+            return redirect(f"/admin/projects/{project_id}/edit")
         
         # Validate JSON for custom fields
         try:
             json.loads(custom_fields)
         except json.JSONDecodeError:
             flash('Custom fields must be valid JSON.', 'danger')
-            return redirect(url_for('edit_project', project_id=project_id))
+            return redirect(f"/admin/projects/{project_id}/edit")
         
         # Update database
         db.execute('''
@@ -881,7 +881,7 @@ def manage_custom_fields(project_id):
         
         if not field_name or not field_type:
             flash('Field name and type are required.', 'danger')
-            return redirect(url_for('manage_custom_fields', project_id=project_id))
+            return redirect(f"/admin/projects/{project_id}/fields")
         
         # Create new field entry
         field_info = {'type': field_type}
@@ -892,7 +892,7 @@ def manage_custom_fields(project_id):
             options = [opt.strip() for opt in options_text.split(',') if opt.strip()]
             if not options:
                 flash('Select fields must have at least one option.', 'danger')
-                return redirect(url_for('manage_custom_fields', project_id=project_id))
+                return redirect(f"/admin/projects/{project_id}/fields")
             field_info['options'] = options
         
         # Add to custom fields
@@ -906,7 +906,7 @@ def manage_custom_fields(project_id):
         db.commit()
         
         flash(f'Field "{field_name}" added successfully.', 'success')
-        return redirect(url_for('manage_custom_fields', project_id=project_id))
+        return redirect(f"/admin/projects/{project_id}/fields")
     
     return render_template('project_fields.html', project=project, custom_fields=custom_fields)
 
@@ -942,7 +942,7 @@ def delete_custom_field(project_id, field_name):
     else:
         flash(f'Field "{field_name}" not found.', 'warning')
     
-    return redirect(url_for('manage_custom_fields', project_id=project_id))
+    return redirect(f"/admin/projects/{project_id}/fields")
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
@@ -1160,11 +1160,11 @@ def edit_user(user_id):
         # Validate inputs
         if not username or not role:
             flash('Username and role are required.', 'danger')
-            return redirect(url_for('edit_user', user_id=user_id))
+            return redirect(f"/admin/users/{user_id}/edit")
         
         if role not in ['admin', 'hr', 'viewer']:
             flash('Invalid role.', 'danger')
-            return redirect(url_for('edit_user', user_id=user_id))
+            return redirect(f"/admin/users/{user_id}/edit")
         
         # Check if username already exists for other users
         existing_user = db.execute(
@@ -1174,7 +1174,7 @@ def edit_user(user_id):
         
         if existing_user:
             flash('Username already exists.', 'danger')
-            return redirect(url_for('edit_user', user_id=user_id))
+            return redirect(f"/admin/users/{user_id}/edit")
         
         # Update user in database
         try:
@@ -1196,7 +1196,7 @@ def edit_user(user_id):
             return redirect("/admin/users")
         except sqlite3.Error as e:
             flash(f'Database error: {str(e)}', 'danger')
-            return redirect(url_for('edit_user', user_id=user_id))
+            return redirect(f"/admin/users/{user_id}/edit")
     
     return render_template('user_form.html', user=user)
 
@@ -1262,7 +1262,7 @@ def add_menu_item():
         # Validate inputs
         if not title:
             flash('Menu item title is required.', 'danger')
-            return redirect(url_for('add_menu_item'))
+            return redirect("/admin/menu/add")
         
         # Convert parent_id to integer or None
         if parent_id:
@@ -1303,7 +1303,7 @@ def add_menu_item():
             return redirect("/admin/menu")
         except sqlite3.Error as e:
             flash(f'Database error: {str(e)}', 'danger')
-            return redirect(url_for('add_menu_item'))
+            return redirect("/admin/menu/add")
     
     return render_template('menu_item_form.html', parent_items=parent_items)
 
@@ -1334,7 +1334,7 @@ def edit_menu_item(item_id):
         # Validate inputs
         if not title:
             flash('Menu item title is required.', 'danger')
-            return redirect(url_for('edit_menu_item', item_id=item_id))
+            return redirect(f"/admin/menu/{item_id}/edit")
         
         # Convert parent_id to integer or None
         if parent_id:
@@ -1365,7 +1365,7 @@ def edit_menu_item(item_id):
             return redirect("/admin/menu")
         except sqlite3.Error as e:
             flash(f'Database error: {str(e)}', 'danger')
-            return redirect(url_for('edit_menu_item', item_id=item_id))
+            return redirect(f"/admin/menu/{item_id}/edit")
     
     # Parse visible_to for the form
     if item['visible_to'] == 'all':
@@ -1464,7 +1464,7 @@ def add_field():
         # Validate inputs
         if not field_name or not display_name or not field_type or not form_id:
             flash('All fields are required.', 'danger')
-            return redirect(url_for('add_field'))
+            return redirect("/admin/fields/add")
         
         # Format options as JSON if provided (for select type)
         if field_type == 'select' and options:
@@ -1495,7 +1495,7 @@ def add_field():
             return redirect("/admin/fields")
         except sqlite3.Error as e:
             flash(f'Database error: {str(e)}', 'danger')
-            return redirect(url_for('add_field'))
+            return redirect("/admin/fields/add")
     
     return render_template('field_form.html')
 
@@ -1521,7 +1521,7 @@ def edit_field(field_id):
         # Validate inputs
         if not field_name or not display_name or not field_type or not form_id:
             flash('All fields are required.', 'danger')
-            return redirect(url_for('edit_field', field_id=field_id))
+            return redirect(f"/admin/fields/{field_id}/edit")
         
         # Format options as JSON if provided (for select type)
         if field_type == 'select' and options:
@@ -1544,7 +1544,7 @@ def edit_field(field_id):
             return redirect("/admin/fields")
         except sqlite3.Error as e:
             flash(f'Database error: {str(e)}', 'danger')
-            return redirect(url_for('edit_field', field_id=field_id))
+            return redirect(f"/admin/fields/{field_id}/edit")
     
     # Parse options for the form if this is a select field
     options_text = ''
@@ -1629,7 +1629,7 @@ def add_connection():
         # Validate inputs
         if not source_field_id or not target_field_id or not connection_type:
             flash('All fields are required.', 'danger')
-            return redirect(url_for('add_connection'))
+            return redirect("/admin/connections/add")
         
         # Convert IDs to integers
         try:
@@ -1637,12 +1637,12 @@ def add_connection():
             target_field_id = int(target_field_id)
         except ValueError:
             flash('Invalid field IDs.', 'danger')
-            return redirect(url_for('add_connection'))
+            return redirect("/admin/connections/add")
         
         # Check that source and target are different
         if source_field_id == target_field_id:
             flash('Source and target fields must be different.', 'danger')
-            return redirect(url_for('add_connection'))
+            return redirect("/admin/connections/add")
         
         # Validate parameters JSON if provided
         if parameters:
@@ -1650,7 +1650,7 @@ def add_connection():
                 json.loads(parameters)
             except json.JSONDecodeError:
                 flash('Parameters must be valid JSON.', 'danger')
-                return redirect(url_for('add_connection'))
+                return redirect("/admin/connections/add")
         
         # Insert into database
         try:
@@ -1662,10 +1662,10 @@ def add_connection():
             )
             db.commit()
             flash('Field connection added successfully.', 'success')
-            return redirect(url_for('admin_connections_view'))
+            return redirect("/admin/connections")
         except sqlite3.Error as e:
             flash(f'Database error: {str(e)}', 'danger')
-            return redirect(url_for('add_connection'))
+            return redirect("/admin/connections/add")
     
     return render_template('connection_form.html', fields=fields)
 
@@ -1682,7 +1682,7 @@ def delete_connection(connection_id):
     except sqlite3.Error as e:
         flash(f'Database error: {str(e)}', 'danger')
     
-    return redirect(url_for('admin_connections_view'))
+    return redirect("/admin/connections")
 
 # Custom styling
 @app.route('/admin/styling', methods=['GET', 'POST'])
@@ -2105,7 +2105,7 @@ def admin_connections_view():
 def add_field_connection():
     """Add a new field connection"""
     if request.method != 'POST':
-        return redirect(url_for('admin_connections_view'))
+        return redirect("/admin/connections")
     
     # Get form data
     source_field_id = request.form.get('source_field_id')
@@ -2138,14 +2138,14 @@ def add_field_connection():
     except Exception as e:
         flash(f'Error adding field connection: {str(e)}', 'danger')
     
-    return redirect(url_for('admin_connections_view'))
+    return redirect("/admin/connections")
 
 @app.route('/admin/connections/edit', methods=['POST'], endpoint='edit_field_connection_api')
 @admin_required
 def edit_field_connection():
     """Edit an existing field connection"""
     if request.method != 'POST':
-        return redirect(url_for('admin_connections_view'))
+        return redirect("/admin/connections")
     
     # Get form data
     connection_id = request.form.get('connection_id')
@@ -2179,14 +2179,14 @@ def edit_field_connection():
     except Exception as e:
         flash(f'Error updating field connection: {str(e)}', 'danger')
     
-    return redirect(url_for('admin_connections_view'))
+    return redirect("/admin/connections")
 
 @app.route('/admin/connections/delete', methods=['POST'], endpoint='delete_field_connection_api')
 @admin_required
 def delete_field_connection():
     """Delete a field connection"""
     if request.method != 'POST':
-        return redirect(url_for('admin_connections_view'))
+        return redirect("/admin/connections")
     
     connection_id = request.form.get('connection_id')
     
@@ -2199,14 +2199,14 @@ def delete_field_connection():
     except Exception as e:
         flash(f'Error deleting field connection: {str(e)}', 'danger')
     
-    return redirect(url_for('admin_connections_view'))
+    return redirect("/admin/connections")
 
 @app.route('/admin/suggestions/enable', methods=['POST'])
 @admin_required
 def enable_field_suggestions():
     """Enable suggestions for a field"""
     if request.method != 'POST':
-        return redirect(url_for('admin_connections_view'))
+        return redirect("/admin/connections")
     
     field_id = request.form.get('field_id')
     
@@ -2219,14 +2219,14 @@ def enable_field_suggestions():
     except Exception as e:
         flash(f'Error enabling field suggestions: {str(e)}', 'danger')
     
-    return redirect(url_for('admin_connections_view'))
+    return redirect("/admin/connections")
 
 @app.route('/admin/suggestions/disable', methods=['POST'])
 @admin_required
 def disable_field_suggestions():
     """Disable suggestions for a field"""
     if request.method != 'POST':
-        return redirect(url_for('admin_connections_view'))
+        return redirect("/admin/connections")
     
     field_id = request.form.get('field_id')
     
@@ -2239,7 +2239,7 @@ def disable_field_suggestions():
     except Exception as e:
         flash(f'Error disabling field suggestions: {str(e)}', 'danger')
     
-    return redirect(url_for('admin_connections_view'))
+    return redirect("/admin/connections")
 
 @app.route('/api/form-fields')
 def api_form_fields():
