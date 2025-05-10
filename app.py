@@ -176,9 +176,14 @@ def close_db(e=None):
         db.close()
 
 def init_db():
-    """Initialize the SQLite database with required tables."""
+    """Initialize the SQLite database with required tables.
+    
+    Returns:
+        bool: True if initialization was successful, False otherwise
+    """
     try:
         db = get_db()
+        success = False
         
         try:
             # Check if the users table exists
@@ -204,12 +209,23 @@ def init_db():
                 db.commit()
                 logging.info("Users table created successfully")
                 
-            # If the schema.sql file exists, also try to execute it for other tables
-            schema_path = os.path.join(os.path.dirname(__file__), 'schema.sql')
-            if not os.path.exists(schema_path):
-                schema_path = 'schema.sql'  # Try relative path
-                
-            if os.path.exists(schema_path):
+            # Find the schema.sql file with more robust path resolution
+            possible_paths = [
+                os.path.join(os.path.dirname(__file__), 'schema.sql'),  # Absolute path based on app location
+                'schema.sql',                                           # Relative to working directory
+                os.path.join(os.getcwd(), 'schema.sql'),                # Explicit working directory path
+                os.path.abspath('schema.sql')                           # Absolute path resolution
+            ]
+            
+            schema_path = None
+            for path in possible_paths:
+                if os.path.exists(path):
+                    schema_path = path
+                    logging.info(f"Found schema file at: {schema_path}")
+                    break
+                    
+            if schema_path and os.path.exists(schema_path):
+                logging.info(f"Loading schema from: {schema_path}")
                 # Read the schema file
                 with open(schema_path, 'r') as f:
                     schema_sql = f.read()
@@ -325,6 +341,34 @@ def init_db_command():
 def init_app_db():
     """Initialize the database when the app starts, including under Gunicorn in production."""
     try:
+        # Create logs directory if it doesn't exist
+        if not os.path.exists('logs'):
+            os.makedirs('logs')
+            logging.info("Created logs directory")
+            
+        # Create uploads directory if it doesn't exist
+        if not os.path.exists('uploads'):
+            os.makedirs('uploads')
+            logging.info("Created uploads directory")
+            
+        # Create database directory if it doesn't exist
+        db_dir = os.path.dirname(DATABASE)
+        if db_dir and not os.path.exists(db_dir):
+            os.makedirs(db_dir)
+            logging.info(f"Created database directory: {db_dir}")
+            
+        # Log environment details for diagnostics    
+        logging.info(f"Current working directory: {os.getcwd()}")
+        logging.info(f"Database path: {os.path.abspath(DATABASE)}")
+        logging.info(f"Schema path check results:")
+        for path in [
+            os.path.join(os.path.dirname(__file__), 'schema.sql'),
+            'schema.sql',
+            os.path.join(os.getcwd(), 'schema.sql'),
+            os.path.abspath('schema.sql')
+        ]:
+            logging.info(f"  - {path}: {'EXISTS' if os.path.exists(path) else 'NOT FOUND'}")
+            
         # Check if users table exists
         db = get_db()
         users_exist = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").fetchone()
@@ -338,10 +382,16 @@ def init_app_db():
                 logging.error("Database initialization failed at startup, but continuing")
         else:
             logging.info("Users table already exists. Database ready.")
+            
+        # Return connection to pool
+        close_db()
+        return True
     except Exception as e:
         logging.error(f"Error during database check at startup: {str(e)}")
+        logging.error(f"Exception type: {type(e).__name__}")
         logging.error("Application will continue but may encounter database errors")
         # Do not raise the exception so the application can still start
+        return False
         
 # Global flag to track if database has been initialized
 _DATABASE_INITIALIZED = False
