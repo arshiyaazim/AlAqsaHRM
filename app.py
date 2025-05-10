@@ -49,6 +49,17 @@ def login():
     if 'admin_id' in session:
         return redirect('/admin/dashboard')
     
+    # Check if users table exists before attempting login
+    try:
+        db = get_db()
+        users_exist = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").fetchone()
+        if not users_exist:
+            # Users table doesn't exist - initialize database
+            logging.warning("Users table not found during login attempt. Initializing database.")
+            init_db()
+    except Exception as e:
+        logging.error(f"Error checking database status during login: {str(e)}")
+    
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
@@ -211,24 +222,29 @@ def init_db():
             
             # Add default menu items if menu_items table exists but is empty
             try:
-                menu_count = db.execute('SELECT COUNT(*) as count FROM menu_items').fetchone()['count']
-                if menu_count == 0:
-                    # Add some default menu items
-                    logging.info("Adding default menu items")
-                    menu_items = [
-                        (1, 'Dashboard', '/', 'bi-speedometer2', 'admin,hr,viewer', 1),
-                        (2, 'Projects', '/projects', 'bi-building', 'admin,hr,viewer', 2),
-                        (3, 'Employees', '/employees', 'bi-people', 'admin,hr,viewer', 3),
-                        (4, 'Attendance', '/attendance', 'bi-clock-history', 'admin,hr,viewer', 4),
-                        (5, 'Reports', '/reports', 'bi-file-earmark-text', 'admin,hr', 5),
-                        (6, 'Users', '/users', 'bi-people-fill', 'admin', 6),
-                        (7, 'Settings', '/settings', 'bi-gear', 'admin', 7)
-                    ]
-                    db.executemany(
-                        'INSERT INTO menu_items (id, title, url, icon, roles, display_order) VALUES (?, ?, ?, ?, ?, ?)',
-                        menu_items
-                    )
-                    db.commit()
+                # First check if menu_items table exists
+                table_exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='menu_items'").fetchone()
+                if table_exists:
+                    menu_count = db.execute('SELECT COUNT(*) as count FROM menu_items').fetchone()['count']
+                    if menu_count == 0:
+                        # Add some default menu items
+                        logging.info("Adding default menu items")
+                        menu_items = [
+                            (1, 'Dashboard', '/', 'bi-speedometer2', 'admin,hr,viewer', 1),
+                            (2, 'Projects', '/projects', 'bi-building', 'admin,hr,viewer', 2),
+                            (3, 'Employees', '/employees', 'bi-people', 'admin,hr,viewer', 3),
+                            (4, 'Attendance', '/attendance', 'bi-clock-history', 'admin,hr,viewer', 4),
+                            (5, 'Reports', '/reports', 'bi-file-earmark-text', 'admin,hr', 5),
+                            (6, 'Users', '/users', 'bi-people-fill', 'admin', 6),
+                            (7, 'Settings', '/settings', 'bi-gear', 'admin', 7)
+                        ]
+                        db.executemany(
+                            'INSERT INTO menu_items (id, title, url, icon, roles, display_order) VALUES (?, ?, ?, ?, ?, ?)',
+                            menu_items
+                        )
+                        db.commit()
+                else:
+                    logging.info("Menu items table doesn't exist yet. Skipping default menu items.")
             except sqlite3.Error as e:
                 logging.warning(f"Could not add default menu items: {str(e)}")
                 # Non-critical error, continue
@@ -247,7 +263,12 @@ def init_db():
             except:
                 # If we can't log to the database, just log to the file
                 pass
-            raise
+            
+            # In production, don't crash the application if tables already exist
+            if "already exists" in str(e):
+                logging.warning("Continuing despite 'already exists' error during initialization")
+                return True
+            return False
             
     except Exception as e:
         error_msg = f"Database initialization failed: {str(e)}"
@@ -257,13 +278,36 @@ def init_db():
         except:
             # If we can't log to the database, just log to the file
             pass
-        raise
+        
+        # Only return False instead of raising to prevent app from crashing at startup
+        return False
 
 @app.cli.command('init-db')
 def init_db_command():
     """Clear existing data and create new tables."""
     init_db()
     click.echo('Initialized the database.')
+
+# Initialize the database at application startup
+with app.app_context():
+    try:
+        # Check if users table exists
+        db = get_db()
+        users_exist = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").fetchone()
+        
+        if not users_exist:
+            logging.warning("Users table does not exist. Initializing database.")
+            success = init_db()
+            if success:
+                logging.info("Database initialized successfully at startup")
+            else:
+                logging.error("Database initialization failed at startup, but continuing")
+        else:
+            logging.info("Users table already exists. Database ready.")
+            
+    except Exception as e:
+        logging.error(f"Error checking database status at startup: {str(e)}")
+        logging.warning("Will attempt to initialize database when needed")
 
 @app.cli.command('reset-admin')
 def reset_admin_password_command():
@@ -630,6 +674,18 @@ def inject_context():
 @app.route('/')
 def index():
     """Main page with clock in/out form"""
+    # Check if database is initialized with required tables
+    try:
+        db = get_db()
+        # Check for projects table, as it's needed for this page
+        projects_exist = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='projects'").fetchone()
+        if not projects_exist:
+            # Projects table doesn't exist - initialize database
+            logging.warning("Projects table not found during index page load. Initializing database.")
+            init_db()
+    except Exception as e:
+        logging.error(f"Error checking database status on index page: {str(e)}")
+        
     projects = get_projects()
     
     # Check if the request is coming from a mobile device
