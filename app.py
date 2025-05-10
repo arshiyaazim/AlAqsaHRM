@@ -32,7 +32,8 @@ ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')  # For development
 app = Flask(__name__)
 app.config.from_mapping(
     SECRET_KEY=SECRET_KEY,
-    UPLOAD_FOLDER=UPLOAD_FOLDER
+    UPLOAD_FOLDER=UPLOAD_FOLDER,
+    DATABASE=os.path.join('instance', DATABASE)
 )
 
 # This route is replaced by the more detailed implementation below
@@ -103,13 +104,11 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 def get_db():
     if 'db' not in g:
         try:
-            # Ensure database parent directory exists
-            db_dir = os.path.dirname(DATABASE)
-            if db_dir:
-                os.makedirs(db_dir, exist_ok=True)
+            # Ensure instance directory exists
+            os.makedirs('instance', exist_ok=True)
                 
             g.db = sqlite3.connect(
-                DATABASE,
+                app.config['DATABASE'],
                 detect_types=sqlite3.PARSE_DECLTYPES
             )
             g.db.row_factory = sqlite3.Row
@@ -137,34 +136,72 @@ def init_db():
     try:
         db = get_db()
         
-        # First, make sure the schema.sql file exists
-        schema_path = os.path.join(os.path.dirname(__file__), 'schema.sql')
-        if not os.path.exists(schema_path):
-            schema_path = 'schema.sql'  # Try relative path
-        
-        if not os.path.exists(schema_path):
-            error_msg = "Schema file not found. Cannot initialize database."
-            logging.error(error_msg)
-            raise FileNotFoundError(error_msg)
-            
-        # Read the schema file
-        with open(schema_path, 'r') as f:
-            schema_sql = f.read()
-        
-        # Execute the schema
         try:
-            db.executescript(schema_sql)
+            # Check if the users table exists
+            table_exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").fetchone()
+            
+            # If users table doesn't exist, create it directly
+            if not table_exists:
+                logging.info("Creating users table")
+                db.execute('''
+                CREATE TABLE users (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  username TEXT UNIQUE NOT NULL,
+                  password TEXT NOT NULL,
+                  email TEXT UNIQUE,
+                  name TEXT,
+                  role TEXT NOT NULL DEFAULT 'viewer',
+                  active INTEGER NOT NULL DEFAULT 1,
+                  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  updated_at TIMESTAMP,
+                  last_login TIMESTAMP
+                )
+                ''')
+                db.commit()
+                logging.info("Users table created successfully")
+                
+            # If the schema.sql file exists, also try to execute it for other tables
+            schema_path = os.path.join(os.path.dirname(__file__), 'schema.sql')
+            if not os.path.exists(schema_path):
+                schema_path = 'schema.sql'  # Try relative path
+                
+            if os.path.exists(schema_path):
+                # Read the schema file
+                with open(schema_path, 'r') as f:
+                    schema_sql = f.read()
+                
+                # Execute the schema (safely - allow existing tables)
+                # Split the schema into individual statements
+                schema_statements = schema_sql.split(';')
+                
+                # Execute each statement separately to handle "table already exists" errors
+                for statement in schema_statements:
+                    statement = statement.strip()
+                    if statement:  # Skip empty statements
+                        try:
+                            db.execute(statement + ';')
+                        except sqlite3.Error as e:
+                            # Only report as warning if it's a "table already exists" error
+                            if "already exists" in str(e):
+                                logging.warning(f"Database initialization: {str(e)}")
+                            else:
+                                # Log other errors but don't break execution
+                                logging.error(f"Error executing schema statement: {str(e)}")
+            else:
+                logging.warning("Schema file not found. Will create minimal required tables only.")
             
             # Add admin user if not exists
             try:
+                
                 admin_exists = db.execute(
-                    'SELECT username FROM admins WHERE username = ?', (ADMIN_USERNAME,)
+                    'SELECT username FROM users WHERE username = ? AND role = ?', 
+                    (ADMIN_USERNAME, 'admin')
                 ).fetchone()
                 
                 if not admin_exists:
                     db.execute(
-                        'INSERT INTO admins (username, password) VALUES (?, ?)',
-                        (ADMIN_USERNAME, generate_password_hash(ADMIN_PASSWORD))
+                        'INSERT INTO users (username, password, name, role) VALUES (?, ?, ?, ?)',
+                        (ADMIN_USERNAME, generate_password_hash(ADMIN_PASSWORD), 'Administrator', 'admin')
                     )
                     db.commit()
                     logging.info(f"Admin user '{ADMIN_USERNAME}' created successfully")
@@ -179,16 +216,16 @@ def init_db():
                     # Add some default menu items
                     logging.info("Adding default menu items")
                     menu_items = [
-                        (1, 'Dashboard', '/', 'dashboard', 'admin,hr,viewer', 1),
-                        (2, 'Projects', '/projects', 'briefcase', 'admin,hr,viewer', 2),
-                        (3, 'Employees', '/employees', 'users', 'admin,hr,viewer', 3),
-                        (4, 'Attendance', '/attendance', 'clock', 'admin,hr,viewer', 4),
-                        (5, 'Reports', '/reports', 'file-text', 'admin,hr', 5),
-                        (6, 'Users', '/users', 'user-check', 'admin', 6),
-                        (7, 'Settings', '/settings', 'settings', 'admin', 7)
+                        (1, 'Dashboard', '/', 'bi-speedometer2', 'admin,hr,viewer', 1),
+                        (2, 'Projects', '/projects', 'bi-building', 'admin,hr,viewer', 2),
+                        (3, 'Employees', '/employees', 'bi-people', 'admin,hr,viewer', 3),
+                        (4, 'Attendance', '/attendance', 'bi-clock-history', 'admin,hr,viewer', 4),
+                        (5, 'Reports', '/reports', 'bi-file-earmark-text', 'admin,hr', 5),
+                        (6, 'Users', '/users', 'bi-people-fill', 'admin', 6),
+                        (7, 'Settings', '/settings', 'bi-gear', 'admin', 7)
                     ]
                     db.executemany(
-                        'INSERT INTO menu_items (id, name, url, icon, roles, display_order) VALUES (?, ?, ?, ?, ?, ?)',
+                        'INSERT INTO menu_items (id, title, url, icon, roles, display_order) VALUES (?, ?, ?, ?, ?, ?)',
                         menu_items
                     )
                     db.commit()

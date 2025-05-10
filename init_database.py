@@ -62,7 +62,11 @@ def main():
         dirs = ['instance', 'logs', 'exports', 'uploads']
         for directory in dirs:
             logging.info(f'Creating directory: {directory}')
-            os.makedirs(directory, exist_ok=True)
+            try:
+                os.makedirs(directory, exist_ok=True)
+            except Exception as e:
+                logging.warning(f"Could not create directory {directory}: {str(e)}")
+                # Continue anyway as the directory might be a symlink or already exist
         
         # Import app and init_db function
         logging.info("Importing app module...")
@@ -96,13 +100,17 @@ def main():
         logging.info("Verifying admin user...")
         with app.app_context():
             db = get_db()
-            admin = db.execute("SELECT username FROM admins LIMIT 1").fetchone()
-            if admin:
-                logging.info(f"Admin user found: {admin['username']}")
-                print(f"✅ Admin user found: {admin['username']}")
-            else:
-                logging.warning("No admin user found, database may be empty")
-                print("⚠️ No admin user found, database may be empty")
+            try:
+                admin = db.execute("SELECT username FROM users WHERE role = 'admin' LIMIT 1").fetchone()
+                if admin:
+                    logging.info(f"Admin user found: {admin['username']}")
+                    print(f"✅ Admin user found: {admin['username']}")
+                else:
+                    logging.warning("No admin user found, database may be empty")
+                    print("⚠️ No admin user found, database may be empty")
+            except sqlite3.Error as e:
+                logging.warning(f"Could not verify admin user: {str(e)}")
+                print(f"⚠️ Could not verify admin user: {str(e)}")
         
         return 0
     except Exception as e:
