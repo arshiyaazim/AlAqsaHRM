@@ -46,7 +46,7 @@ def index():
 def login():
     """Login route that handles both GET and POST"""
     if 'admin_id' in session:
-        return redirect(url_for('admin_dashboard'))
+        return redirect('/admin/dashboard')
     
     if request.method == 'POST':
         username = request.form.get('username')
@@ -64,7 +64,7 @@ def login():
             session.clear()
             session['user_id'] = user['id']
             flash('Login successful!', 'success')
-            return redirect(url_for('index'))
+            return redirect('/')
         
         flash('Invalid username or password.', 'danger')
     
@@ -75,7 +75,7 @@ def logout():
     """Logout route that clears the session"""
     session.clear()
     flash('You have been logged out.', 'info')
-    return redirect(url_for('login'))
+    return redirect('/login')
 
 # Now try to register the auth blueprint
 try:
@@ -306,12 +306,12 @@ def role_required(roles):
         def decorated_function(*args, **kwargs):
             if not session.get('user_id'):
                 flash('Please log in to access this page.', 'warning')
-                return redirect(url_for('admin_login'))
+                return redirect("/admin/login")
             
             user = get_current_user()
             if not user:
                 flash('Authentication error. Please log in again.', 'danger')
-                return redirect(url_for('admin_login'))
+                return redirect("/admin/login")
                 
             # Convert to list if single role string is provided
             required_roles = [roles] if isinstance(roles, str) else roles
@@ -335,7 +335,7 @@ def role_required(roles):
                     required_role_str = ', '.join(required_roles)
                     return render_template('access_denied.html', user=user, required_role=required_role_str)
                     
-                return redirect(url_for('index'))
+                return redirect("/")
             
             # For admin-only pages, perform an extra check to ensure admin role specifically
             if 'admin' in required_roles and user['role'] != 'admin' and ('user' in f.__name__ or 'connection' in f.__name__ or 'style' in f.__name__):
@@ -354,14 +354,14 @@ def admin_required(f):
     def decorated_function(*args, **kwargs):
         if not session.get('admin_logged_in') and not session.get('user_id'):
             flash('Please log in as admin to access this page.', 'warning')
-            return redirect(url_for('admin_login'))
+            return redirect("/admin/login")
         
         # Check if using new user system
         if session.get('user_id'):
             user = get_current_user()
             if not user:
                 flash('Authentication error. Please log in again.', 'danger')
-                return redirect(url_for('admin_login'))
+                return redirect("/admin/login")
                 
             if user['role'] != 'admin':
                 # Log unauthorized access attempt
@@ -617,7 +617,7 @@ def mobile_app():
 def submit():
     """Handle attendance form submission"""
     if request.method != 'POST':
-        return redirect(url_for('index'))
+        return redirect("/")
     
     employee_id = request.form.get('employee_id')
     action = request.form.get('action')
@@ -628,7 +628,7 @@ def submit():
     # Validate inputs
     if not employee_id or not action:
         flash('Employee ID and action are required.', 'danger')
-        return redirect(url_for('index'))
+        return redirect("/")
     
     # Handle photo upload if provided
     photo_path = None
@@ -652,7 +652,7 @@ def submit():
     
     if duplicate:
         flash(f'You have already {action.lower()}ed today.', 'warning')
-        return redirect(url_for('index'))
+        return redirect("/")
     
     # Get project details if provided
     project_name = None
@@ -669,7 +669,7 @@ def submit():
     db.commit()
     
     flash(f'Successfully {action.lower()}ed. Thank you!', 'success')
-    return redirect(url_for('index'))
+    return redirect("/")
 
 # Admin routes
 @app.route('/admin/login', methods=['GET', 'POST'])
@@ -688,7 +688,7 @@ def admin_login():
             session.clear()
             session['admin_logged_in'] = True
             session['admin_id'] = admin['id']
-            return redirect(url_for('admin_dashboard'))
+            return redirect("/admin/dashboard")
         
         flash('Invalid username or password', 'danger')
     
@@ -699,7 +699,7 @@ def admin_logout():
     """Admin logout"""
     session.clear()
     flash('You have been logged out.', 'info')
-    return redirect(url_for('admin_login'))
+    return redirect("/admin/login")
 
 @app.route('/admin/dashboard')
 @admin_required
@@ -779,14 +779,14 @@ def add_project():
         # Validate inputs
         if not name:
             flash('Project name is required.', 'danger')
-            return redirect(url_for('add_project'))
+            return redirect("/admin/projects/add")
         
         # Validate JSON for custom fields
         try:
             json.loads(custom_fields)
         except json.JSONDecodeError:
             flash('Custom fields must be valid JSON.', 'danger')
-            return redirect(url_for('add_project'))
+            return redirect("/admin/projects/add")
         
         # Insert into database
         db = get_db()
@@ -797,7 +797,7 @@ def add_project():
         db.commit()
         
         flash('Project added successfully.', 'success')
-        return redirect(url_for('admin_projects'))
+        return redirect("/admin/projects")
     
     return render_template('project_form.html')
 
@@ -810,7 +810,7 @@ def edit_project(project_id):
     
     if not project:
         flash('Project not found.', 'danger')
-        return redirect(url_for('admin_projects'))
+        return redirect("/admin/projects")
     
     if request.method == 'POST':
         name = request.form.get('name')
@@ -843,7 +843,7 @@ def edit_project(project_id):
         db.commit()
         
         flash('Project updated successfully.', 'success')
-        return redirect(url_for('admin_projects'))
+        return redirect("/admin/projects")
     
     return render_template('project_form.html', project=project)
 
@@ -856,7 +856,7 @@ def delete_project(project_id):
     db.commit()
     
     flash('Project deleted successfully.', 'success')
-    return redirect(url_for('admin_projects'))
+    return redirect("/admin/projects")
 
 @app.route('/admin/projects/<int:project_id>/fields', methods=['GET', 'POST'])
 @admin_required
@@ -867,7 +867,7 @@ def manage_custom_fields(project_id):
     
     if not project:
         flash('Project not found.', 'danger')
-        return redirect(url_for('admin_projects'))
+        return redirect("/admin/projects")
     
     # Get current custom fields
     try:
@@ -919,7 +919,7 @@ def delete_custom_field(project_id, field_name):
     
     if not project:
         flash('Project not found.', 'danger')
-        return redirect(url_for('admin_projects'))
+        return redirect("/admin/projects")
     
     # Get current custom fields
     try:
@@ -1088,7 +1088,7 @@ def resolve_error(error_id):
     except sqlite3.Error as e:
         flash(f'Failed to update error: {str(e)}', 'danger')
     
-    return redirect(url_for('check_system_health'))
+    return redirect("/admin/health")
 
 # User Management
 @app.route('/admin/users')
@@ -1112,18 +1112,18 @@ def add_user():
         # Validate inputs
         if not username or not password or not role:
             flash('Username, password and role are required.', 'danger')
-            return redirect(url_for('add_user'))
+            return redirect("/admin/users/add")
         
         if role not in ['admin', 'hr', 'viewer']:
             flash('Invalid role.', 'danger')
-            return redirect(url_for('add_user'))
+            return redirect("/admin/users/add")
         
         # Check if username already exists
         db = get_db()
         existing_user = db.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
         if existing_user:
             flash('Username already exists.', 'danger')
-            return redirect(url_for('add_user'))
+            return redirect("/admin/users/add")
         
         # Insert new user
         try:
@@ -1133,10 +1133,10 @@ def add_user():
             )
             db.commit()
             flash('User added successfully.', 'success')
-            return redirect(url_for('admin_users'))
+            return redirect("/admin/users")
         except sqlite3.Error as e:
             flash(f'Database error: {str(e)}', 'danger')
-            return redirect(url_for('add_user'))
+            return redirect("/admin/users/add")
     
     return render_template('user_form.html')
 
@@ -1149,7 +1149,7 @@ def edit_user(user_id):
     
     if not user:
         flash('User not found.', 'danger')
-        return redirect(url_for('admin_users'))
+        return redirect("/admin/users")
     
     if request.method == 'POST':
         username = request.form.get('username')
@@ -1193,7 +1193,7 @@ def edit_user(user_id):
             
             db.commit()
             flash('User updated successfully.', 'success')
-            return redirect(url_for('admin_users'))
+            return redirect("/admin/users")
         except sqlite3.Error as e:
             flash(f'Database error: {str(e)}', 'danger')
             return redirect(url_for('edit_user', user_id=user_id))
@@ -1212,7 +1212,7 @@ def delete_user(user_id):
         user_to_delete = db.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
         if user_to_delete and user_to_delete['role'] == 'admin':
             flash('Cannot delete the last admin user.', 'danger')
-            return redirect(url_for('admin_users'))
+            return redirect("/admin/users")
     
     try:
         db.execute('DELETE FROM users WHERE id = ?', (user_id,))
@@ -1221,7 +1221,7 @@ def delete_user(user_id):
     except sqlite3.Error as e:
         flash(f'Database error: {str(e)}', 'danger')
     
-    return redirect(url_for('admin_users'))
+    return redirect("/admin/users")
 
 # Menu management
 @app.route('/admin/menu')
@@ -1300,7 +1300,7 @@ def add_menu_item():
             )
             db.commit()
             flash('Menu item added successfully.', 'success')
-            return redirect(url_for('admin_menu'))
+            return redirect("/admin/menu")
         except sqlite3.Error as e:
             flash(f'Database error: {str(e)}', 'danger')
             return redirect(url_for('add_menu_item'))
@@ -1316,7 +1316,7 @@ def edit_menu_item(item_id):
     
     if not item:
         flash('Menu item not found.', 'danger')
-        return redirect(url_for('admin_menu'))
+        return redirect("/admin/menu")
     
     # Get potential parent items (excluding this item and its children)
     parent_items = db.execute(
@@ -1362,7 +1362,7 @@ def edit_menu_item(item_id):
             )
             db.commit()
             flash('Menu item updated successfully.', 'success')
-            return redirect(url_for('admin_menu'))
+            return redirect("/admin/menu")
         except sqlite3.Error as e:
             flash(f'Database error: {str(e)}', 'danger')
             return redirect(url_for('edit_menu_item', item_id=item_id))
@@ -1396,7 +1396,7 @@ def delete_menu_item(item_id):
     except sqlite3.Error as e:
         flash(f'Database error: {str(e)}', 'danger')
     
-    return redirect(url_for('admin_menu'))
+    return redirect("/admin/menu")
 
 @app.route('/admin/menu/reorder', methods=['POST'])
 @admin_required
@@ -1492,7 +1492,7 @@ def add_field():
             )
             db.commit()
             flash('Form field added successfully.', 'success')
-            return redirect(url_for('admin_fields'))
+            return redirect("/admin/fields")
         except sqlite3.Error as e:
             flash(f'Database error: {str(e)}', 'danger')
             return redirect(url_for('add_field'))
@@ -1508,7 +1508,7 @@ def edit_field(field_id):
     
     if not field:
         flash('Field not found.', 'danger')
-        return redirect(url_for('admin_fields'))
+        return redirect("/admin/fields")
     
     if request.method == 'POST':
         field_name = request.form.get('field_name')
@@ -1541,7 +1541,7 @@ def edit_field(field_id):
             )
             db.commit()
             flash('Form field updated successfully.', 'success')
-            return redirect(url_for('admin_fields'))
+            return redirect("/admin/fields")
         except sqlite3.Error as e:
             flash(f'Database error: {str(e)}', 'danger')
             return redirect(url_for('edit_field', field_id=field_id))
@@ -1582,7 +1582,7 @@ def delete_field(field_id):
     except sqlite3.Error as e:
         flash(f'Database error: {str(e)}', 'danger')
     
-    return redirect(url_for('admin_fields'))
+    return redirect("/admin/fields")
 
 # Field connections
 @app.route('/admin/connections')
@@ -1712,7 +1712,7 @@ def admin_styling():
             )
             db.commit()
             flash('Styling updated successfully. Refresh to see changes.', 'success')
-            return redirect(url_for('admin_styling'))
+            return redirect("/admin/styling")
         except sqlite3.Error as e:
             flash(f'Database error: {str(e)}', 'danger')
     
