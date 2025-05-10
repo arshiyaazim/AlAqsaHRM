@@ -73,9 +73,10 @@ If you encounter issues during deployment:
    python check_tables.py
    ```
 
-3. **Health check**
+3. **Health checks**
 
-   Access the health check endpoint at `/health` to verify application status.
+   - Access the Flask backend health check endpoint at `/health` to verify backend status
+   - Access the Express API health check endpoint at `/api/health` to verify API and database connectivity
 
 4. **Reset admin password**
 
@@ -92,9 +93,28 @@ If you encounter issues during deployment:
 
 ## Monitoring
 
-- Regular health checks are performed at `/health`
+- Regular health checks are performed:
+  - Flask backend: `/health` (configured in render.yaml as healthCheckPath)
+  - Express API: `/api/health` (checks database connectivity)
+- Health check flow:
+  ```
+  1. Render.com -> HTTP GET /health -> Flask Backend
+     |
+     v
+  2. Flask returns 200 OK if running properly
+     |
+     v
+  3. External monitoring -> HTTP GET /api/health -> Express API
+     |
+     v
+  4. Express API runs SQL query to verify database connectivity
+     |
+     v
+  5. Returns health status JSON with database connection status
+  ```
 - Database tables are verified during startup
 - Application logs are stored in the `/var/data/logs` directory on the persistent disk
+- Database connectivity is automatically tested on each API health check request
 
 ## Backup and Restore
 
