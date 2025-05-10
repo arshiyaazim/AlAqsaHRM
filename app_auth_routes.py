@@ -362,7 +362,7 @@ def reset_password():
                 db.commit()
                 
                 flash('Your password has been reset. You can now login with your new password.', 'success')
-                return redirect(url_for('auth.login'))
+                return redirect('/login')
             else:
                 error = 'Invalid or expired reset code.'
                 
@@ -436,7 +436,7 @@ def add_user():
                     db.commit()
                     
                     flash(f"User {username} was successfully created.", 'success')
-                    return redirect(url_for('auth.users'))
+                    return redirect('/auth/users')
             except db.IntegrityError:
                 error = f"User {username} is already registered."
             finally:
@@ -512,7 +512,7 @@ def edit_user(user_id):
                     db.commit()
                     
                     flash(f"User {username} was successfully updated.", 'success')
-                    return redirect(url_for('auth.users'))
+                    return redirect('/auth/users')
             except db.Error as e:
                 error = f"Error updating user: {e}"
             finally:
@@ -532,7 +532,7 @@ def delete_user(user_id):
     # Don't allow deleting your own account
     if user_id == g.user['id']:
         flash('You cannot delete your own account.', 'danger')
-        return redirect(url_for('auth.users'))
+        return redirect('/auth/users')
         
     db = sqlite3.connect('instance/attendance.db')
     db.row_factory = sqlite3.Row
