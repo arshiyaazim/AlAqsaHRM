@@ -1441,7 +1441,7 @@ def delete_connection(connection_id):
     except sqlite3.Error as e:
         flash(f'Database error: {str(e)}', 'danger')
     
-    return redirect(url_for('admin_connections'))
+    return redirect(url_for('admin_connections_view'))
 
 # Custom styling
 @app.route('/admin/styling', methods=['GET', 'POST'])
@@ -1897,7 +1897,7 @@ def add_field_connection():
     except Exception as e:
         flash(f'Error adding field connection: {str(e)}', 'danger')
     
-    return redirect(url_for('admin_connections'))
+    return redirect(url_for('admin_connections_view'))
 
 @app.route('/admin/connections/edit', methods=['POST'], endpoint='edit_field_connection_api')
 @admin_required
@@ -1938,7 +1938,7 @@ def edit_field_connection():
     except Exception as e:
         flash(f'Error updating field connection: {str(e)}', 'danger')
     
-    return redirect(url_for('admin_connections'))
+    return redirect(url_for('admin_connections_view'))
 
 @app.route('/admin/connections/delete', methods=['POST'], endpoint='delete_field_connection_api')
 @admin_required
@@ -1958,7 +1958,7 @@ def delete_field_connection():
     except Exception as e:
         flash(f'Error deleting field connection: {str(e)}', 'danger')
     
-    return redirect(url_for('admin_connections'))
+    return redirect(url_for('admin_connections_view'))
 
 @app.route('/admin/suggestions/enable', methods=['POST'])
 @admin_required
