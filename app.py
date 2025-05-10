@@ -112,6 +112,39 @@ logging.basicConfig(
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Database connection
+def check_table_exists(table_name):
+    """
+    Check if a table exists in the database, and initialize db if it doesn't.
+    
+    Args:
+        table_name: Name of the table to check
+        
+    Returns:
+        bool: True if the table exists, False otherwise
+    """
+    db = get_db()
+    try:
+        # Check if the table exists
+        table_exists = db.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name=?", 
+                                 (table_name,)).fetchone()
+        if not table_exists:
+            # If table doesn't exist, try to initialize database
+            logging.warning(f"Table '{table_name}' not found. Attempting to initialize database.")
+            init_db()
+            # Check again if table exists after initialization
+            table_exists = db.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name=?", 
+                                     (table_name,)).fetchone()
+            if table_exists:
+                logging.info(f"Table '{table_name}' successfully created.")
+                return True
+            else:
+                logging.error(f"Table '{table_name}' still not found after initialization.")
+                return False
+        return True
+    except Exception as e:
+        logging.error(f"Error checking if table '{table_name}' exists: {str(e)}")
+        return False
+
 def get_db():
     if 'db' not in g:
         try:
@@ -480,18 +513,9 @@ def get_menu_items(role=None):
     
     # Check if menu_items table exists and initialize if needed
     try:
-        # First check if the menu_items table exists
-        table_exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='menu_items'").fetchone()
-        if not table_exists:
-            # If menu_items table doesn't exist, try to initialize database
-            logging.warning("Menu items table not found in get_menu_items(). Attempting to initialize database.")
-            init_db()
-            # Check again if menu_items table exists after initialization
-            table_exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='menu_items'").fetchone()
-            if not table_exists:
-                logging.error("Menu items table still not found after initialization.")
-                # Return empty list if no menu items table
-                return []
+        # Use the helper function to check and initialize if needed
+        if not check_table_exists('menu_items'):
+            return [] # Return empty list if table doesn't exist
                 
         # Get parent menu items first (those with null parent_id)
         parents = db.execute(
@@ -558,19 +582,10 @@ def get_projects():
     """Get all active projects from database."""
     db = get_db()
     try:
-        # First check if the projects table exists
-        table_exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='projects'").fetchone()
-        if not table_exists:
-            # If projects table doesn't exist, try to initialize database
-            logging.warning("Projects table not found in get_projects(). Attempting to initialize database.")
-            init_db()
-            # Check again if projects table exists after initialization
-            table_exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='projects'").fetchone()
-            if not table_exists:
-                logging.error("Projects table still not found after initialization.")
-                # Return empty list if no projects table
-                return []
-                
+        # Check if projects table exists and initialize if needed
+        if not check_table_exists('projects'):
+            return [] # Return empty list if table doesn't exist
+            
         return db.execute('SELECT * FROM projects WHERE active = 1').fetchall()
     except sqlite3.Error as e:
         logging.error(f"Error in get_projects(): {str(e)}")
@@ -581,11 +596,16 @@ def get_form_fields(form_id):
     """Get form fields for a specific form"""
     db = get_db()
     try:
+        # Check if form_fields table exists and initialize if needed
+        if not check_table_exists('form_fields'):
+            return [] # Return empty list if table doesn't exist
+            
         return db.execute(
             'SELECT * FROM form_fields WHERE form_id = ? AND active = 1 ORDER BY position',
             (form_id,)
         ).fetchall()
-    except sqlite3.Error:
+    except sqlite3.Error as e:
+        logging.error(f"Error in get_form_fields(): {str(e)}")
         # Table might not exist yet
         return []
 
@@ -593,6 +613,10 @@ def get_field_connections(source_field_id=None):
     """Get field connections"""
     db = get_db()
     try:
+        # Check if tables exist and initialize if needed
+        if not check_table_exists('field_connections') or not check_table_exists('form_fields'):
+            return [] # Return empty list if tables don't exist
+            
         if source_field_id:
             return db.execute(
                 '''SELECT c.*, 
@@ -614,7 +638,8 @@ def get_field_connections(source_field_id=None):
                    JOIN form_fields t ON c.target_field_id = t.id
                    WHERE c.active = 1'''
             ).fetchall()
-    except sqlite3.Error:
+    except sqlite3.Error as e:
+        logging.error(f"Error in get_field_connections(): {str(e)}")
         # Table might not exist yet
         return []
 
@@ -2045,6 +2070,21 @@ def api_related_field_value():
 def api_submit():
     """API endpoint for submitting attendance records"""
     try:
+        # Check if attendance table exists and initialize if needed
+        db = get_db()
+        try:
+            if not check_table_exists('attendance'):
+                return jsonify({
+                    'success': False,
+                    'message': 'Database error: attendance table not found. Please contact administrator.'
+                }), 500
+        except Exception as e:
+            logging.error(f"Error checking attendance table in api_submit: {str(e)}")
+            return jsonify({
+                'success': False,
+                'message': 'Database error while checking tables. Please contact administrator.'
+            }), 500
+                    
         # Initialize default data
         data = {}
         is_form_data = False
