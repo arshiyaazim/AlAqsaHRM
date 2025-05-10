@@ -2131,6 +2131,53 @@ def api_field_connection(connection_id):
         log_error('api', f'Error getting field connection: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
+@app.route('/admin/panel')
+@admin_required
+def admin_panel():
+    """Admin panel for managing system settings and configurations"""
+    # This is a dedicated admin-only page that combines all administrative functions
+    user = get_current_user()
+    if not user or user['role'] != 'admin':
+        # Log unauthorized access attempt
+        log_error('security', f"Unauthorized access attempt to admin panel by user with role {user['role'] if user else 'anonymous'}")
+        flash('This page requires administrator privileges.', 'danger')
+        return render_template('access_denied.html', user=user)
+    
+    # Get system health data
+    db = get_db()
+    try:
+        # Count users by role
+        admin_count = db.execute("SELECT COUNT(*) as count FROM users WHERE role = 'admin'").fetchone()['count']
+        hr_count = db.execute("SELECT COUNT(*) as count FROM users WHERE role = 'hr'").fetchone()['count']
+        viewer_count = db.execute("SELECT COUNT(*) as count FROM users WHERE role = 'viewer'").fetchone()['count']
+        
+        # Count active/total projects
+        active_projects = db.execute("SELECT COUNT(*) as count FROM projects WHERE active = 1").fetchone()['count']
+        total_projects = db.execute("SELECT COUNT(*) as count FROM projects").fetchone()['count']
+        
+        # Count error logs
+        unresolved_errors = db.execute("SELECT COUNT(*) as count FROM error_logs WHERE resolved = 0").fetchone()['count']
+        
+        # Count form fields and connections
+        form_fields = db.execute("SELECT COUNT(*) as count FROM form_fields").fetchone()['count']
+        field_connections = db.execute("SELECT COUNT(*) as count FROM field_connections").fetchone()['count']
+    except sqlite3.Error:
+        admin_count = hr_count = viewer_count = active_projects = total_projects = unresolved_errors = form_fields = field_connections = 0
+    
+    return render_template(
+        'admin_panel.html',
+        user=user,
+        admin_count=admin_count,
+        hr_count=hr_count,
+        viewer_count=viewer_count,
+        active_projects=active_projects,
+        total_projects=total_projects,
+        unresolved_errors=unresolved_errors,
+        form_fields=form_fields,
+        field_connections=field_connections,
+        menu_items=get_menu_items('admin')  # Admin-only view
+    )
+
 # Initialize database when the app starts
 with app.app_context():
     if not os.path.exists(DATABASE):
