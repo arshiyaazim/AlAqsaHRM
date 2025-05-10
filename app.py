@@ -53,6 +53,11 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 def get_db():
     if 'db' not in g:
         try:
+            # Ensure database parent directory exists
+            db_dir = os.path.dirname(DATABASE)
+            if db_dir:
+                os.makedirs(db_dir, exist_ok=True)
+                
             g.db = sqlite3.connect(
                 DATABASE,
                 detect_types=sqlite3.PARSE_DECLTYPES
@@ -61,7 +66,13 @@ def get_db():
             # Enable foreign keys
             g.db.execute('PRAGMA foreign_keys = ON')
         except sqlite3.Error as e:
-            log_error('database', f'Failed to connect to database: {str(e)}')
+            error_msg = f'Failed to connect to database: {str(e)}'
+            logging.error(error_msg)
+            try:
+                log_error('database', error_msg)
+            except Exception as log_err:
+                # If error logging to db fails, just use regular logging
+                logging.error(f"Could not log database error to error_logs: {str(log_err)}")
             raise
     return g.db
 
@@ -73,31 +84,68 @@ def close_db(e=None):
 
 def init_db():
     """Initialize the SQLite database with required tables."""
-    db = get_db()
-    with app.open_resource('schema.sql') as f:
-        try:
-            db.executescript(f.read().decode('utf8'))
+    try:
+        db = get_db()
         
-            # Add admin user if not exists
-            admin_exists = db.execute(
-                'SELECT username FROM admins WHERE username = ?', (ADMIN_USERNAME,)
-            ).fetchone()
+        # First, make sure the schema.sql file exists
+        schema_path = os.path.join(os.path.dirname(__file__), 'schema.sql')
+        if not os.path.exists(schema_path):
+            schema_path = 'schema.sql'  # Try relative path
+        
+        if not os.path.exists(schema_path):
+            error_msg = "Schema file not found. Cannot initialize database."
+            logging.error(error_msg)
+            raise FileNotFoundError(error_msg)
             
-            if not admin_exists:
-                db.execute(
-                    'INSERT INTO admins (username, password) VALUES (?, ?)',
-                    (ADMIN_USERNAME, generate_password_hash(ADMIN_PASSWORD))
-                )
-                db.commit()
+        # Read the schema file
+        with open(schema_path, 'r') as f:
+            schema_sql = f.read()
+        
+        # Execute the schema
+        try:
+            db.executescript(schema_sql)
+            
+            # Add admin user if not exists
+            try:
+                admin_exists = db.execute(
+                    'SELECT username FROM admins WHERE username = ?', (ADMIN_USERNAME,)
+                ).fetchone()
+                
+                if not admin_exists:
+                    db.execute(
+                        'INSERT INTO admins (username, password) VALUES (?, ?)',
+                        (ADMIN_USERNAME, generate_password_hash(ADMIN_PASSWORD))
+                    )
+                    db.commit()
+                    logging.info(f"Admin user '{ADMIN_USERNAME}' created successfully")
+            except sqlite3.Error as admin_err:
+                logging.error(f"Failed to create admin user: {str(admin_err)}")
+                db.rollback()
             
             # Log successful initialization
             logging.info("Database initialized successfully")
-        except Exception as e:
+            return True
+            
+        except sqlite3.Error as e:
             db.rollback()
-            error_msg = f"Database initialization failed: {str(e)}"
+            error_msg = f"Database initialization failed during execution: {str(e)}"
             logging.error(error_msg)
-            log_error('database', error_msg, traceback.format_exc())
+            try:
+                log_error('database', error_msg, traceback.format_exc())
+            except:
+                # If we can't log to the database, just log to the file
+                pass
             raise
+            
+    except Exception as e:
+        error_msg = f"Database initialization failed: {str(e)}"
+        logging.error(error_msg)
+        try:
+            log_error('database', error_msg, traceback.format_exc())
+        except:
+            # If we can't log to the database, just log to the file
+            pass
+        raise
 
 @app.cli.command('init-db')
 def init_db_command():
@@ -105,40 +153,39 @@ def init_db_command():
     init_db()
     click.echo('Initialized the database.')
 
-@app.cli.command('reset-admin-password')
+@app.cli.command('reset-admin')
 def reset_admin_password_command():
-    """Reset the admin password to the default."""
-    db = get_db()
+    """Reset the admin password to the default from environment or 'admin'."""
     try:
-        new_password = os.environ.get('ADMIN_PASSWORD', 'admin123')
-        hashed_password = generate_password_hash(new_password)
+        db = get_db()
+        admin_password = os.environ.get('ADMIN_PASSWORD', 'admin')
+        admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
         
-        # Update old admin table for backwards compatibility
-        db.execute(
-            'UPDATE admins SET password = ? WHERE username = ?',
-            (hashed_password, ADMIN_USERNAME)
-        )
+        # Check if admin exists
+        admin = db.execute('SELECT * FROM admins WHERE username = ?', (admin_username,)).fetchone()
         
-        # Also update new users table if exists
-        try:
-            admin_exists = db.execute(
-                'SELECT username FROM users WHERE role = ?', ('admin',)
-            ).fetchone()
-            
-            if admin_exists:
-                db.execute(
-                    'UPDATE users SET password = ? WHERE role = ?',
-                    (hashed_password, 'admin')
-                )
-        except sqlite3.OperationalError:
-            # Table might not exist yet
-            pass
-            
-        db.commit()
-        click.echo(f'Admin password has been reset. Username: {ADMIN_USERNAME}')
+        if admin:
+            # Update existing admin
+            db.execute(
+                'UPDATE admins SET password = ? WHERE username = ?',
+                (generate_password_hash(admin_password), admin_username)
+            )
+            db.commit()
+            click.echo(f"Admin password reset successfully for user: {admin_username}")
+        else:
+            # Create new admin
+            db.execute(
+                'INSERT INTO admins (username, password) VALUES (?, ?)',
+                (admin_username, generate_password_hash(admin_password))
+            )
+            db.commit()
+            click.echo(f"Admin user created with username: {admin_username}")
     except Exception as e:
-        db.rollback()
-        click.echo(f'Error resetting password: {str(e)}', err=True)
+        click.echo(f"Error resetting admin password: {str(e)}")
+        logging.error(f"Error resetting admin password: {str(e)}")
+        raise
+
+# End of CLI commands
 
 def allowed_file(filename):
     """Check if a file has an allowed extension."""
