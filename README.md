@@ -156,9 +156,42 @@ The application consists of the following pages:
 - `/api/form-fields` - Get form field configurations
 - `/api/field-connections` - Manage field relationships
 
+### Data Import
+- `/api/import` - Import data from uploaded Excel files
+- `/api/import-path` - Import data from a specified file path
+- `/api/employees` - Retrieve employee data
+- `/api/history` - Get import history
+
 ### System
 - `/api/sync-errors` - Synchronize offline error logs
 - `/api/system-health` - Check system status
+
+## Data Import Utilities
+
+The application includes a comprehensive data import system that can handle:
+
+1. **Employee Data Import**: Import employee records from Excel files
+   ```
+   python import_utils.py employees path/to/excel.xlsx
+   ```
+
+2. **Company Financial Data Import**: Import cash receives and payments
+   ```
+   python import_utils.py company path/to/excel.xlsx
+   ```
+
+3. **Web Interface Import**: Upload and import via the application's web interface
+
+### Import File Requirements
+
+#### Employee Excel Format
+- Must contain an "Employee ID" column
+- Other recognized columns: First Name, Last Name, Position, Department, etc.
+- Rows with empty Employee ID will be skipped
+
+#### Company Financial Excel Format
+- Should contain sheets named: EmployeeDetails, CashReceive, CashPayments
+- Each sheet should have relevant columns for the data type
 
 ## Development
 
@@ -329,3 +362,38 @@ Before deploying to production, ensure the following:
 ## Support and Contact
 
 For support with this application, please contact the system administrator at asls.guards@gmail.com.
+
+## Release Notes
+
+### Version 1.0.0 (May 2025)
+
+This is the initial production release of the Al-Aqsa Field Attendance Tracker. It includes:
+
+#### Features
+- Complete web-based attendance tracking system with GPS location and photo verification
+- Progressive Web App (PWA) support for offline operation
+- React/TypeScript admin dashboard with role-based access
+- Financial modules for payroll, expenditures and income tracking
+- Advanced reporting system with customizable templates
+- Comprehensive error logging and system health monitoring
+- Excel data import capabilities for employees and financial data
+
+#### Technical Enhancements
+- Code consolidation and optimization
+- Role-based sidebar with organized admin tools section
+- Import utilities combined into a single comprehensive module
+- Desktop executable support via PyInstaller
+- One-click deployment via Render.com
+
+#### Security
+- Comprehensive authentication system
+- Role-based access control
+- Secure password reset functionality
+- Input validation and sanitization
+
+### Deployment Status
+- ✓ All features implemented and tested
+- ✓ Render.yaml configuration validated
+- ✓ Environment variables documented
+- ✓ Desktop application packaging instructions provided
+- ✓ Ready for one-click deployment
