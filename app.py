@@ -12,6 +12,7 @@ import traceback
 import logging
 import functools
 import re
+import click
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 from flask import (
@@ -102,7 +103,42 @@ def init_db():
 def init_db_command():
     """Clear existing data and create new tables."""
     init_db()
-    print('Initialized the database.')
+    click.echo('Initialized the database.')
+
+@app.cli.command('reset-admin-password')
+def reset_admin_password_command():
+    """Reset the admin password to the default."""
+    db = get_db()
+    try:
+        new_password = os.environ.get('ADMIN_PASSWORD', 'admin123')
+        hashed_password = generate_password_hash(new_password)
+        
+        # Update old admin table for backwards compatibility
+        db.execute(
+            'UPDATE admins SET password = ? WHERE username = ?',
+            (hashed_password, ADMIN_USERNAME)
+        )
+        
+        # Also update new users table if exists
+        try:
+            admin_exists = db.execute(
+                'SELECT username FROM users WHERE role = ?', ('admin',)
+            ).fetchone()
+            
+            if admin_exists:
+                db.execute(
+                    'UPDATE users SET password = ? WHERE role = ?',
+                    (hashed_password, 'admin')
+                )
+        except sqlite3.OperationalError:
+            # Table might not exist yet
+            pass
+            
+        db.commit()
+        click.echo(f'Admin password has been reset. Username: {ADMIN_USERNAME}')
+    except Exception as e:
+        db.rollback()
+        click.echo(f'Error resetting password: {str(e)}', err=True)
 
 def allowed_file(filename):
     """Check if a file has an allowed extension."""

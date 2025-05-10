@@ -133,6 +133,9 @@
                                         <a href="{{ url_for('check_system_health') }}" class="btn btn-sm btn-outline-primary">
                                             <i class="bi bi-heart-pulse"></i> Health Check
                                         </a>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#resetDatabaseModal">
+                                            <i class="bi bi-database-x"></i> Reset Database
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -211,6 +214,41 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reset Database Modal -->
+<div class="modal fade" id="resetDatabaseModal" tabindex="-1" aria-labelledby="resetDatabaseModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="resetDatabaseModalLabel"><i class="bi bi-exclamation-triangle"></i> Reset Database</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle-fill"></i> <strong>WARNING: This is a destructive operation!</strong>
+                </div>
+                <p>Resetting the database will:</p>
+                <ul class="text-danger">
+                    <li>Delete all attendance records</li>
+                    <li>Delete all projects</li>
+                    <li>Delete all users (except default admin)</li>
+                    <li>Delete all custom forms and fields</li>
+                </ul>
+                <p>This operation cannot be undone. Make sure to back up any important data first.</p>
+                
+                <div class="alert alert-warning">
+                    <i class="bi bi-info-circle"></i> In a production environment, this feature is disabled.
+                    Please contact system support if you need to reset the database.
+                </div>
+                <p>In a development environment, you can reset the database using the command:</p>
+                <pre class="bg-light p-2"><code>flask init-db</code></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
             </div>
         </div>
     </div>
