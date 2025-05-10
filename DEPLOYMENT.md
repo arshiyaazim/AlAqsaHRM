@@ -39,7 +39,9 @@ The following environment variables are required:
      - Region: Choose nearest to your users
      - Branch: main (or your preferred branch)
      - Build Command: `pip install -r requirements.txt && if [ ! -d "exports" ]; then mkdir exports; fi && if [ ! -d "logs" ]; then mkdir logs; fi`
-     - Start Command: `python app.py`
+     - Start Command: `gunicorn wsgi:application --bind 0.0.0.0:$PORT --log-file -`
+
+   **Note:** Using Gunicorn with the wsgi.py entry point ensures proper application initialization in the production environment.
 
 3. **Configure environment variables**
 
@@ -64,7 +66,10 @@ If you encounter issues during deployment:
 
 1. **Check logs**
 
-   Review the logs in the Render.com dashboard for any errors.
+   Review the logs in the Render.com dashboard for any errors. Pay special attention to:
+   - Database initialization messages (look for "Database initialized successfully")
+   - Schema file loading messages (look for "Found schema file at")
+   - Directory creation messages (for logs and uploads directories)
 
 2. **Verify database initialization**
 
@@ -72,11 +77,25 @@ If you encounter issues during deployment:
    ```
    python check_tables.py
    ```
+   
+   This will verify all required tables exist with the correct structure.
+   
+   If database initialization fails, you can manually initialize it:
+   ```
+   python -c "from app import app, init_db; with app.app_context(): init_db(); print('Database initialized manually')"
+   ```
 
 3. **Health checks**
 
-   - Access the Flask backend health check endpoint at `/health` to verify backend status
+   - Access the Flask backend health check endpoint at `/health` to verify backend status and view detailed diagnostics
    - Access the Express API health check endpoint at `/api/health` to verify API and database connectivity
+   
+   The `/health` endpoint now provides detailed diagnostics including:
+   - Database path and existence check
+   - Schema path and existence check
+   - Working directory information
+   - List of database tables
+   - Connection status
 
 4. **Reset admin password**
 
