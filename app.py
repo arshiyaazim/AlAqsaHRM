@@ -35,11 +35,11 @@ app.config.from_mapping(
     UPLOAD_FOLDER=UPLOAD_FOLDER
 )
 
-# Add an index route that will always exist
-@app.route('/')
-def index():
-    """Main route that shows the clock in/out form"""
-    return render_template('index.html', projects=get_projects())
+# This route is replaced by the more detailed implementation below
+# @app.route('/')
+# def simple_index():
+#     """Main route that shows the clock in/out form"""
+#     return render_template('index.html', projects=get_projects())
 
 # Direct login routes for authentication
 @app.route('/login', methods=['GET', 'POST'])
@@ -677,14 +677,14 @@ def admin_login():
     """Admin login page"""
     if request.method == 'POST':
         username = request.form.get('username')
-        password = request.form.get('password')
+        password = request.form.get('password', '')  # Use empty string as default
         
         db = get_db()
         admin = db.execute(
             'SELECT * FROM admins WHERE username = ?', (username,)
         ).fetchone()
         
-        if admin and check_password_hash(admin['password'], password):
+        if admin and password and check_password_hash(admin['password'], password):
             session.clear()
             session['admin_logged_in'] = True
             session['admin_id'] = admin['id']

@@ -50,15 +50,15 @@ def create_app(test_config=None):
     app.teardown_appcontext(close_db)
     app.cli.add_command(init_db_command)
     
-    # Register core routes
-    @app.route('/')
-    def index():
-        """Main page with clock in/out form or redirect to login."""
-        if g.user is None:
-            return redirect('/login')
-        
-        projects = get_projects()
-        return render_template('index.html', projects=projects)
+    # Register core routes - commented out to avoid conflicts with app.py routes
+    # @app.route('/')
+    # def app_init_index():
+    #     """Main page with clock in/out form or redirect to login."""
+    #     if g.user is None:
+    #         return redirect('/login')
+    #     
+    #     projects = get_projects()
+    #     return render_template('index.html', projects=projects)
     
     @app.route('/admin')
     def admin_redirect():
