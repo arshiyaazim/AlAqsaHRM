@@ -60,9 +60,11 @@
     {% endif %}
     
     {% if custom_styles and custom_styles.custom_css %}
-    <style>
-        /* Custom styles */
-        {{ custom_styles.custom_css|safe }}
+    <!-- Custom CSS -->
+    <style type="text/css">
+{% filter indent(width=8) %}
+{{ custom_styles.custom_css|safe }}
+{% endfilter %}
     </style>
     {% endif %}
     

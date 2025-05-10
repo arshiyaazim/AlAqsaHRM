@@ -174,7 +174,8 @@ def role_required(roles):
                 if any(admin_path in func_name for admin_path in admin_only_paths) and user['role'] != 'admin':
                     # Log unauthorized access attempt
                     log_error('security', f"Unauthorized access attempt to {func_name} by {user['username']} with role {user['role']}")
-                    return render_template('access_denied.html', user=user)
+                    required_role_str = ', '.join(required_roles)
+                    return render_template('access_denied.html', user=user, required_role=required_role_str)
                     
                 return redirect(url_for('index'))
             
@@ -182,7 +183,7 @@ def role_required(roles):
             if 'admin' in required_roles and user['role'] != 'admin' and ('user' in f.__name__ or 'connection' in f.__name__ or 'style' in f.__name__):
                 flash('This page requires administrator privileges.', 'danger')
                 log_error('security', f"Elevated privilege access attempt to {f.__name__} by {user['username']} with role {user['role']}")
-                return render_template('access_denied.html', user=user)
+                return render_template('access_denied.html', user=user, required_role='Admin')
             
             return f(*args, **kwargs)
         return decorated_function
@@ -211,7 +212,7 @@ def admin_required(f):
                 
                 # Return a dedicated access denied page instead of redirecting
                 # This prevents sensitive information disclosure and makes access attempts more visible
-                return render_template('access_denied.html', user=user)
+                return render_template('access_denied.html', user=user, required_role='Admin')
         
         return f(*args, **kwargs)
     return decorated_function
