@@ -1,0 +1,81 @@
+You must now finalize key user experience and documentation updates for the AlAqsaHRM app. Perform all tasks below without asking for clarification. Everything must work perfectly and be ready for production.
+
+📄 TASK 1: Update the README.md File
+Update the README to clearly reflect the following information:
+
+Total Pages in the App:
+
+List the total number of functional pages (e.g., Login, Dashboard, Attendance, Admin, Settings, Error Logs, etc.)
+
+User Roles & Access:
+
+Admin: Full access to all features, including user management, theme settings, system health, advanced connections, and reporting
+
+HR: Can manage attendance, view reports, and access field-level data (no user admin)
+
+Viewer: Read-only access to reports and dashboards
+
+Field Tracker Usage:
+
+Admin side: Can configure which fields to track, link them to pages/subpages, and assign connection logic (e.g., cumulative values, GPS location, camera)
+
+Employee side: Can check in/out via mobile, GPS, and camera input; system logs and auto-saves entries
+
+Login / Logout / Register:
+
+Mention which users can register (Admins can create users; employees register through a restricted form or invite)
+
+Login and logout workflow
+
+Mention forgot password flow via asls.guards@gmail.com
+
+🛡️ TASK 2: Enforce Role-Based Page Visibility & Access
+Restrict page visibility and access:
+
+Admin-only pages (e.g., Admin Dashboard, User Management, Field Connections, Theme Editor) must not be visible or accessible to HR or Viewers
+
+Add clear checks in the code to enforce this
+
+If a non-admin user tries to access them via URL, redirect or deny access with a proper message
+
+Add all major pages to the side menu or top menu bar based on role:
+
+Example: Admin sees more options than HR or Viewer
+
+Pages: Dashboard, Attendance, Admin, Settings, Field Logs, Error Logs, etc.
+
+🧩 TASK 3: Admin Panel vs Settings Page — Restructure
+If the current Settings page already includes any admin functions (e.g., theme editor, field logic), keep them there.
+
+However, create a new dedicated Admin page named Admin Panel with the following features:
+
+Add / Remove / Edit Users (Admin, HR, Viewer)
+
+Change Username / Password for any user
+
+Design & Theme settings (background color, text color, font size)
+
+System Status / Logs
+
+Field Connections logic (e.g., one field affecting another by math rules)
+
+Error log viewing and export
+
+Page element reordering (optional)
+
+It's okay if some features are duplicated in both Settings and Admin.
+
+✅ Final Instructions
+Update UI, access logic, side menu, and README.md
+
+Ensure role-based security and page visibility is enforced on both frontend and backend
+
+Commit changes with:
+
+bash
+Copy
+Edit
+git add .
+git commit -m "Update README, enforce role-based access, restructure admin/settings pages"
+git push origin main
+Do not skip any items. Everything must be clear, functional, and consistent for Admin, HR, and Viewer users.

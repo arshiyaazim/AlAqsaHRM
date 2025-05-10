@@ -181,6 +181,24 @@ def get_menu_items(role=None):
     """Get menu items visible to the specified role"""
     db = get_db()
     
+    # Define admin-only pages that should never be visible to other roles
+    admin_only_paths = [
+        '/admin/users', 
+        '/admin/connections',
+        '/admin/fields',
+        '/admin/menu',
+        '/admin/styling',
+        '/admin/settings/theme'
+    ]
+    
+    # Define HR accessible pages (HR can't access admin pages)
+    hr_allowed_paths = [
+        '/admin/dashboard',
+        '/admin/projects',
+        '/admin/attendance',
+        '/admin/reports'
+    ]
+    
     # Check if menu_items table exists
     try:
         # Get parent menu items first (those with null parent_id)
@@ -190,9 +208,21 @@ def get_menu_items(role=None):
         
         result = []
         for parent in parents:
-            # Check if this item is visible to the current role
+            # Get the visible_to list for this menu item
             visible_to = json.loads(parent['visible_to']) if parent['visible_to'] != 'all' else ['admin', 'hr', 'viewer']
             
+            # Apply strict role-based filtering
+            if parent['url'] in admin_only_paths and role != 'admin':
+                continue  # Skip admin-only pages for non-admin users
+            
+            if parent['url'] not in hr_allowed_paths and role == 'hr' and parent['url'].startswith('/admin'):
+                continue  # Skip non-allowed admin pages for HR
+            
+            # Viewer can only see dashboard and reports
+            if role == 'viewer' and parent['url'].startswith('/admin') and parent['url'] not in ['/admin/dashboard', '/admin/reports']:
+                continue
+                
+            # If after these stricter checks, the item is still visible to the current role
             if role is None or role in visible_to:
                 item = dict(parent)
                 
@@ -202,17 +232,30 @@ def get_menu_items(role=None):
                     (parent['id'],)
                 ).fetchall()
                 
-                # Filter children by role
+                # Filter children by role with stricter rules
                 if role:
                     item['children'] = []
                     for child in children:
                         child_visible = json.loads(child['visible_to']) if child['visible_to'] != 'all' else ['admin', 'hr', 'viewer']
+                        
+                        # Apply the same strict role rules to children
+                        if child['url'] in admin_only_paths and role != 'admin':
+                            continue
+                            
+                        if child['url'] not in hr_allowed_paths and role == 'hr' and child['url'].startswith('/admin'):
+                            continue
+                            
+                        if role == 'viewer' and child['url'].startswith('/admin') and child['url'] not in ['/admin/dashboard', '/admin/reports']:
+                            continue
+                            
                         if role in child_visible:
                             item['children'].append(dict(child))
                 else:
                     item['children'] = [dict(child) for child in children]
                 
-                result.append(item)
+                # Only add the parent menu if it has visible children or is a direct link
+                if item['children'] or item['url']:
+                    result.append(item)
         
         return result
     except sqlite3.Error:
