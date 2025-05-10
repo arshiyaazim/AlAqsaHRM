@@ -1,14 +1,10 @@
 import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { AlertCircle, Check, Database, Download, FileDown, Loader2 } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useMutation } from "@tanstack/react-query";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2, Download, FileText, Database, FileCog, Archive } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 interface ExportOption {
@@ -16,82 +12,87 @@ interface ExportOption {
   name: string;
   description: string;
   fileType: string;
+  icon: React.ElementType;
 }
-
-const attendanceOptions: ExportOption[] = [
-  { 
-    id: "attendance", 
-    name: "Attendance Records", 
-    description: "Export all attendance records with timestamps and locations",
-    fileType: "CSV"
-  },
-  { 
-    id: "attendance_json", 
-    name: "Attendance Records (JSON)", 
-    description: "Export attendance data in JSON format",
-    fileType: "JSON"
-  }
-];
-
-const employeeOptions: ExportOption[] = [
-  { 
-    id: "employees", 
-    name: "Employee Directory", 
-    description: "Export all employee data including contact information",
-    fileType: "CSV"
-  },
-  { 
-    id: "employees_json", 
-    name: "Employee Directory (JSON)", 
-    description: "Export employee data in JSON format",
-    fileType: "JSON"
-  }
-];
-
-const financeOptions: ExportOption[] = [
-  { 
-    id: "cash_receives", 
-    name: "Cash Receives", 
-    description: "Export all cash receive records",
-    fileType: "CSV"
-  },
-  { 
-    id: "cash_payments", 
-    name: "Cash Payments", 
-    description: "Export all cash payment records",
-    fileType: "CSV"
-  },
-  { 
-    id: "payroll", 
-    name: "Payroll Records", 
-    description: "Export all payroll records",
-    fileType: "CSV"
-  }
-];
-
-const backupOptions: ExportOption[] = [
-  { 
-    id: "database", 
-    name: "Full Database Backup", 
-    description: "Export the entire database as SQL statements",
-    fileType: "SQL"
-  },
-  { 
-    id: "all", 
-    name: "Complete Data Archive", 
-    description: "Export all tables in both CSV and JSON formats with SQL backup",
-    fileType: "ZIP"
-  }
-];
 
 export default function ExportDataPage() {
   const { toast } = useToast();
-  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({
-    attendance: "attendance",
-    employees: "employees",
-    finance: "cash_receives",
-    backup: "database"
-  });
+  const [selectedTab, setSelectedTab] = useState("employees");
+  const [currentDownloadUrl, setCurrentDownloadUrl] = useState<string | null>(null);
+
+  const exportOptions: Record<string, ExportOption[]> = {
+    employees: [
+      {
+        id: "employees_csv",
+        name: "Employees CSV",
+        description: "Export all employee records in CSV format",
+        fileType: "CSV",
+        icon: FileText
+      },
+      {
+        id: "employees_json",
+        name: "Employees JSON",
+        description: "Export all employee records in JSON format",
+        fileType: "JSON",
+        icon: FileCog
+      }
+    ],
+    attendance: [
+      {
+        id: "attendance_csv",
+        name: "Attendance CSV",
+        description: "Export all attendance records in CSV format",
+        fileType: "CSV",
+        icon: FileText
+      },
+      {
+        id: "attendance_json",
+        name: "Attendance JSON",
+        description: "Export all attendance records in JSON format",
+        fileType: "JSON",
+        icon: FileCog
+      }
+    ],
+    financial: [
+      {
+        id: "payroll_csv",
+        name: "Payroll CSV",
+        description: "Export all payroll records in CSV format",
+        fileType: "CSV",
+        icon: FileText
+      },
+      {
+        id: "expenditures_csv",
+        name: "Expenditures CSV",
+        description: "Export all expenditure records in CSV format",
+        fileType: "CSV",
+        icon: FileText
+      },
+      {
+        id: "incomes_csv",
+        name: "Incomes CSV",
+        description: "Export all income records in CSV format",
+        fileType: "CSV",
+        icon: FileText
+      }
+    ],
+    database: [
+      {
+        id: "database",
+        name: "Database Backup",
+        description: "Export full database backup in SQL format",
+        fileType: "SQL",
+        icon: Database
+      },
+      {
+        id: "all",
+        name: "Complete Backup",
+        description: "Export complete data backup (database + files) in ZIP format",
+        fileType: "ZIP",
+        icon: Archive
+      }
+    ]
+  };
 
   const exportMutation = useMutation({
     mutationFn: async (exportType: string) => {
@@ -99,289 +100,110 @@ export default function ExportDataPage() {
       return await res.json();
     },
     onSuccess: (data) => {
-      // Trigger download of the exported file
-      if (data.downloadUrl) {
-        const link = document.createElement("a");
-        link.href = data.downloadUrl;
-        link.download = data.fileName || "export.csv";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        toast({
-          title: "Export Successful",
-          description: `${data.fileName} has been downloaded.`,
-          variant: "default",
-        });
-      }
+      toast({
+        title: "Export successful",
+        description: "Your export has been prepared successfully.",
+      });
+      setCurrentDownloadUrl(data.downloadUrl);
     },
     onError: (error: Error) => {
       toast({
-        title: "Export Failed",
+        title: "Export failed",
         description: error.message,
         variant: "destructive",
       });
-    }
+    },
   });
 
-  const handleExport = (category: string) => {
-    const exportType = selectedOptions[category];
+  const handleExport = (exportType: string) => {
+    setCurrentDownloadUrl(null);
     exportMutation.mutate(exportType);
   };
 
-  const handleOptionChange = (category: string, value: string) => {
-    setSelectedOptions((prev) => ({
-      ...prev,
-      [category]: value
-    }));
+  const downloadExport = () => {
+    if (currentDownloadUrl) {
+      window.open(currentDownloadUrl, '_blank');
+    }
   };
 
   return (
     <div className="container mx-auto py-6">
       <div className="flex flex-col gap-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Export Data</h1>
-          <p className="text-muted-foreground">
-            Export data from the system in various formats for backup or analysis.
+          <h1 className="text-3xl font-bold tracking-tight">Export Data</h1>
+          <p className="text-muted-foreground mt-2">
+            Export your system data in various formats for backup or reporting.
           </p>
         </div>
 
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Important</AlertTitle>
-          <AlertDescription>
-            Exported files may contain sensitive information. Handle with care and ensure they are stored securely.
-          </AlertDescription>
-        </Alert>
-
-        <Tabs defaultValue="attendance" className="w-full">
-          <TabsList className="grid grid-cols-4 w-full">
-            <TabsTrigger value="attendance">Attendance</TabsTrigger>
+        <Tabs defaultValue="employees" value={selectedTab} onValueChange={setSelectedTab}>
+          <TabsList className="grid grid-cols-4 mb-8">
             <TabsTrigger value="employees">Employees</TabsTrigger>
-            <TabsTrigger value="finance">Finance</TabsTrigger>
-            <TabsTrigger value="backup">System Backup</TabsTrigger>
+            <TabsTrigger value="attendance">Attendance</TabsTrigger>
+            <TabsTrigger value="financial">Financial</TabsTrigger>
+            <TabsTrigger value="database">Database</TabsTrigger>
           </TabsList>
 
-          {/* Attendance Tab */}
-          <TabsContent value="attendance">
-            <Card>
-              <CardHeader>
-                <CardTitle>Attendance Data Export</CardTitle>
-                <CardDescription>
-                  Export attendance records for analysis or record-keeping.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <RadioGroup 
-                  value={selectedOptions.attendance} 
-                  onValueChange={(value) => handleOptionChange("attendance", value)}
-                  className="space-y-4"
-                >
-                  {attendanceOptions.map((option) => (
-                    <div key={option.id} className="flex items-start space-x-3 space-y-0">
-                      <RadioGroupItem value={option.id} id={`attendance-${option.id}`} />
-                      <div className="grid gap-1.5">
-                        <Label htmlFor={`attendance-${option.id}`} className="font-medium">
-                          {option.name} <span className="text-xs bg-slate-100 px-2 py-1 rounded">
-                            {option.fileType}
-                          </span>
-                        </Label>
-                        <p className="text-sm text-muted-foreground">
-                          {option.description}
-                        </p>
+          {Object.entries(exportOptions).map(([tabId, options]) => (
+            <TabsContent key={tabId} value={tabId} className="mt-0">
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {options.map((option) => (
+                  <Card key={option.id} className="overflow-hidden">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg">{option.name}</CardTitle>
+                        <option.icon className="h-5 w-5 text-muted-foreground" />
                       </div>
-                    </div>
-                  ))}
-                </RadioGroup>
-              </CardContent>
-              <CardFooter>
-                <Button 
-                  onClick={() => handleExport("attendance")}
-                  disabled={exportMutation.isPending}
-                >
-                  {exportMutation.isPending && selectedOptions.attendance === exportMutation.variables ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Download className="mr-2 h-4 w-4" />
-                  )}
-                  Export Attendance Data
-                </Button>
-              </CardFooter>
-            </Card>
-          </TabsContent>
-
-          {/* Employees Tab */}
-          <TabsContent value="employees">
-            <Card>
-              <CardHeader>
-                <CardTitle>Employee Data Export</CardTitle>
-                <CardDescription>
-                  Export employee information for HR purposes.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <RadioGroup 
-                  value={selectedOptions.employees} 
-                  onValueChange={(value) => handleOptionChange("employees", value)}
-                  className="space-y-4"
-                >
-                  {employeeOptions.map((option) => (
-                    <div key={option.id} className="flex items-start space-x-3 space-y-0">
-                      <RadioGroupItem value={option.id} id={`employees-${option.id}`} />
-                      <div className="grid gap-1.5">
-                        <Label htmlFor={`employees-${option.id}`} className="font-medium">
-                          {option.name} <span className="text-xs bg-slate-100 px-2 py-1 rounded">
-                            {option.fileType}
-                          </span>
-                        </Label>
-                        <p className="text-sm text-muted-foreground">
-                          {option.description}
-                        </p>
+                      <CardDescription>{option.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="pb-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium">Format:</span>
+                        <span className="bg-primary/10 text-primary px-2 py-0.5 rounded">
+                          {option.fileType}
+                        </span>
                       </div>
-                    </div>
-                  ))}
-                </RadioGroup>
-              </CardContent>
-              <CardFooter>
-                <Button 
-                  onClick={() => handleExport("employees")}
-                  disabled={exportMutation.isPending}
-                >
-                  {exportMutation.isPending && selectedOptions.employees === exportMutation.variables ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <FileDown className="mr-2 h-4 w-4" />
-                  )}
-                  Export Employee Data
-                </Button>
-              </CardFooter>
-            </Card>
-          </TabsContent>
-
-          {/* Finance Tab */}
-          <TabsContent value="finance">
-            <Card>
-              <CardHeader>
-                <CardTitle>Financial Data Export</CardTitle>
-                <CardDescription>
-                  Export financial records for accounting and reporting.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <RadioGroup 
-                  value={selectedOptions.finance} 
-                  onValueChange={(value) => handleOptionChange("finance", value)}
-                  className="space-y-4"
-                >
-                  {financeOptions.map((option) => (
-                    <div key={option.id} className="flex items-start space-x-3 space-y-0">
-                      <RadioGroupItem value={option.id} id={`finance-${option.id}`} />
-                      <div className="grid gap-1.5">
-                        <Label htmlFor={`finance-${option.id}`} className="font-medium">
-                          {option.name} <span className="text-xs bg-slate-100 px-2 py-1 rounded">
-                            {option.fileType}
-                          </span>
-                        </Label>
-                        <p className="text-sm text-muted-foreground">
-                          {option.description}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </RadioGroup>
-              </CardContent>
-              <CardFooter>
-                <Button 
-                  onClick={() => handleExport("finance")}
-                  disabled={exportMutation.isPending}
-                >
-                  {exportMutation.isPending && selectedOptions.finance === exportMutation.variables ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Download className="mr-2 h-4 w-4" />
-                  )}
-                  Export Financial Data
-                </Button>
-              </CardFooter>
-            </Card>
-          </TabsContent>
-
-          {/* System Backup Tab */}
-          <TabsContent value="backup">
-            <Card>
-              <CardHeader>
-                <CardTitle>System Backup</CardTitle>
-                <CardDescription>
-                  Create complete backups of the system data.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <RadioGroup 
-                  value={selectedOptions.backup} 
-                  onValueChange={(value) => handleOptionChange("backup", value)}
-                  className="space-y-4"
-                >
-                  {backupOptions.map((option) => (
-                    <div key={option.id} className="flex items-start space-x-3 space-y-0">
-                      <RadioGroupItem value={option.id} id={`backup-${option.id}`} />
-                      <div className="grid gap-1.5">
-                        <Label htmlFor={`backup-${option.id}`} className="font-medium">
-                          {option.name} <span className="text-xs bg-slate-100 px-2 py-1 rounded">
-                            {option.fileType}
-                          </span>
-                        </Label>
-                        <p className="text-sm text-muted-foreground">
-                          {option.description}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </RadioGroup>
-
-                <Separator className="my-6" />
-
-                <div className="rounded-md bg-slate-50 p-4 mt-2">
-                  <div className="flex items-start">
-                    <div className="mr-4">
-                      <Database className="h-6 w-6 text-slate-500" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium">Backup Recommendations</h4>
-                      <ul className="mt-2 text-sm text-muted-foreground space-y-2">
-                        <li className="flex items-center gap-2">
-                          <Check className="h-4 w-4 text-green-500" />
-                          Create regular full database backups
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <Check className="h-4 w-4 text-green-500" />
-                          Store backups in multiple secure locations
-                        </li>
-                        <li className="flex items-center gap-2">
-                          <Check className="h-4 w-4 text-green-500" />
-                          Test backup restoration periodically
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button 
-                  onClick={() => handleExport("backup")}
-                  disabled={exportMutation.isPending}
-                  variant="destructive"
-                >
-                  {exportMutation.isPending && selectedOptions.backup === exportMutation.variables ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Database className="mr-2 h-4 w-4" />
-                  )}
-                  Create System Backup
-                </Button>
-              </CardFooter>
-            </Card>
-          </TabsContent>
+                    </CardContent>
+                    <CardFooter className="pt-2 flex justify-end gap-2">
+                      <Button
+                        variant="default"
+                        size="sm"
+                        disabled={exportMutation.isPending}
+                        onClick={() => handleExport(option.id)}
+                      >
+                        {exportMutation.isPending && option.id === exportMutation.variables ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Exporting...
+                          </>
+                        ) : (
+                          "Export"
+                        )}
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            </TabsContent>
+          ))}
         </Tabs>
+
+        {currentDownloadUrl && (
+          <div className="mt-8 p-4 border rounded-lg bg-slate-50">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium">Your export is ready</h3>
+                <p className="text-sm text-muted-foreground">
+                  Click the button to download your exported data
+                </p>
+              </div>
+              <Button onClick={downloadExport}>
+                <Download className="mr-2 h-4 w-4" />
+                Download
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

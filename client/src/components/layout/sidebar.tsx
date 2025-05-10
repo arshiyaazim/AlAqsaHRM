@@ -18,7 +18,8 @@ import {
   FolderKanban,
   Anchor,
   Receipt,
-  Palette
+  Palette,
+  Download as FileDown
 } from "lucide-react";
 
 // Define navigation items with role-based access
@@ -39,6 +40,7 @@ const allNavigationItems = [
   { name: "Admin Dashboard", href: "/admin/dashboard", icon: ShieldCheck, roles: ["admin"] },
   { name: "Field Connections", href: "/admin/field-connections", icon: ArrowLeftRight, roles: ["admin"] },
   { name: "Theme Editor", href: "/admin/theme-editor", icon: Palette, roles: ["admin"] },
+  { name: "Export Data", href: "/admin/export-data", icon: FileDown, roles: ["admin"] },
 ];
 
 export default function Sidebar() {
