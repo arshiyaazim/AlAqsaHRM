@@ -31,6 +31,8 @@ services:
     echo "Starting pre-deployment process" &&
     chmod +x init_database.py &&
     python init_database.py &&
+    echo "Fixing admin login tables" &&
+    python fix_login.py &&
     echo "Setting up admin user" &&
     python -c "
     import os, sys, logging
