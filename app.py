@@ -254,11 +254,9 @@ def init_db():
         success = False
         
         try:
-            # Check if the users table exists
-            table_exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").fetchone()
-            
-            # If users table doesn't exist, create it directly
-            if not table_exists:
+            # Check and create 'users' table if it doesn't exist
+            users_table_exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").fetchone()
+            if not users_table_exists:
                 logging.info("Creating users table")
                 db.execute('''
                 CREATE TABLE users (
@@ -276,6 +274,25 @@ def init_db():
                 ''')
                 db.commit()
                 logging.info("Users table created successfully")
+            
+            # Check and create 'admins' table if it doesn't exist
+            admins_table_exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='admins'").fetchone()
+            if not admins_table_exists:
+                logging.info("Creating admins table")
+                db.execute('''
+                CREATE TABLE admins (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  username TEXT UNIQUE NOT NULL,
+                  password TEXT NOT NULL,
+                  email TEXT UNIQUE,
+                  name TEXT,
+                  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  updated_at TIMESTAMP,
+                  last_login TIMESTAMP
+                )
+                ''')
+                db.commit()
+                logging.info("Admins table created successfully")
                 
             # Find the schema.sql file with more robust path resolution
             possible_paths = [
@@ -318,23 +335,48 @@ def init_db():
             else:
                 logging.warning("Schema file not found. Will create minimal required tables only.")
             
-            # Add admin user if not exists
+            # Add admin user to users table if not exists
             try:
-                
-                admin_exists = db.execute(
+                admin_exists_in_users = db.execute(
                     'SELECT username FROM users WHERE username = ? AND role = ?', 
                     (ADMIN_USERNAME, 'admin')
                 ).fetchone()
                 
-                if not admin_exists:
-                    db.execute(
-                        'INSERT INTO users (username, password, name, role) VALUES (?, ?, ?, ?)',
-                        (ADMIN_USERNAME, generate_password_hash(ADMIN_PASSWORD), 'Administrator', 'admin')
-                    )
-                    db.commit()
-                    logging.info(f"Admin user '{ADMIN_USERNAME}' created successfully")
+                if not admin_exists_in_users:
+                    try:
+                        db.execute(
+                            'INSERT INTO users (username, password, name, role) VALUES (?, ?, ?, ?)',
+                            (ADMIN_USERNAME, generate_password_hash(ADMIN_PASSWORD), 'Administrator', 'admin')
+                        )
+                        db.commit()
+                        logging.info(f"Admin user '{ADMIN_USERNAME}' created successfully in users table")
+                    except sqlite3.IntegrityError as e:
+                        logging.warning(f"Admin user already exists: {str(e)}")
+                        db.rollback()
             except sqlite3.Error as admin_err:
-                logging.error(f"Failed to create admin user: {str(admin_err)}")
+                logging.error(f"Failed to create admin user in users table: {str(admin_err)}")
+                db.rollback()
+                
+            # Add admin user to admins table if not exists
+            try:
+                admin_exists_in_admins = db.execute(
+                    'SELECT username FROM admins WHERE username = ?', 
+                    (ADMIN_USERNAME,)
+                ).fetchone()
+                
+                if not admin_exists_in_admins:
+                    try:
+                        db.execute(
+                            'INSERT INTO admins (username, password, name) VALUES (?, ?, ?)',
+                            (ADMIN_USERNAME, generate_password_hash(ADMIN_PASSWORD), 'Administrator')
+                        )
+                        db.commit()
+                        logging.info(f"Admin user '{ADMIN_USERNAME}' created successfully in admins table")
+                    except sqlite3.IntegrityError as e:
+                        logging.warning(f"Admin user already exists in admins table: {str(e)}")
+                        db.rollback()
+            except sqlite3.Error as admin_err:
+                logging.error(f"Failed to create admin user in admins table: {str(admin_err)}")
                 db.rollback()
             
             # Add default menu items if menu_items table exists but is empty
@@ -1012,54 +1054,124 @@ def admin_login():
         username = request.form.get('username')
         password = request.form.get('password', '')  # Use empty string as default
         
+        db = get_db()
+        
         # If username and password match the hardcoded admin credentials
         if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
             # Direct match with environment variables - bypass hash check
-            db = get_db()
-            # Check if admin user exists in database
-            admin = db.execute(
-                'SELECT * FROM users WHERE username = ? AND role = ?', 
-                (ADMIN_USERNAME, 'admin')
-            ).fetchone()
+            # Ensure admin exists in both tables
             
-            if admin:
-                # Admin exists in database, use that ID
-                admin_id = admin['id']
+            # Check users table
+            admin_in_users = None
+            try:
+                admin_in_users = db.execute(
+                    'SELECT * FROM users WHERE username = ? AND role = ?',
+                    (ADMIN_USERNAME, 'admin')
+                ).fetchone()
+                
+                if not admin_in_users:
+                    # Try to create admin in users table
+                    try:
+                        db.execute(
+                            'INSERT INTO users (username, password, name, role) VALUES (?, ?, ?, ?)',
+                            (ADMIN_USERNAME, generate_password_hash(ADMIN_PASSWORD), 'Administrator', 'admin')
+                        )
+                        db.commit()
+                        admin_in_users = db.execute(
+                            'SELECT * FROM users WHERE username = ? AND role = ?', 
+                            (ADMIN_USERNAME, 'admin')
+                        ).fetchone()
+                        logging.info(f"Admin user '{ADMIN_USERNAME}' created in users table during login")
+                    except sqlite3.IntegrityError:
+                        # Unique constraint failed, try to fetch again
+                        admin_in_users = db.execute(
+                            'SELECT * FROM users WHERE username = ? AND role = ?', 
+                            (ADMIN_USERNAME, 'admin')
+                        ).fetchone()
+                    except Exception as e:
+                        logging.error(f"Failed to create admin in users table: {str(e)}")
+            except Exception as e:
+                logging.error(f"Error checking admin in users table: {str(e)}")
+                
+            # Check admins table
+            admin_in_admins = None
+            try:
+                admin_in_admins = db.execute(
+                    'SELECT * FROM admins WHERE username = ?',
+                    (ADMIN_USERNAME,)
+                ).fetchone()
+                
+                if not admin_in_admins:
+                    # Try to create admin in admins table
+                    try:
+                        db.execute(
+                            'INSERT INTO admins (username, password, name) VALUES (?, ?, ?)',
+                            (ADMIN_USERNAME, generate_password_hash(ADMIN_PASSWORD), 'Administrator')
+                        )
+                        db.commit()
+                        admin_in_admins = db.execute(
+                            'SELECT * FROM admins WHERE username = ?', 
+                            (ADMIN_USERNAME,)
+                        ).fetchone()
+                        logging.info(f"Admin user '{ADMIN_USERNAME}' created in admins table during login")
+                    except sqlite3.IntegrityError:
+                        # Unique constraint failed, try to fetch again
+                        admin_in_admins = db.execute(
+                            'SELECT * FROM admins WHERE username = ?', 
+                            (ADMIN_USERNAME,)
+                        ).fetchone()
+                    except Exception as e:
+                        logging.error(f"Failed to create admin in admins table: {str(e)}")
+            except Exception as e:
+                logging.error(f"Error checking admin in admins table: {str(e)}")
+            
+            # Determine admin ID to use
+            admin_id = None
+            if admin_in_users:
+                admin_id = admin_in_users['id']
+                logging.info(f"Using admin ID {admin_id} from users table")
+            elif admin_in_admins:
+                admin_id = admin_in_admins['id']
+                logging.info(f"Using admin ID {admin_id} from admins table")
             else:
-                # Try to create admin user with the credentials
-                try:
-                    db.execute(
-                        'INSERT INTO users (username, password, name, role) VALUES (?, ?, ?, ?)',
-                        (ADMIN_USERNAME, generate_password_hash(ADMIN_PASSWORD), 'Administrator', 'admin')
-                    )
-                    db.commit()
-                    admin = db.execute(
-                        'SELECT * FROM users WHERE username = ? AND role = ?', 
-                        (ADMIN_USERNAME, 'admin')
-                    ).fetchone()
-                    admin_id = admin['id']
-                    logging.info(f"Admin user '{ADMIN_USERNAME}' created successfully during login")
-                except Exception as e:
-                    logging.error(f"Failed to create admin user during login: {str(e)}")
-                    admin_id = 1  # Fallback admin ID
+                admin_id = 1  # Fallback admin ID
+                logging.warning("Using fallback admin ID 1")
             
             session.clear()
             session['admin_logged_in'] = True
             session['admin_id'] = admin_id
             return redirect("/admin/dashboard")
         
-        # Normal database authentication
-        db = get_db()
-        admin = db.execute(
-            'SELECT * FROM users WHERE username = ? AND role = ?', 
-            (username, 'admin')
-        ).fetchone()
-        
-        if admin and password and check_password_hash(admin['password'], password):
-            session.clear()
-            session['admin_logged_in'] = True
-            session['admin_id'] = admin['id']
-            return redirect("/admin/dashboard")
+        # Normal database authentication - check users table first
+        admin = None
+        try:
+            admin = db.execute(
+                'SELECT * FROM users WHERE username = ? AND role = ?', 
+                (username, 'admin')
+            ).fetchone()
+            
+            if admin and password and check_password_hash(admin['password'], password):
+                session.clear()
+                session['admin_logged_in'] = True
+                session['admin_id'] = admin['id']
+                return redirect("/admin/dashboard")
+        except Exception as e:
+            logging.error(f"Error checking admin in users table: {str(e)}")
+            
+        # If not found in users table, check admins table
+        try:
+            admin = db.execute(
+                'SELECT * FROM admins WHERE username = ?', 
+                (username,)
+            ).fetchone()
+            
+            if admin and password and check_password_hash(admin['password'], password):
+                session.clear()
+                session['admin_logged_in'] = True
+                session['admin_id'] = admin['id']
+                return redirect("/admin/dashboard")
+        except Exception as e:
+            logging.error(f"Error checking admin in admins table: {str(e)}")
         
         flash('Invalid username or password', 'danger')
     
