@@ -45,7 +45,7 @@ def find_database():
     return db_path
 
 def ensure_tables_exist(conn):
-    """Ensure that users and admins tables exist"""
+    """Ensure that essential tables exist"""
     cursor = conn.cursor()
     
     # Check if users table exists
@@ -95,6 +95,60 @@ def ensure_tables_exist(conn):
         logging.info("Admins table created successfully")
     else:
         logging.info("Admins table already exists")
+    
+    # Check if attendance table exists - essential for admin dashboard
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='attendance'")
+    attendance_exists = cursor.fetchone()
+    
+    if not attendance_exists:
+        logging.info("Creating attendance table")
+        cursor.execute('''
+        CREATE TABLE attendance (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          employee_id TEXT NOT NULL,
+          action TEXT NOT NULL,
+          timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          project_id INTEGER,
+          latitude REAL,
+          longitude REAL,
+          accuracy REAL,
+          photo TEXT,
+          notes TEXT,
+          custom_fields TEXT,
+          created_by INTEGER,
+          ip_address TEXT,
+          device_info TEXT
+        )
+        ''')
+        conn.commit()
+        logging.info("Attendance table created successfully")
+    else:
+        logging.info("Attendance table already exists")
+    
+    # Check if projects table exists - essential for admin dashboard
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='projects'")
+    projects_exists = cursor.fetchone()
+    
+    if not projects_exists:
+        logging.info("Creating projects table")
+        cursor.execute('''
+        CREATE TABLE projects (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          description TEXT,
+          location TEXT,
+          start_date TEXT,
+          end_date TEXT,
+          active INTEGER NOT NULL DEFAULT 1,
+          custom_fields TEXT,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP
+        )
+        ''')
+        conn.commit()
+        logging.info("Projects table created successfully")
+    else:
+        logging.info("Projects table already exists")
     
     return True
 

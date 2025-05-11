@@ -1302,37 +1302,67 @@ def admin_dashboard():
     employee_filter = request.args.get('employee_id')
     project_filter = request.args.get('project_id')
     
-    # Build query based on filters
-    query = 'SELECT * FROM attendance'
-    params = []
+    # Default empty collections
+    attendances = []
+    employees = []
+    projects = []
+    any_locations = False
     
-    where_clauses = []
-    if date_filter:
-        where_clauses.append('date(timestamp) = date(?)')
-        params.append(date_filter)
-    
-    if employee_filter:
-        where_clauses.append('employee_id = ?')
-        params.append(employee_filter)
-    
-    if project_filter:
-        where_clauses.append('project_id = ?')
-        params.append(project_filter)
-    
-    if where_clauses:
-        query += ' WHERE ' + ' AND '.join(where_clauses)
-    
-    query += ' ORDER BY timestamp DESC'
-    
-    # Execute query
-    attendances = db.execute(query, params).fetchall()
-    
-    # Get all employees and projects for filter dropdowns
-    employees = db.execute('SELECT DISTINCT employee_id FROM attendance').fetchall()
-    projects = db.execute('SELECT * FROM projects').fetchall()
-    
-    # Check if any attendance records have location data
-    any_locations = any(a['latitude'] and a['longitude'] for a in attendances)
+    # First check if tables exist
+    try:
+        # Check if attendance table exists
+        attendance_table_exists = db.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='attendance'"
+        ).fetchone()
+        
+        if attendance_table_exists:
+            # Build query based on filters
+            query = 'SELECT * FROM attendance'
+            params = []
+            
+            where_clauses = []
+            if date_filter:
+                where_clauses.append('date(timestamp) = date(?)')
+                params.append(date_filter)
+            
+            if employee_filter:
+                where_clauses.append('employee_id = ?')
+                params.append(employee_filter)
+            
+            if project_filter:
+                where_clauses.append('project_id = ?')
+                params.append(project_filter)
+            
+            if where_clauses:
+                query += ' WHERE ' + ' AND '.join(where_clauses)
+            
+            query += ' ORDER BY timestamp DESC LIMIT 100'  # Limit to prevent large result sets
+            
+            # Execute query
+            attendances = db.execute(query, params).fetchall()
+            
+            # Get all employees
+            employees = db.execute('SELECT DISTINCT employee_id FROM attendance').fetchall()
+            
+            # Check if any attendance records have location data
+            any_locations = any(a['latitude'] and a['longitude'] for a in attendances if a.get('latitude') and a.get('longitude'))
+        else:
+            flash('Attendance records not found. The system is ready for data collection.', 'info')
+            
+        # Check if projects table exists
+        projects_table_exists = db.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='projects'"
+        ).fetchone()
+        
+        if projects_table_exists:
+            # Get all projects for filter dropdowns
+            projects = db.execute('SELECT * FROM projects').fetchall()
+        else:
+            flash('Projects table not found. You can create projects from the Projects menu.', 'info')
+            
+    except Exception as e:
+        logging.error(f"Error in admin_dashboard: {str(e)}")
+        flash(f"An error occurred while loading dashboard data. Error: {str(e)}", 'danger')
     
     return render_template(
         'admin_dashboard.html',
@@ -1350,7 +1380,40 @@ def admin_dashboard():
 def admin_projects():
     """Projects management page"""
     db = get_db()
-    projects = db.execute('SELECT * FROM projects ORDER BY name').fetchall()
+    
+    try:
+        # Check if projects table exists
+        projects_table_exists = db.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='projects'"
+        ).fetchone()
+        
+        if projects_table_exists:
+            projects = db.execute('SELECT * FROM projects ORDER BY name').fetchall()
+        else:
+            # Create projects table if it doesn't exist
+            db.execute('''
+            CREATE TABLE IF NOT EXISTS projects (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                description TEXT,
+                location TEXT,
+                start_date TEXT,
+                end_date TEXT,
+                active INTEGER NOT NULL DEFAULT 1,
+                custom_fields TEXT,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP
+            )
+            ''')
+            db.commit()
+            logging.info("Projects table created")
+            flash('Projects table created. You can now add projects.', 'success')
+            projects = []
+    except Exception as e:
+        logging.error(f"Error in admin_projects: {str(e)}")
+        flash(f"An error occurred while loading projects. Error: {str(e)}", 'danger')
+        projects = []
+    
     return render_template('admin_projects.html', projects=projects)
 
 @app.route('/admin/projects/add', methods=['GET', 'POST'])
