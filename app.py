@@ -5,6 +5,7 @@ Enhanced with advanced features for admin management, offline access, and more
 """
 
 import os
+import sys
 import sqlite3
 import json
 import datetime
@@ -2541,7 +2542,21 @@ def health_check():
         'schema_path': os.path.abspath('schema.sql'),
         'schema_exists': os.path.exists('schema.sql'),
         'app_directory': os.path.abspath(os.path.dirname(__file__)),
-        'working_directory': os.path.abspath(os.getcwd())
+        'working_directory': os.path.abspath(os.getcwd()),
+        'environment': os.environ.get('FLASK_ENV', 'development'),
+        'python_version': sys.version,
+        'directories': {
+            'logs_exists': os.path.exists('logs'),
+            'uploads_exists': os.path.exists('uploads'),
+            'exports_exists': os.path.exists('exports'),
+            'static_exists': os.path.exists('static'),
+            'templates_exists': os.path.exists('templates')
+        },
+        'render_disk': {
+            'mounted': os.path.exists('/var/data'),
+            'path': '/var/data' if os.path.exists('/var/data') else 'Not available'
+        },
+        'instance_path': os.path.abspath('instance') if os.path.exists('instance') else 'Not found'
     }
     
     try:
@@ -2557,6 +2572,27 @@ def health_check():
         
         users_exist = 'users' in tables_list
         diagnostics['users_table'] = users_exist
+        
+        # Count records in critical tables
+        table_counts = {}
+        critical_tables = ['users', 'attendance', 'projects', 'employees', 'menu_items']
+        for table in critical_tables:
+            if table in tables_list:
+                try:
+                    count = db.execute(f"SELECT COUNT(*) as count FROM {table}").fetchone()['count']
+                    table_counts[table] = count
+                except:
+                    table_counts[table] = 'Error counting records'
+        
+        diagnostics['table_counts'] = table_counts
+        
+        # Check for admin users
+        if 'users' in tables_list:
+            try:
+                admin_count = db.execute("SELECT COUNT(*) as count FROM users WHERE role = 'admin'").fetchone()['count']
+                diagnostics['admin_users'] = admin_count
+            except:
+                diagnostics['admin_users'] = 'Error counting admin users'
         
         if not users_exist:
             return jsonify({
@@ -2580,6 +2616,7 @@ def health_check():
         # Return unhealthy status
         current_time = datetime.datetime.now().isoformat()
         diagnostics['error'] = str(e)
+        diagnostics['error_traceback'] = traceback.format_exc()
         return jsonify({
             'status': 'unhealthy',
             'message': str(e),

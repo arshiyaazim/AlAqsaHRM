@@ -22,6 +22,29 @@ The following environment variables are required:
 | SESSION_SECRET | Session secret | No | Auto-generated |
 | JWT_SECRET | JWT token secret | No | Auto-generated |
 
+## Gunicorn Integration
+
+The application has been configured to use Gunicorn with a WSGI entry point for better performance and reliability in production:
+
+```python
+# wsgi.py
+from app import app
+application = app  # Gunicorn looks for 'application' variable
+```
+
+The wsgi.py file includes enhanced database initialization and error handling specifically designed for production environments. Key Gunicorn integration features:
+
+- Proper signal handling for graceful shutdowns
+- Automatic database initialization at startup
+- Improved logging configuration
+- Health monitoring support
+
+When deployed with Gunicorn, the application automatically:
+1. Sets up logging before anything else
+2. Initializes the database
+3. Configures the Flask app with production settings
+4. Handles multiple worker processes properly
+
 ## Deployment Steps
 
 1. **Fork or clone the repository**
@@ -112,28 +135,52 @@ If you encounter issues during deployment:
 
 ## Monitoring
 
-- Regular health checks are performed:
-  - Flask backend: `/health` (configured in render.yaml as healthCheckPath)
-  - Express API: `/api/health` (checks database connectivity)
-- Health check flow:
-  ```
-  1. Render.com -> HTTP GET /health -> Flask Backend
-     |
-     v
-  2. Flask returns 200 OK if running properly
-     |
-     v
-  3. External monitoring -> HTTP GET /api/health -> Express API
-     |
-     v
-  4. Express API runs SQL query to verify database connectivity
-     |
-     v
-  5. Returns health status JSON with database connection status
-  ```
-- Database tables are verified during startup
+### Health Check Endpoints
+
+The application provides two health check endpoints with detailed diagnostics:
+
+1. **Flask Backend:** `/health` 
+   - Provides comprehensive system diagnostics including:
+     - Database path and existence check
+     - Schema file path and existence check
+     - Directory structure verification
+     - Environment information and Python version
+     - Render.com persistent disk status
+     - Critical table count verification
+     - Admin user verification
+   - Returns HTTP 200 with status "healthy" when all systems are operational
+   - Returns HTTP 200 with status "warning" when database tables are missing
+   - Returns HTTP 500 with status "unhealthy" on connection failures
+
+2. **Express API:** `/api/health`
+   - Verifies database connectivity
+   - Tests PostgreSQL connection for the modern frontend
+
+### Health Check Flow
+
+```
+1. Render.com -> HTTP GET /health -> Flask Backend
+   |
+   v
+2. Flask performs comprehensive diagnostics and returns detailed status
+   |
+   v
+3. External monitoring -> HTTP GET /api/health -> Express API
+   |
+   v
+4. Express API runs SQL query to verify database connectivity
+   |
+   v
+5. Returns health status JSON with database connection status
+```
+
+### System Health Monitoring
+
+- Database tables are automatically verified during application startup
+- The improved health diagnostics provide early warning of potential issues
 - Application logs are stored in the `/var/data/logs` directory on the persistent disk
 - Database connectivity is automatically tested on each API health check request
+- Admin user existence is verified on startup and through health checks
 
 ## Backup and Restore
 
