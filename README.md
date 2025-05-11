@@ -100,18 +100,47 @@ If you encounter database initialization errors:
    ```
    mkdir -p instance logs exports uploads
    ```
-3. Reset the admin password:
+3. Reset the admin password and fix login tables:
+   ```
+   python fix_login.py
+   ```
+4. Alternatively, use the Flask command:
    ```
    flask reset-admin
    ```
-4. Check log files in the `logs` directory for detailed error messages
+5. Check log files in the `logs` directory for detailed error messages
 
-### Default Admin Credentials
+#### Login Fix Script
 
-- **Username:** admin
-- **Password:** admin
+The application includes a dedicated `fix_login.py` script that resolves common login issues:
 
-**Note:** Change these credentials in production!
+- Creates both `users` and `admins` tables if they don't exist
+- Creates essential application tables like `attendance` and `projects`
+- Ensures admin user exists in both tables with correct credentials
+- Resets admin password to the default value (admin123)
+- Provides detailed logging of the database fix process
+
+Run this script if you encounter any login-related issues:
+```
+python fix_login.py
+```
+
+### Default Login Credentials
+
+The application has two separate login systems:
+
+1. **Regular User Login** (Main page login at '/')
+   - **Username:** admin
+   - **Password:** admin123
+
+2. **Admin Login** (Admin panel at '/admin/login')
+   - **Username:** admin
+   - **Password:** admin123
+
+**Note:** 
+- Both logins use the same credentials but access different parts of the system
+- Change these credentials in production!
+- If you encounter login issues, run the login fix script: `python fix_login.py`
 
 ## Field Tracker Usage
 
@@ -400,9 +429,9 @@ For support with this application, please contact the system administrator at as
 
 ## Release Notes
 
-### Version 1.1.0 (May 2025)
+### Version 1.2.0 (May 2025)
 
-This production-ready release of the Al-Aqsa Field Attendance Tracker includes significant improvements to deployment stability and database initialization. Major updates include:
+This enhanced production-ready release of the Al-Aqsa Field Attendance Tracker includes critical fixes for deployment stability and authentication systems. Major updates include:
 
 #### Features
 - Complete web-based attendance tracking system with GPS location and photo verification
@@ -414,11 +443,17 @@ This production-ready release of the Al-Aqsa Field Attendance Tracker includes s
 - Excel data import capabilities for employees and financial data
 
 #### Technical Enhancements
-- **New!** Robust database initialization system with automatic table verification
-- **New!** Enhanced deployment script with comprehensive pre-deployment checks
-- **New!** Admin password reset CLI command for easy recovery
-- **New!** Standalone init_database.py script for simple database setup
-- **New!** Improved error handling for database operations
+- **New!** Dedicated login fix script (`fix_login.py`) for authentication troubleshooting
+- **New!** Robust error handling in admin dashboard to prevent server errors
+- **New!** Automatic essential table creation with proper error recovery
+- **New!** Enhanced database checks in admin routes for stability
+- **New!** Improved deployment script for Render.com with login fixes
+- **New!** Comprehensive LOGIN_FIX.md documentation for deployment issues
+- Unified authentication between regular and admin login systems
+- Intelligent table existence checking before database operations
+- Robust database initialization system with automatic table verification
+- Enhanced deployment script with comprehensive pre-deployment checks
+- Admin password reset CLI command for easy recovery
 - Role-based sidebar with organized admin tools section
 - Import utilities combined into a single comprehensive module
 - Desktop executable support via PyInstaller
