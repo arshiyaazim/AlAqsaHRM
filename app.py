@@ -2956,26 +2956,59 @@ def health_check():
         
         # Check for tables and admin user
         try:
-            # Verify users table exists
-            users_table = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").fetchone()
-            diagnostics['users_table_exists'] = users_table is not None
+            # Authentication Tables Verification
+            diagnostics['auth_tables'] = {}
             
-            # Check for admin user
+            # 1. Verify users table exists
+            users_table = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").fetchone()
+            diagnostics['auth_tables']['users_table_exists'] = users_table is not None
+            
+            # 2. Verify admins table exists
+            admins_table = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='admins'").fetchone()
+            diagnostics['auth_tables']['admins_table_exists'] = admins_table is not None
+            
+            # 3. Verify attendance table exists
+            attendance_table = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='attendance'").fetchone()
+            diagnostics['auth_tables']['attendance_table_exists'] = attendance_table is not None
+            
+            # 4. Verify projects table exists
+            projects_table = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='projects'").fetchone()
+            diagnostics['auth_tables']['projects_table_exists'] = projects_table is not None
+            
+            # 5. Check for regular admin user (in users table)
+            diagnostics['admin_users'] = {}
             if users_table:
                 admin_user = db.execute(
                     'SELECT id, username, role FROM users WHERE username = ? AND role = ?', 
                     (ADMIN_USERNAME, 'admin')
                 ).fetchone()
                 if admin_user:
-                    diagnostics['admin_user'] = {
+                    diagnostics['admin_users']['regular_admin'] = {
                         'exists': True,
                         'id': admin_user['id'],
                         'username': admin_user['username']
                     }
                 else:
-                    diagnostics['admin_user'] = {'exists': False}
+                    diagnostics['admin_users']['regular_admin'] = {'exists': False}
             else:
-                diagnostics['admin_user'] = {'exists': False, 'reason': 'users table not found'}
+                diagnostics['admin_users']['regular_admin'] = {'exists': False, 'reason': 'users table not found'}
+                
+            # 6. Check for admin user in admins table
+            if admins_table:
+                admin_user = db.execute(
+                    'SELECT id, username FROM admins WHERE username = ?', 
+                    (ADMIN_USERNAME,)
+                ).fetchone()
+                if admin_user:
+                    diagnostics['admin_users']['admin_panel_admin'] = {
+                        'exists': True,
+                        'id': admin_user['id'],
+                        'username': admin_user['username']
+                    }
+                else:
+                    diagnostics['admin_users']['admin_panel_admin'] = {'exists': False}
+            else:
+                diagnostics['admin_users']['admin_panel_admin'] = {'exists': False, 'reason': 'admins table not found'}
         except Exception as table_err:
             diagnostics['table_check_error'] = str(table_err)
         
