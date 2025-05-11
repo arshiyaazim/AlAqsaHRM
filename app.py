@@ -31,10 +31,30 @@ ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')  # For development
 
 # Create application
 app = Flask(__name__)
+
+# Find the database file - check multiple possible locations
+instance_db_path = os.path.join('instance', DATABASE)
+root_db_path = os.path.join('.', DATABASE)
+employee_db_path = os.path.join('.', 'employee_data.db')
+
+# Use instance path if it exists, otherwise try other locations
+if os.path.exists(instance_db_path):
+    database_path = instance_db_path
+    logging.info(f"Using database at {instance_db_path}")
+elif os.path.exists(root_db_path):
+    database_path = root_db_path
+    logging.info(f"Using database at {root_db_path}")
+elif os.path.exists(employee_db_path):
+    database_path = employee_db_path
+    logging.info(f"Using database at {employee_db_path}")
+else:
+    database_path = instance_db_path  # Default if none found
+    logging.warning(f"No existing database found, will create {instance_db_path}")
+
 app.config.from_mapping(
     SECRET_KEY=SECRET_KEY,
     UPLOAD_FOLDER=UPLOAD_FOLDER,
-    DATABASE=os.path.join('instance', DATABASE)
+    DATABASE=database_path
 )
 
 # This route is replaced by the more detailed implementation below
@@ -137,13 +157,60 @@ def check_table_exists(table_name):
                                      (table_name,)).fetchone()
             if table_exists:
                 logging.info(f"Table '{table_name}' successfully created.")
+                # If we just created the users table, ensure admin exists
+                if table_name == 'users':
+                    ensure_admin_user()
                 return True
             else:
                 logging.error(f"Table '{table_name}' still not found after initialization.")
                 return False
+        # If users table already exists, ensure admin user exists
+        elif table_name == 'users':
+            ensure_admin_user()
         return True
     except Exception as e:
         logging.error(f"Error checking if table '{table_name}' exists: {str(e)}")
+        return False
+
+def ensure_admin_user():
+    """
+    Ensure that admin user exists in the database
+    """
+    try:
+        db = get_db()
+        admin_exists = db.execute(
+            'SELECT * FROM users WHERE username = ? AND role = ?', 
+            (ADMIN_USERNAME, 'admin')
+        ).fetchone()
+        
+        if not admin_exists:
+            # Create admin user with configured credentials
+            db.execute(
+                'INSERT INTO users (username, password, name, role) VALUES (?, ?, ?, ?)',
+                (ADMIN_USERNAME, generate_password_hash(ADMIN_PASSWORD), 'Administrator', 'admin')
+            )
+            db.commit()
+            logging.info(f"Admin user '{ADMIN_USERNAME}' created successfully")
+            
+            # Verify admin was created
+            admin = db.execute(
+                'SELECT * FROM users WHERE username = ? AND role = ?', 
+                (ADMIN_USERNAME, 'admin')
+            ).fetchone()
+            
+            if not admin:
+                # Try again with direct password (no hashing) as a fallback
+                db.execute(
+                    'INSERT INTO users (username, password, name, role) VALUES (?, ?, ?, ?)',
+                    (ADMIN_USERNAME, ADMIN_PASSWORD, 'Administrator', 'admin')
+                )
+                db.commit()
+                logging.info(f"Admin user '{ADMIN_USERNAME}' created with direct password as fallback")
+            
+            return True
+        return True
+    except Exception as e:
+        logging.error(f"Failed to ensure admin user: {str(e)}")
         return False
 
 def get_db():
@@ -945,9 +1012,47 @@ def admin_login():
         username = request.form.get('username')
         password = request.form.get('password', '')  # Use empty string as default
         
+        # If username and password match the hardcoded admin credentials
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            # Direct match with environment variables - bypass hash check
+            db = get_db()
+            # Check if admin user exists in database
+            admin = db.execute(
+                'SELECT * FROM users WHERE username = ? AND role = ?', 
+                (ADMIN_USERNAME, 'admin')
+            ).fetchone()
+            
+            if admin:
+                # Admin exists in database, use that ID
+                admin_id = admin['id']
+            else:
+                # Try to create admin user with the credentials
+                try:
+                    db.execute(
+                        'INSERT INTO users (username, password, name, role) VALUES (?, ?, ?, ?)',
+                        (ADMIN_USERNAME, generate_password_hash(ADMIN_PASSWORD), 'Administrator', 'admin')
+                    )
+                    db.commit()
+                    admin = db.execute(
+                        'SELECT * FROM users WHERE username = ? AND role = ?', 
+                        (ADMIN_USERNAME, 'admin')
+                    ).fetchone()
+                    admin_id = admin['id']
+                    logging.info(f"Admin user '{ADMIN_USERNAME}' created successfully during login")
+                except Exception as e:
+                    logging.error(f"Failed to create admin user during login: {str(e)}")
+                    admin_id = 1  # Fallback admin ID
+            
+            session.clear()
+            session['admin_logged_in'] = True
+            session['admin_id'] = admin_id
+            return redirect("/admin/dashboard")
+        
+        # Normal database authentication
         db = get_db()
         admin = db.execute(
-            'SELECT * FROM admins WHERE username = ?', (username,)
+            'SELECT * FROM users WHERE username = ? AND role = ?', 
+            (username, 'admin')
         ).fetchone()
         
         if admin and password and check_password_hash(admin['password'], password):
@@ -2537,14 +2642,16 @@ def disable_field_suggestions():
 def health_check():
     """Health check endpoint for application status monitoring."""
     diagnostics = {
-        'database_path': os.path.abspath(DATABASE),
-        'database_exists': os.path.exists(DATABASE),
+        'database_path': os.path.abspath(app.config['DATABASE']),
+        'database_exists': os.path.exists(app.config['DATABASE']),
         'schema_path': os.path.abspath('schema.sql'),
         'schema_exists': os.path.exists('schema.sql'),
         'app_directory': os.path.abspath(os.path.dirname(__file__)),
         'working_directory': os.path.abspath(os.getcwd()),
         'environment': os.environ.get('FLASK_ENV', 'development'),
         'python_version': sys.version,
+        'admin_username': ADMIN_USERNAME,
+        'admin_password_configured': ADMIN_PASSWORD != '',
         'directories': {
             'logs_exists': os.path.exists('logs'),
             'uploads_exists': os.path.exists('uploads'),
@@ -2564,6 +2671,31 @@ def health_check():
         db = get_db()
         db.execute('SELECT 1').fetchone()
         diagnostics['connection'] = 'successful'
+        
+        # Check for tables and admin user
+        try:
+            # Verify users table exists
+            users_table = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").fetchone()
+            diagnostics['users_table_exists'] = users_table is not None
+            
+            # Check for admin user
+            if users_table:
+                admin_user = db.execute(
+                    'SELECT id, username, role FROM users WHERE username = ? AND role = ?', 
+                    (ADMIN_USERNAME, 'admin')
+                ).fetchone()
+                if admin_user:
+                    diagnostics['admin_user'] = {
+                        'exists': True,
+                        'id': admin_user['id'],
+                        'username': admin_user['username']
+                    }
+                else:
+                    diagnostics['admin_user'] = {'exists': False}
+            else:
+                diagnostics['admin_user'] = {'exists': False, 'reason': 'users table not found'}
+        except Exception as table_err:
+            diagnostics['table_check_error'] = str(table_err)
         
         # Check if critical tables exist
         tables = db.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
