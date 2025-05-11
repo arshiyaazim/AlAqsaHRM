@@ -1,0 +1,149 @@
+Fix Login System (Local + Production)
+Objective:
+Debug and fix the login system that fails both locally and on production (Render.com) while ensuring:
+
+1. Existing employee/payroll/attendance data remains intact.
+
+2. Admin/HR/user roles and permissions stay functional.
+
+3. No breaking changes to other features (Excel imports, daily cash, etc.).
+
+Critical Problems to Solve
+1. Login fails completely (admin credentials admin/admin123 don’t work).
+
+2. Database initialization issues (tables might not create properly).
+
+3. Session/cookie problems (login state not persisting).
+
+Step-by-Step Fixes Required:
+
+1. Database Setup (SQLite → PostgreSQL-Compatible)
+Problem: SQLite isn’t initializing tables correctly locally or on Render.
+
+Solution:
+
+python
+# Replace SQLite setup with SQLAlchemy (works for both SQLite and PostgreSQL)
+from flask_sqlalchemy import SQLAlchemy
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///attendance.db').replace('postgres://', 'postgresql://')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+# Keep existing table structure but convert to SQLAlchemy models
+class User(db.Model):
+    __tablename__ = 'users'  # Explicit table name to match existing DB
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True)
+    password = db.Column(db.String(200))  # Hashed passwords only
+    role = db.Column(db.String(20), default='user')
+
+2. Admin User Initialization
+Problem: admin user isn’t created on first run.
+
+Solution: Add a CLI command and auto-initialization:
+
+python
+@app.cli.command("init-db")
+def init_db():
+    """Initialize tables and create admin user if missing"""
+    db.create_all()  # Creates all tables if they don’t exist
+    if not User.query.filter_by(username='admin').first():
+        admin = User(
+            username='admin',
+            password=generate_password_hash(os.getenv('ADMIN_PASSWORD', 'admin123')),
+            role='admin'
+        )
+        db.session.add(admin)
+        db.session.commit()
+        print("Admin user created!")
+
+3. Login Route Fixes
+Problem: Login logic fails silently.
+
+Solution: Debug and secure the /login route:
+
+python
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if 'user_id' in session:
+        return redirect('/dashboard')  # Prevent re-login
+
+    if request.method == 'POST':
+        user = User.query.filter_by(username=request.form['username']).first()
+        if user and check_password_hash(user.password, request.form['password']):
+            session.clear()
+            session['user_id'] = user.id
+            session['role'] = user.role
+            return redirect(url_for('dashboard'))
+        else:
+            flash('Invalid credentials', 'danger')
+    return render_template('login.html')
+4. Environment Configuration
+Problem: Local vs. production conflicts.
+
+Solution: Update .env and requirements.txt:
+
+plaintext
+# .env
+DATABASE_URL=sqlite:///attendance.db  # Default to SQLite locally
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin123  # Change in production!
+SECRET_KEY=your_random_secret_key
+
+plaintext
+# requirements.txt
+flask-sqlalchemy>=3.0.0
+psycopg2-binary>=2.9.6  # For Render.com
+gunicorn>=20.1.0
+5. Render.com Deployment Fixes
+Problem: Build process doesn’t initialize the DB.
+
+Solution: Add to render.yaml:
+
+yaml
+buildCommand: |
+  pip install -r requirements.txt
+  flask init-db
+startCommand: gunicorn app:app
+Verification Steps
+Test Locally:
+
+Run flask init-db to create tables/admin user.
+
+Verify login with admin/admin123.
+
+Test on Render:
+
+Check logs for errors during flask init-db.
+
+Confirm PostgreSQL connection works.
+
+Key Notes for Replit AI
+Preserve Existing Data:
+
+Do not drop/alter existing tables (employees, payroll, etc.).
+
+Use __tablename__ in models to match current tables.
+
+Backward Compatibility:
+
+Ensure Excel import/export still works.
+
+Keep all routes (e.g., /admin/create-user) functional.
+
+Security:
+
+Hash all passwords (no plaintext).
+
+Rotate SECRET_KEY in production.
+
+Final Ask:
+Implement these changes while ensuring:
+
+No duplicate code (e.g., keep existing routes but update queries).
+
+All other features (attendance, payroll) remain unchanged.
+
+Provide a step-by-step testing plan.
