@@ -479,19 +479,126 @@ def init_app_db():
         ]:
             logging.info(f"  - {path}: {'EXISTS' if os.path.exists(path) else 'NOT FOUND'}")
             
-        # Check if users table exists
+        # Check if key tables exist
         db = get_db()
         users_exist = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").fetchone()
+        admins_exist = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='admins'").fetchone()
+        
+        # Create missing tables if needed
+        tables_created = False
         
         if not users_exist:
-            logging.warning("Users table does not exist. Initializing database at startup.")
-            success = init_db()
-            if success:
-                logging.info("Database initialized successfully at startup")
-            else:
-                logging.error("Database initialization failed at startup, but continuing")
+            logging.warning("Users table does not exist. Creating it...")
+            try:
+                db.execute('''
+                CREATE TABLE IF NOT EXISTS users (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  username TEXT UNIQUE NOT NULL,
+                  password TEXT NOT NULL,
+                  email TEXT UNIQUE,
+                  name TEXT,
+                  role TEXT NOT NULL DEFAULT 'viewer',
+                  active INTEGER NOT NULL DEFAULT 1,
+                  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  updated_at TIMESTAMP,
+                  last_login TIMESTAMP
+                )
+                ''')
+                db.commit()
+                logging.info("Users table created successfully")
+                tables_created = True
+            except Exception as e:
+                logging.error(f"Failed to create users table: {str(e)}")
         else:
-            logging.info("Users table already exists. Database ready.")
+            logging.info("Users table already exists")
+            
+        if not admins_exist:
+            logging.warning("Admins table does not exist. Creating it...")
+            try:
+                db.execute('''
+                CREATE TABLE IF NOT EXISTS admins (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  username TEXT UNIQUE NOT NULL,
+                  password TEXT NOT NULL,
+                  email TEXT UNIQUE,
+                  name TEXT,
+                  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  updated_at TIMESTAMP,
+                  last_login TIMESTAMP
+                )
+                ''')
+                db.commit()
+                logging.info("Admins table created successfully")
+                tables_created = True
+            except Exception as e:
+                logging.error(f"Failed to create admins table: {str(e)}")
+        else:
+            logging.info("Admins table already exists")
+            
+        # Initialize other tables if needed
+        if tables_created:
+            logging.warning("Some tables were created. Initializing remaining database tables...")
+            try:
+                success = init_db()
+                if success:
+                    logging.info("Database initialized successfully at startup")
+                else:
+                    logging.error("Database initialization failed at startup, but continuing")
+            except Exception as e:
+                logging.error(f"Error during database initialization: {str(e)}")
+        
+        # Ensure admin user exists in both tables
+        try:
+            # Check for admin in users table
+            admin_in_users = db.execute(
+                'SELECT * FROM users WHERE username = ? AND role = ?', 
+                (ADMIN_USERNAME, 'admin')
+            ).fetchone()
+            
+            if not admin_in_users:
+                logging.info(f"Creating admin user in users table with username '{ADMIN_USERNAME}'")
+                try:
+                    db.execute(
+                        'INSERT INTO users (username, password, name, role) VALUES (?, ?, ?, ?)',
+                        (ADMIN_USERNAME, generate_password_hash(ADMIN_PASSWORD), 'Administrator', 'admin')
+                    )
+                    db.commit()
+                    logging.info("Admin user created in users table")
+                except sqlite3.IntegrityError:
+                    logging.warning("Admin user already exists due to unique constraint")
+                    db.rollback()
+                except Exception as e:
+                    logging.error(f"Failed to create admin user in users table: {str(e)}")
+                    db.rollback()
+            else:
+                logging.info("Admin user already exists in users table")
+                
+            # Check for admin in admins table
+            admin_in_admins = db.execute(
+                'SELECT * FROM admins WHERE username = ?', 
+                (ADMIN_USERNAME,)
+            ).fetchone()
+            
+            if not admin_in_admins:
+                logging.info(f"Creating admin user in admins table with username '{ADMIN_USERNAME}'")
+                try:
+                    db.execute(
+                        'INSERT INTO admins (username, password, name) VALUES (?, ?, ?)',
+                        (ADMIN_USERNAME, generate_password_hash(ADMIN_PASSWORD), 'Administrator')
+                    )
+                    db.commit()
+                    logging.info("Admin user created in admins table")
+                except sqlite3.IntegrityError:
+                    logging.warning("Admin user already exists in admins table due to unique constraint")
+                    db.rollback()
+                except Exception as e:
+                    logging.error(f"Failed to create admin user in admins table: {str(e)}")
+                    db.rollback()
+            else:
+                logging.info("Admin user already exists in admins table")
+                
+        except Exception as e:
+            logging.error(f"Error ensuring admin user exists: {str(e)}")
             
         # Return connection to pool
         close_db()
