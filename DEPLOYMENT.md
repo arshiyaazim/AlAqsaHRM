@@ -16,11 +16,67 @@ The following environment variables are required:
 |----------|-------------|----------|---------|
 | EMAIL_FOR_RESET | Email address for password reset notifications | Yes | None |
 | ADMIN_USERNAME | Username for the default admin account | Yes | admin |
-| ADMIN_PASSWORD | Password for the default admin account | Yes | admin |
+| ADMIN_PASSWORD | Password for the default admin account | Yes | admin123 |
 | SECRET_KEY | Flask session secret key | Yes | None |
 | FLASK_ENV | Flask environment | No | production |
 | SESSION_SECRET | Session secret | No | Auto-generated |
 | JWT_SECRET | JWT token secret | No | Auto-generated |
+
+## Authentication System
+
+The application has two separate but integrated login systems:
+
+### 1. Main User Login (Default Route)
+
+- **URL:** `/login` or root path `/`
+- **Used By:** Regular employees, HR users, and admins accessing employee-facing features
+- **Authentication Method:** Uses the `users` table for credentials and role management
+- **Session Management:** Stores `user_id` and `is_admin` flags in the session
+- **Credentials:** Default admin is username: `admin`, password: `admin123`
+
+### 2. Admin Panel Login
+
+- **URL:** `/admin/login`
+- **Used By:** Admins accessing the administrative dashboard and configuration
+- **Authentication Method:** Checks both `admins` and `users` tables for validation
+- **Session Management:** Stores `admin_id` in the session
+- **Credentials:** Same default credentials (username: `admin`, password: `admin123`)
+
+### Admin Access and Role-Based Permissions
+
+The application includes a robust role-based access control system that:
+
+1. Allows authenticated admins to access both regular and admin features
+2. Ensures proper table creation regardless of which login system is used
+3. Provides appropriate error messages based on authentication status
+4. Logs unauthorized access attempts for security monitoring
+
+### Authentication Troubleshooting
+
+If login issues occur:
+
+1. Run the login fix script to ensure both authentication systems are working:
+   ```
+   python fix_login.py
+   ```
+
+2. Check database tables and admin user existence:
+   ```
+   python check_tables.py
+   ```
+
+3. Reset admin password if needed:
+   ```
+   python -c "from app import app, get_db, generate_password_hash, ADMIN_USERNAME, ADMIN_PASSWORD; \
+   with app.app_context(): \
+     db = get_db(); \
+     db.execute('UPDATE users SET password = ? WHERE username = ?', \
+       (generate_password_hash(ADMIN_PASSWORD), ADMIN_USERNAME)); \
+     db.execute('UPDATE admins SET password = ? WHERE username = ?', \
+       (generate_password_hash(ADMIN_PASSWORD), ADMIN_USERNAME)); \
+     db.commit(); \
+     print('Admin passwords reset successfully')"
+   ```
 
 ## Gunicorn Integration
 
@@ -94,7 +150,21 @@ If you encounter issues during deployment:
    - Schema file loading messages (look for "Found schema file at")
    - Directory creation messages (for logs and uploads directories)
 
-2. **Verify database initialization**
+2. **Fix login issues**
+
+   If you encounter authentication problems, run the login fix script:
+   ```
+   python fix_login.py
+   ```
+   
+   This script will:
+   - Create both `users` and `admins` tables if they don't exist
+   - Create essential tables like `attendance` and `projects`
+   - Reset the admin password to the default value (`admin123`)
+   - Ensure tables have the correct structure for login
+   - Show diagnostic information about found/created tables
+
+3. **Verify database initialization**
 
    Run the following command in the Render.com shell:
    ```
@@ -108,29 +178,53 @@ If you encounter issues during deployment:
    python -c "from app import app, init_db; with app.app_context(): init_db(); print('Database initialized manually')"
    ```
 
-3. **Health checks**
+4. **Health checks**
 
    - Access the Flask backend health check endpoint at `/health` to verify backend status and view detailed diagnostics
    - Access the Express API health check endpoint at `/api/health` to verify API and database connectivity
    
    The `/health` endpoint now provides detailed diagnostics including:
+   - Authentication tables verification (`users` and `admins` tables)
+   - Admin user existence in both authentication systems
+   - Essential tables existence (`attendance` and `projects`)
    - Database path and existence check
    - Schema path and existence check
    - Working directory information
    - List of database tables
    - Connection status
 
-4. **Reset admin password**
+5. **Addressing 'Internal Server Error' after login**
+
+   If you encounter an "Internal Server Error" after successful login:
+   
+   a) Run the login fix script to ensure tables exist:
+   ```
+   python fix_login.py
+   ```
+   
+   b) Check for missing tables causing the error:
+   ```
+   python -c "from app import app, get_db; with app.app_context(): db = get_db(); print(db.execute('SELECT name FROM sqlite_master WHERE type=\"table\"').fetchall())"
+   ```
+   
+   c) Verify that essential tables contain expected data:
+   ```
+   python -c "from app import app, get_db; with app.app_context(): db = get_db(); print('Users table rows:', db.execute('SELECT COUNT(*) FROM users').fetchone()[0])"
+   ```
+
+6. **Reset admin password**
 
    If you need to reset the admin password, use the Render.com shell:
    ```
    python -c "from app import app, get_db, generate_password_hash; \
    with app.app_context(): \
      db = get_db(); \
-     db.execute('UPDATE users SET password = ? WHERE role = \"admin\"', \
-       (generate_password_hash('newpassword'),)); \
+     db.execute('UPDATE users SET password = ? WHERE username = \"admin\"', \
+       (generate_password_hash('admin123'),)); \
+     db.execute('UPDATE admins SET password = ? WHERE username = \"admin\"', \
+       (generate_password_hash('admin123'),)); \
      db.commit(); \
-     print('Password reset successfully')"
+     print('Admin password reset successfully')"
    ```
 
 ## Monitoring

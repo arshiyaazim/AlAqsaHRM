@@ -708,7 +708,47 @@ def api_login():
     
     if not username or not password:
         return jsonify({"error": "Username and password are required"}), 400
+    
+    # First check for hardcoded admin credentials from environment
+    from app import ADMIN_USERNAME, ADMIN_PASSWORD
+    if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+        # Direct admin match with default credentials
+        db = sqlite3.connect('instance/attendance.db')
+        db.row_factory = sqlite3.Row
+        cursor = db.cursor()
         
+        # Check if admin user exists
+        cursor.execute('SELECT * FROM users WHERE username = ? AND role = ?', (ADMIN_USERNAME, 'admin'))
+        admin_user = cursor.fetchone()
+        
+        if not admin_user:
+            # Create admin user if needed
+            try:
+                from werkzeug.security import generate_password_hash
+                cursor.execute(
+                    'INSERT INTO users (username, password, name, role, active) VALUES (?, ?, ?, ?, ?)',
+                    (ADMIN_USERNAME, generate_password_hash(ADMIN_PASSWORD), 'Administrator', 'admin', 1)
+                )
+                db.commit()
+                cursor.execute('SELECT * FROM users WHERE username = ? AND role = ?', (ADMIN_USERNAME, 'admin'))
+                admin_user = cursor.fetchone()
+            except Exception as e:
+                db.close()
+                return jsonify({"error": f"Error creating admin user: {str(e)}"}), 500
+        
+        if admin_user:
+            # Format user data for response
+            user_data = {
+                'id': admin_user['id'],
+                'username': admin_user['username'],
+                'name': admin_user['name'],
+                'role': admin_user['role'],
+                'is_admin': True
+            }
+            db.close()
+            return jsonify(user_data), 200
+    
+    # Regular user login
     db = sqlite3.connect('instance/attendance.db')
     db.row_factory = sqlite3.Row
     cursor = db.cursor()
