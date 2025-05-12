@@ -130,15 +130,17 @@ python fix_login.py
 The application has two separate login systems:
 
 1. **Regular User Login** (Main page login at '/')
-   - **Username:** admin
+   - **Username/Email:** admin (or asls.guards@gmail.com or arshiya.azim@gmail.com)
    - **Password:** admin123
 
 2. **Admin Login** (Admin panel at '/admin/login')
-   - **Username:** admin
+   - **Username/Email:** admin (or asls.guards@gmail.com or arshiya.azim@gmail.com)
    - **Password:** admin123
 
 **Note:** 
 - Both logins use the same credentials but access different parts of the system
+- The React frontend uses API-based authentication (/api/auth/login) 
+- The Flask backend uses session-based authentication (/admin/login)
 - Change these credentials in production!
 - If you encounter login issues, run the login fix script: `python fix_login.py`
 
