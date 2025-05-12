@@ -67,8 +67,11 @@ app.config.from_mapping(
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     """Login route that handles both GET and POST"""
+    # Check if already logged in
     if 'admin_id' in session:
         return redirect('/admin/dashboard')
+    if 'user_id' in session:
+        return redirect('/')
     
     # Check if users table exists before attempting login
     try:
@@ -89,13 +92,47 @@ def login():
             flash('Username and password are required.', 'danger')
             return render_template('login.html')
             
+        # First check if it's the admin with hardcoded credentials
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            db = get_db()
+            
+            # Check if admin user exists in users table, create if not
+            admin_user = db.execute(
+                'SELECT * FROM users WHERE username = ? AND role = ?',
+                (ADMIN_USERNAME, 'admin')
+            ).fetchone()
+            
+            if not admin_user:
+                try:
+                    db.execute(
+                        'INSERT INTO users (username, password, name, role) VALUES (?, ?, ?, ?)',
+                        (ADMIN_USERNAME, generate_password_hash(ADMIN_PASSWORD), 'Administrator', 'admin')
+                    )
+                    db.commit()
+                    admin_user = db.execute(
+                        'SELECT * FROM users WHERE username = ? AND role = ?', 
+                        (ADMIN_USERNAME, 'admin')
+                    ).fetchone()
+                    logging.info(f"Admin user '{ADMIN_USERNAME}' created in users table during regular login")
+                except Exception as e:
+                    logging.error(f"Error creating admin in users table: {str(e)}")
+            
+            if admin_user:
+                session.clear()
+                session['user_id'] = admin_user['id']
+                session['is_admin'] = True
+                flash('Admin login successful!', 'success')
+                return redirect('/')
+        
+        # Regular user authentication
         db = get_db()
         user = db.execute('SELECT * FROM users WHERE username = ?', 
-                          (username,)).fetchone()
-                          
+                         (username,)).fetchone()
+                         
         if user and check_password_hash(user['password'], password):
             session.clear()
             session['user_id'] = user['id']
+            session['is_admin'] = user['role'] == 'admin'
             flash('Login successful!', 'success')
             return redirect('/')
         
@@ -106,6 +143,13 @@ def login():
 @app.route('/logout')
 def logout():
     """Logout route that clears the session"""
+    # Log which type of session is being cleared
+    if 'admin_id' in session:
+        logging.info(f"Admin logout: admin_id={session['admin_id']}")
+    if 'user_id' in session:
+        logging.info(f"User logout: user_id={session['user_id']}")
+        
+    # Clear all session data
     session.clear()
     flash('You have been logged out.', 'info')
     return redirect('/login')
@@ -763,17 +807,22 @@ def admin_required(f):
     """Decorator to require admin login for routes."""
     @functools.wraps(f)
     def decorated_function(*args, **kwargs):
-        if not session.get('admin_logged_in') and not session.get('user_id'):
-            flash('Please log in as admin to access this page.', 'warning')
-            return redirect("/admin/login")
-        
-        # Check if using new user system
+        # First, check if admin is logged in via admin panel (admin_id in session)
+        if 'admin_id' in session:
+            return f(*args, **kwargs)
+            
+        # Second, check legacy admin_logged_in flag
+        if session.get('admin_logged_in'):
+            return f(*args, **kwargs)
+            
+        # Third, check if user is logged in via regular login
         if session.get('user_id'):
             user = get_current_user()
             if not user:
                 flash('Authentication error. Please log in again.', 'danger')
                 return redirect("/admin/login")
                 
+            # Check if user has admin role
             if user['role'] != 'admin':
                 # Log unauthorized access attempt
                 log_error('security', f"Unauthorized admin access attempt to {f.__name__} by {user['username']} with role {user['role']}")
@@ -782,8 +831,13 @@ def admin_required(f):
                 # Return a dedicated access denied page instead of redirecting
                 # This prevents sensitive information disclosure and makes access attempts more visible
                 return render_template('access_denied.html', user=user, required_role='Admin')
+            
+            # User is logged in and has admin role
+            return f(*args, **kwargs)
         
-        return f(*args, **kwargs)
+        # No valid admin authentication found
+        flash('Please log in as admin to access this page.', 'warning')
+        return redirect("/admin/login")
     return decorated_function
 
 def get_menu_items(role=None):
@@ -1287,6 +1341,13 @@ def admin_login():
 @app.route('/admin/logout')
 def admin_logout():
     """Admin logout"""
+    # Log which type of session is being cleared
+    if 'admin_id' in session:
+        logging.info(f"Admin panel logout: admin_id={session['admin_id']}")
+    if 'user_id' in session:
+        logging.info(f"User logout from admin panel: user_id={session['user_id']}")
+        
+    # Clear all session data
     session.clear()
     flash('You have been logged out.', 'info')
     return redirect("/admin/login")
