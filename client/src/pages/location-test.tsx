@@ -29,7 +29,7 @@ interface ProjectLocation {
 }
 
 // Sample project locations for testing
-const sampleProjects: ProjectLocation[] = [
+const sampleProjects = [
   { 
     id: 1, 
     name: "Main Office",
@@ -51,7 +51,7 @@ const sampleProjects: ProjectLocation[] = [
     longitude: 74.2938, 
     radius: 150 // meters
   }
-];
+] as ProjectLocation[];
 
 const LocationTestPage: React.FC = () => {
   const [location, setLocation] = useState<LocationData | null>(null);

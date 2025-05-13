@@ -28,6 +28,7 @@ const allNavigationItems = [
   { name: "Dashboard", href: "/", icon: Home, roles: ["admin", "hr", "viewer"] },
   { name: "Employees", href: "/employees", icon: Users, roles: ["admin", "hr", "viewer"] },
   { name: "Attendance", href: "/attendance", icon: Calendar, roles: ["admin", "hr", "viewer"] },
+  { name: "Location Test", href: "/location-test", icon: MapPin, roles: ["admin", "hr", "viewer"] },
   { name: "Projects", href: "/projects", icon: FolderKanban, roles: ["admin", "hr", "viewer"] },
   { name: "Ship Duty", href: "/ship-duties", icon: Anchor, roles: ["admin", "hr", "viewer"] },
   { name: "Bill Management", href: "/bills", icon: Receipt, roles: ["admin", "hr", "viewer"] },
