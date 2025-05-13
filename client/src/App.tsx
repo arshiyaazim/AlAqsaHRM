@@ -29,6 +29,7 @@ import Settings from "@/pages/settings";
 import AuthPage from "@/pages/auth-page";
 import UsersPage from "@/pages/users";
 import MobileAttendance from "@/pages/mobile-attendance";
+import LocationTestPage from "@/pages/location-test";
 import ShipDutyList from "@/pages/ship-duties/index";
 import AddShipDuty from "@/pages/ship-duties/add";
 import EditShipDuty from "@/pages/ship-duties/edit/[id]";
@@ -88,6 +89,7 @@ function Router() {
       <Route path="/employees/edit/:id" component={EditEmployee} />
       <Route path="/attendance" component={AttendanceList} />
       <Route path="/attendance/record" component={RecordAttendance} />
+      <Route path="/location-test" component={LocationTestPage} />
       <Route path="/projects" component={ProjectsPage} />
       <Route path="/projects/add" component={AddProjectPage} />
       <Route path="/projects/edit/:id" component={EditProjectPage} />

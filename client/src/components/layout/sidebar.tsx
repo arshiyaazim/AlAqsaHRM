@@ -19,7 +19,8 @@ import {
   Anchor,
   Receipt,
   Palette,
-  Download as FileDown
+  Download as FileDown,
+  MapPin
 } from "lucide-react";
 
 // Define navigation items with role-based access
