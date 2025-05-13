@@ -104,6 +104,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Google Maps API key endpoint
+  app.get("/api/maps/apikey", authenticateJWT, (req: Request, res: Response) => {
+    try {
+      const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+      
+      if (!apiKey) {
+        return res.status(500).json({ 
+          message: "Google Maps API key not configured" 
+        });
+      }
+      
+      return res.json({ apiKey });
+    } catch (error) {
+      console.error("Error serving Google Maps API key:", error);
+      return res.status(500).json({ 
+        message: "Error serving Google Maps API key",
+        error: error.message
+      });
+    }
+  });
+  
     // Auth middleware and token generator are imported from './middleware/auth'
   
   // Auth routes
