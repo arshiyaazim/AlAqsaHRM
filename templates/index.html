@@ -49,6 +49,9 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Optional: Add a map placeholder if needed -->
+                    <div id="map" style="height: 300px; width: 100%; margin-top: 20px; display: none;"></div>
                     {% else %}
                     <div class="text-center py-5">
                         <i class="bi bi-shield-check text-primary" style="font-size: 4rem;"></i>
@@ -70,6 +73,9 @@
     </div>
 </div>
 
+<!-- Load Google Maps API (Key Integrated) -->
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCBs_ooC2c3rqybHsnYA34ADSmuZ4VLm1o&libraries=places&callback=initMap" async defer></script>
+
 <style>
     .hover-card {
         transition: all 0.3s ease;
@@ -82,4 +88,21 @@
         box-shadow: 0 10px 20px rgba(0,0,0,0.1);
     }
 </style>
+
+<!-- Optional: Initialize Map (if needed) -->
+<script>
+    function initMap() {
+        // Map initialization logic (if your app uses it)
+        console.log("Google Maps API loaded successfully.");
+        // Example: Show the hidden map div
+        // const mapDiv = document.getElementById('map');
+        // if (mapDiv) {
+        //     mapDiv.style.display = 'block';
+        //     const map = new google.maps.Map(mapDiv, {
+        //         center: { lat: -34.397, lng: 150.644 },
+        //         zoom: 8
+        //     });
+        // }
+    }
+</script>
 {% endblock %}

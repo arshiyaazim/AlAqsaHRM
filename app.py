@@ -378,6 +378,90 @@ def init_db():
                                 logging.error(f"Error executing schema statement: {str(e)}")
             else:
                 logging.warning("Schema file not found. Will create minimal required tables only.")
+                
+                # Create essential tables that might not exist
+                try:
+                    # Check if activity_logs table exists
+                    activity_logs_exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='activity_logs'").fetchone()
+                    if not activity_logs_exists:
+                        logging.info("Creating activity_logs table")
+                        db.execute('''
+                        CREATE TABLE activity_logs (
+                          id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          user_id INTEGER,
+                          action TEXT NOT NULL,
+                          details TEXT,
+                          ip_address TEXT,
+                          user_agent TEXT,
+                          timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                        )
+                        ''')
+                        db.commit()
+                        logging.info("Activity_logs table created successfully")
+                        
+                    # Check if menu_items table exists
+                    menu_items_exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='menu_items'").fetchone()
+                    if not menu_items_exists:
+                        logging.info("Creating menu_items table")
+                        db.execute('''
+                        CREATE TABLE menu_items (
+                          id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          title TEXT NOT NULL,
+                          url TEXT NOT NULL,
+                          icon TEXT,
+                          parent_id INTEGER,
+                          visible_to TEXT DEFAULT 'all',
+                          display_order INTEGER DEFAULT 0,
+                          active INTEGER NOT NULL DEFAULT 1,
+                          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                        )
+                        ''')
+                        db.commit()
+                        logging.info("Menu_items table created successfully")
+                        
+                    # Check if form_fields table exists
+                    form_fields_exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='form_fields'").fetchone()
+                    if not form_fields_exists:
+                        logging.info("Creating form_fields table")
+                        db.execute('''
+                        CREATE TABLE form_fields (
+                          id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          form_id TEXT NOT NULL,
+                          field_name TEXT NOT NULL,
+                          field_label TEXT NOT NULL,
+                          field_type TEXT NOT NULL,
+                          field_options TEXT,
+                          required INTEGER NOT NULL DEFAULT 0,
+                          display_order INTEGER DEFAULT 0,
+                          visible_to TEXT DEFAULT 'all',
+                          parent_field_id INTEGER,
+                          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                          enable_suggestions INTEGER DEFAULT 0
+                        )
+                        ''')
+                        db.commit()
+                        logging.info("Form_fields table created successfully")
+                        
+                    # Check if custom_styles table exists
+                    custom_styles_exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='custom_styles'").fetchone()
+                    if not custom_styles_exists:
+                        logging.info("Creating custom_styles table")
+                        db.execute('''
+                        CREATE TABLE custom_styles (
+                          id INTEGER PRIMARY KEY AUTOINCREMENT,
+                          element_selector TEXT NOT NULL,
+                          css_properties TEXT NOT NULL,
+                          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                          updated_at TIMESTAMP,
+                          priority INTEGER DEFAULT 0
+                        )
+                        ''')
+                        db.commit()
+                        logging.info("Custom_styles table created successfully")
+                
+                except sqlite3.Error as e:
+                    db.rollback()
+                    logging.error(f"Error creating essential tables: {str(e)}")
             
             # Add admin user to users table if not exists
             try:

@@ -118,11 +118,38 @@ def login():
             
             # Log the successful login
             current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            cursor.execute(
-                'INSERT INTO activity_logs (user_id, action, details, created_at) VALUES (?, ?, ?, ?)',
-                (user['id'], 'login', f"User {username} logged in", current_time)
-            )
-            db.commit()
+            try:
+                # Check if activity_logs table exists
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='activity_logs'")
+                if cursor.fetchone():
+                    cursor.execute(
+                        'INSERT INTO activity_logs (user_id, action, details, ip_address, timestamp) VALUES (?, ?, ?, ?, ?)',
+                        (user['id'], 'login', f"User {username} logged in", request.remote_addr, current_time)
+                    )
+                else:
+                    # Create activity_logs table if it doesn't exist
+                    cursor.execute('''
+                    CREATE TABLE activity_logs (
+                      id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      user_id INTEGER,
+                      action TEXT NOT NULL,
+                      details TEXT,
+                      ip_address TEXT,
+                      user_agent TEXT,
+                      timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                    ''')
+                    # Now insert the log
+                    cursor.execute(
+                        'INSERT INTO activity_logs (user_id, action, details, ip_address, timestamp) VALUES (?, ?, ?, ?, ?)',
+                        (user['id'], 'login', f"User {username} logged in", request.remote_addr, current_time)
+                    )
+                db.commit()
+            except Exception as e:
+                # Log the error but continue with login process
+                print(f"Error logging activity: {e}")
+                # Don't abort login if activity logging fails
+                db.rollback()
             
             # Redirect to correct page based on user role - using direct paths
             if user['role'] == 'admin' or user['role'] == 'hr':

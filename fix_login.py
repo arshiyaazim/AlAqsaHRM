@@ -96,6 +96,28 @@ def ensure_tables_exist(conn):
     else:
         logging.info("Admins table already exists")
     
+    # Check if activity_logs table exists - needed for login
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='activity_logs'")
+    activity_logs_exists = cursor.fetchone()
+    
+    if not activity_logs_exists:
+        logging.info("Creating activity_logs table")
+        cursor.execute('''
+        CREATE TABLE activity_logs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER,
+          action TEXT NOT NULL,
+          details TEXT,
+          ip_address TEXT,
+          user_agent TEXT,
+          timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        ''')
+        conn.commit()
+        logging.info("Activity_logs table created successfully")
+    else:
+        logging.info("Activity_logs table already exists")
+    
     # Check if attendance table exists - essential for admin dashboard
     cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='attendance'")
     attendance_exists = cursor.fetchone()
@@ -149,6 +171,106 @@ def ensure_tables_exist(conn):
         logging.info("Projects table created successfully")
     else:
         logging.info("Projects table already exists")
+    
+    # Check if menu_items table exists
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='menu_items'")
+    menu_items_exists = cursor.fetchone()
+    
+    if not menu_items_exists:
+        logging.info("Creating menu_items table")
+        cursor.execute('''
+        CREATE TABLE menu_items (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT NOT NULL,
+          url TEXT NOT NULL,
+          icon TEXT,
+          parent_id INTEGER,
+          visible_to TEXT DEFAULT 'all',
+          display_order INTEGER DEFAULT 0,
+          active INTEGER NOT NULL DEFAULT 1,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        ''')
+        conn.commit()
+        logging.info("Menu_items table created successfully")
+    else:
+        logging.info("Menu_items table already exists")
+    
+    # Check if form_fields table exists
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='form_fields'")
+    form_fields_exists = cursor.fetchone()
+    
+    if not form_fields_exists:
+        logging.info("Creating form_fields table")
+        cursor.execute('''
+        CREATE TABLE form_fields (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          form_id TEXT NOT NULL,
+          field_name TEXT NOT NULL,
+          field_label TEXT NOT NULL,
+          field_type TEXT NOT NULL,
+          field_options TEXT,
+          required INTEGER NOT NULL DEFAULT 0,
+          display_order INTEGER DEFAULT 0,
+          visible_to TEXT DEFAULT 'all',
+          parent_field_id INTEGER,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          enable_suggestions INTEGER DEFAULT 0
+        )
+        ''')
+        conn.commit()
+        logging.info("Form_fields table created successfully")
+    else:
+        logging.info("Form_fields table already exists")
+    
+    # Check if custom_styles table exists
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='custom_styles'")
+    custom_styles_exists = cursor.fetchone()
+    
+    if not custom_styles_exists:
+        logging.info("Creating custom_styles table")
+        cursor.execute('''
+        CREATE TABLE custom_styles (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          element_selector TEXT NOT NULL,
+          css_properties TEXT NOT NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP,
+          priority INTEGER DEFAULT 0
+        )
+        ''')
+        conn.commit()
+        logging.info("Custom_styles table created successfully")
+    else:
+        logging.info("Custom_styles table already exists")
+    
+    # Check if employees table exists
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='employees'")
+    employees_exists = cursor.fetchone()
+    
+    if not employees_exists:
+        logging.info("Creating employees table")
+        cursor.execute('''
+        CREATE TABLE employees (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          employee_id TEXT UNIQUE NOT NULL,
+          first_name TEXT NOT NULL,
+          last_name TEXT,
+          position TEXT,
+          department TEXT,
+          phone TEXT,
+          email TEXT,
+          address TEXT,
+          hire_date TEXT,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP,
+          active INTEGER NOT NULL DEFAULT 1
+        )
+        ''')
+        conn.commit()
+        logging.info("Employees table created successfully")
+    else:
+        logging.info("Employees table already exists")
     
     return True
 
