@@ -116,11 +116,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       return res.json({ apiKey });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error serving Google Maps API key:", error);
       return res.status(500).json({ 
         message: "Error serving Google Maps API key",
-        error: error.message
+        error: error.message || "Unknown error"
       });
     }
   });

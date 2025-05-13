@@ -71,9 +71,10 @@ The application consists of the following pages:
 
 ### Prerequisites
 
-- Python 3.6+
+- Python 3.6 to 3.13.3 (fully compatible with latest Python versions)
 - Flask and dependencies
-- Web browser with location services
+- Web browser with location services and GPS capabilities
+- Internet connection for Google Maps integration
 
 ### Installation
 
@@ -292,7 +293,33 @@ The application includes a comprehensive data import system that can handle:
 
 ### Google Maps Integration
 
-Replace the API key in templates/index.html with your own Google Maps API key for proper map functionality.
+The application uses Google Maps for GPS location tracking, geocoding, and distance calculations. To set up Google Maps integration:
+
+1. **Obtain a Google Maps API Key**:
+   - Go to the [Google Cloud Console](https://console.cloud.google.com/)
+   - Create a new project (or select an existing one)
+   - Enable the following APIs:
+     - Maps JavaScript API
+     - Geocoding API
+     - Places API (optional, for address autocomplete)
+   - Create an API key with appropriate restrictions (HTTP referrers recommended)
+
+2. **Set the API Key in Environment Variables**:
+   - Add the following line to your `.env` file:
+     ```
+     GOOGLE_MAPS_API_KEY=your_api_key_here
+     ```
+   - For production deployment, add this key to your environment variables
+
+3. **API Security**:
+   - The application uses a secure server-side endpoint (`/api/maps/apikey`) to serve the API key
+   - Frontend code requests the key securely via this endpoint
+   - This prevents exposing the API key in client-side code
+
+4. **Testing Maps Integration**:
+   - Use the mobile attendance interface to verify location services
+   - Check the admin dashboard map visualization
+   - Ensure GPS tracking functions correctly in the field
 
 ### Adding New Features
 
