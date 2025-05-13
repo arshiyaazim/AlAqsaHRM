@@ -22,7 +22,7 @@ pycparser==2.22
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.0
 pytz==2025.2
-six==1.17.0
+six==1.16.0
 SQLAlchemy==2.0.40
 tinycss2==1.4.0
 typing_extensions==4.13.2
@@ -30,7 +30,6 @@ tzdata==2025.2
 webencodings==0.5.1
 Werkzeug==3.1.3
 WTForms==3.2.1
-pyinstaller
-gunicorn
-flask-sqlalchemy
-psycopg2-binary
+pyinstaller==6.3.0
+gunicorn==21.2.0
+psycopg2-binary==2.9.9
