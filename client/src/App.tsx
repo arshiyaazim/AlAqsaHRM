@@ -69,12 +69,16 @@ function App() {
   
   // Public Routes (no authentication or main layout)
   if (isAuthPage) {
-    return <AuthPage />;
+    return (
+      <CompanyProvider>
+        <AuthPage />
+      </CompanyProvider>
+    );
   }
   
   if (isMobileAttendance) {
     return (
-      <>
+      <CompanyProvider>
         <style>{`
           /* Hide any non-application elements when in mobile attendance mode */
           #runtime-error-popup, .replit-ui-theme-root {
@@ -85,7 +89,7 @@ function App() {
           }
         `}</style>
         <MobileAttendance />
-      </>
+      </CompanyProvider>
     );
   }
   

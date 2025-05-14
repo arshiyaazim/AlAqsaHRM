@@ -104,7 +104,8 @@ export default function AuthPage() {
         title: "Login successful",
         description: "Welcome back!",
       });
-      setLocation("/dashboard");
+      // Use window.location.href for hard redirect instead of wouter's setLocation
+      window.location.href = "/dashboard";
     } catch (error) {
       console.error("Login error:", error);
       toast({
