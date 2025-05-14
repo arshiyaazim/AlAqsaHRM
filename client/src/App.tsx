@@ -44,12 +44,22 @@ import FieldConnections from "@/pages/admin/field-connections";
 import ThemeEditor from "@/pages/admin/theme-editor";
 import ExportData from "@/pages/admin/export-data";
 
-function Router() {
+function AppRoutes() {
   const [location] = useLocation();
+  const { isAuthenticated } = useAuth();
   const isAuthPage = location === "/auth";
   const isMobileAttendance = location === "/mobile-attendance";
 
-  // Special routes that don't need authentication
+  // Root path redirect
+  if (location === "/" && !isAuthenticated) {
+    return <Redirect to="/auth" />;
+  }
+
+  if (location === "/" && isAuthenticated) {
+    return <Redirect to="/dashboard" />;
+  }
+
+  // Public routes (no authentication required)
   if (isAuthPage) {
     return (
       <Switch>
@@ -61,6 +71,7 @@ function Router() {
     );
   }
 
+  // Mobile attendance route
   if (isMobileAttendance) {
     return (
       <>
@@ -83,45 +94,44 @@ function Router() {
     );
   }
 
-  // All other routes
+  // Protected routes (authentication required)
   return (
     <Switch>
-      <Route path="/" component={() => <Redirect to="/dashboard" />} />
-      <ProtectedRoute path="/dashboard" component={Dashboard} />
-      <ProtectedRoute path="/employees" component={EmployeeList} />
-      <ProtectedRoute path="/employees/add" component={AddEmployee} />
-      <ProtectedRoute path="/employees/:id" component={EmployeeDetails} />
-      <ProtectedRoute path="/employees/edit/:id" component={EditEmployee} />
-      <ProtectedRoute path="/attendance" component={AttendanceList} />
-      <ProtectedRoute path="/attendance/record" component={RecordAttendance} />
-      <ProtectedRoute path="/location-test" component={LocationTestPage} />
-      <ProtectedRoute path="/projects" component={ProjectsPage} />
-      <ProtectedRoute path="/projects/add" component={AddProjectPage} />
-      <ProtectedRoute path="/projects/edit/:id" component={EditProjectPage} />
-      <ProtectedRoute path="/ship-duties" component={ShipDutyList} />
-      <ProtectedRoute path="/ship-duties/add" component={AddShipDuty} />
-      <ProtectedRoute path="/ship-duties/edit/:id" component={EditShipDuty} />
-      <ProtectedRoute path="/bills" component={BillList} />
-      <ProtectedRoute path="/bills/generate" component={GenerateBill} />
-      <ProtectedRoute path="/expenditures" component={ExpenditureList} />
-      <ProtectedRoute path="/expenditures/add" component={AddExpenditure} />
-      <ProtectedRoute path="/expenditures/edit/:id" component={EditExpenditure} />
-      <ProtectedRoute path="/incomes" component={IncomeList} />
-      <ProtectedRoute path="/incomes/add" component={AddIncome} />
-      <ProtectedRoute path="/incomes/edit/:id" component={EditIncome} />
-      <ProtectedRoute path="/payroll" component={PayrollList} />
-      <ProtectedRoute path="/payroll/process" component={ProcessPayroll} />
-      <ProtectedRoute path="/reports" component={Reports} />
-      <ProtectedRoute path="/reports/templates" component={Reports} />
-      <ProtectedRoute path="/reports/templates/create" component={TemplateEditor} />
-      <ProtectedRoute path="/reports/templates/edit/:id" component={TemplateEditor} />
-      <ProtectedRoute path="/settings" component={Settings} />
-      <ProtectedRoute path="/users" component={UsersPage} />
+      <Route path="/dashboard" component={Dashboard} />
+      <Route path="/employees" exact component={EmployeeList} />
+      <Route path="/employees/add" component={AddEmployee} />
+      <Route path="/employees/:id" component={EmployeeDetails} />
+      <Route path="/employees/edit/:id" component={EditEmployee} />
+      <Route path="/attendance" exact component={AttendanceList} />
+      <Route path="/attendance/record" component={RecordAttendance} />
+      <Route path="/location-test" component={LocationTestPage} />
+      <Route path="/projects" exact component={ProjectsPage} />
+      <Route path="/projects/add" component={AddProjectPage} />
+      <Route path="/projects/edit/:id" component={EditProjectPage} />
+      <Route path="/ship-duties" exact component={ShipDutyList} />
+      <Route path="/ship-duties/add" component={AddShipDuty} />
+      <Route path="/ship-duties/edit/:id" component={EditShipDuty} />
+      <Route path="/bills" exact component={BillList} />
+      <Route path="/bills/generate" component={GenerateBill} />
+      <Route path="/expenditures" exact component={ExpenditureList} />
+      <Route path="/expenditures/add" component={AddExpenditure} />
+      <Route path="/expenditures/edit/:id" component={EditExpenditure} />
+      <Route path="/incomes" exact component={IncomeList} />
+      <Route path="/incomes/add" component={AddIncome} />
+      <Route path="/incomes/edit/:id" component={EditIncome} />
+      <Route path="/payroll" exact component={PayrollList} />
+      <Route path="/payroll/process" component={ProcessPayroll} />
+      <Route path="/reports" exact component={Reports} />
+      <Route path="/reports/templates" component={Reports} />
+      <Route path="/reports/templates/create" component={TemplateEditor} />
+      <Route path="/reports/templates/edit/:id" component={TemplateEditor} />
+      <Route path="/settings" component={Settings} />
+      <Route path="/users" component={UsersPage} />
       {/* Admin routes */}
-      <ProtectedRoute path="/admin/dashboard" component={AdminDashboard} roles={["admin"]} />
-      <ProtectedRoute path="/admin/field-connections" component={FieldConnections} roles={["admin"]} />
-      <ProtectedRoute path="/admin/theme-editor" component={ThemeEditor} roles={["admin"]} />
-      <ProtectedRoute path="/admin/export-data" component={ExportData} roles={["admin"]} />
+      <Route path="/admin/dashboard" component={AdminDashboard} />
+      <Route path="/admin/field-connections" component={FieldConnections} />
+      <Route path="/admin/theme-editor" component={ThemeEditor} />
+      <Route path="/admin/export-data" component={ExportData} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -130,6 +140,15 @@ function Router() {
 function MainLayout({ children }: { children: React.ReactNode }) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [location] = useLocation();
+  const { isAuthenticated } = useAuth();
+  
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated && location !== "/auth" && location !== "/mobile-attendance") {
+      // Use window.location to do a hard redirect to /auth if not authenticated
+      window.location.href = "/auth";
+    }
+  }, [isAuthenticated, location]);
   
   // Close mobile sidebar when location changes
   useEffect(() => {
@@ -159,21 +178,16 @@ function App() {
   const isAuthPage = location === "/auth";
   const isMobileAttendance = location === "/mobile-attendance";
 
-  // Special handling for root path
-  if (location === "/") {
-    return <Redirect to="/auth" />;
-  }
-
   return (
     <CompanyProvider>
       <>
         {isAuthPage || isMobileAttendance ? (
           <main className="min-h-screen">
-            <Router />
+            <AppRoutes />
           </main>
         ) : (
           <MainLayout>
-            <Router />
+            <AppRoutes />
           </MainLayout>
         )}
         <Toaster />
