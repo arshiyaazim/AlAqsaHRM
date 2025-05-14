@@ -9,7 +9,7 @@ packages = ["cairo", "freefont_ttf", "freetype", "gdk-pixbuf", "glib", "glibcLoc
 [deployment]
 deploymentTarget = "autoscale"
 build = ["npm", "run", "build"]
-run = ["npm", "run", "start"]
+run = ["sh", "-c", "npm run start"]
 
 [workflows]
 runButton = "Project"
