@@ -104,7 +104,7 @@ export default function AuthPage() {
         title: "Login successful",
         description: "Welcome back!",
       });
-      setLocation("/");
+      setLocation("/dashboard");
     } catch (error) {
       console.error("Login error:", error);
       toast({
