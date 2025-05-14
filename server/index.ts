@@ -61,8 +61,8 @@ app.use((req, res, next) => {
     res.status(200).json({ status: "healthy" });
   });
 
-  // Use port 8080 for Cloud Run compatibility
-  const port = 8080;
+  // Use port 5000 for Replit Autoscale compatibility
+  const port = process.env.PORT || 5000;
   server.listen({
     port,
     host: "0.0.0.0",
