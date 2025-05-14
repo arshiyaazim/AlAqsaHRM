@@ -36,42 +36,42 @@ import EditShipDuty from "@/pages/ship-duties/edit/[id]";
 import BillList from "@/pages/bills/index";
 import GenerateBill from "@/pages/bills/generate";
 import { CompanyProvider } from "@/hooks/useCompanySettings";
-import { ProtectedRoute } from "@/lib/protected-route";
-import useAuth from "@/hooks/useAuth";
 // Admin pages
 import AdminDashboard from "@/pages/admin/dashboard";
 import FieldConnections from "@/pages/admin/field-connections";
 import ThemeEditor from "@/pages/admin/theme-editor";
 import ExportData from "@/pages/admin/export-data";
 
-function AppRoutes() {
+// Simplified App component with direct routes
+function App() {
   const [location] = useLocation();
-  const { isAuthenticated } = useAuth();
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  
+  // Close mobile sidebar when location changes - this must be defined before conditionals
+  useEffect(() => {
+    setIsMobileSidebarOpen(false);
+  }, [location]);
+  
+  // Handle special routing for root path
+  if (location === "/") {
+    // Check if user is logged in
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return <Redirect to="/auth" />;
+    } else {
+      return <Redirect to="/dashboard" />;
+    }
+  }
+  
+  // Special routes without main layout
   const isAuthPage = location === "/auth";
   const isMobileAttendance = location === "/mobile-attendance";
-
-  // Root path redirect
-  if (location === "/" && !isAuthenticated) {
-    return <Redirect to="/auth" />;
-  }
-
-  if (location === "/" && isAuthenticated) {
-    return <Redirect to="/dashboard" />;
-  }
-
-  // Public routes (no authentication required)
+  
+  // Public Routes (no authentication or main layout)
   if (isAuthPage) {
-    return (
-      <Switch>
-        <Route path="/auth" component={AuthPage} />
-        <Route path="*">
-          <div>Page not found</div>
-        </Route>
-      </Switch>
-    );
+    return <AuthPage />;
   }
-
-  // Mobile attendance route
+  
   if (isMobileAttendance) {
     return (
       <>
@@ -84,114 +84,74 @@ function AppRoutes() {
             overflow: auto !important;
           }
         `}</style>
-        <Switch>
-          <Route path="/mobile-attendance" component={MobileAttendance} />
-          <Route path="*">
-            <div>Page not found</div>
-          </Route>
-        </Switch>
+        <MobileAttendance />
       </>
     );
   }
-
-  // Protected routes (authentication required)
-  return (
-    <Switch>
-      <Route path="/dashboard" component={Dashboard} />
-      <Route path="/employees" exact component={EmployeeList} />
-      <Route path="/employees/add" component={AddEmployee} />
-      <Route path="/employees/:id" component={EmployeeDetails} />
-      <Route path="/employees/edit/:id" component={EditEmployee} />
-      <Route path="/attendance" exact component={AttendanceList} />
-      <Route path="/attendance/record" component={RecordAttendance} />
-      <Route path="/location-test" component={LocationTestPage} />
-      <Route path="/projects" exact component={ProjectsPage} />
-      <Route path="/projects/add" component={AddProjectPage} />
-      <Route path="/projects/edit/:id" component={EditProjectPage} />
-      <Route path="/ship-duties" exact component={ShipDutyList} />
-      <Route path="/ship-duties/add" component={AddShipDuty} />
-      <Route path="/ship-duties/edit/:id" component={EditShipDuty} />
-      <Route path="/bills" exact component={BillList} />
-      <Route path="/bills/generate" component={GenerateBill} />
-      <Route path="/expenditures" exact component={ExpenditureList} />
-      <Route path="/expenditures/add" component={AddExpenditure} />
-      <Route path="/expenditures/edit/:id" component={EditExpenditure} />
-      <Route path="/incomes" exact component={IncomeList} />
-      <Route path="/incomes/add" component={AddIncome} />
-      <Route path="/incomes/edit/:id" component={EditIncome} />
-      <Route path="/payroll" exact component={PayrollList} />
-      <Route path="/payroll/process" component={ProcessPayroll} />
-      <Route path="/reports" exact component={Reports} />
-      <Route path="/reports/templates" component={Reports} />
-      <Route path="/reports/templates/create" component={TemplateEditor} />
-      <Route path="/reports/templates/edit/:id" component={TemplateEditor} />
-      <Route path="/settings" component={Settings} />
-      <Route path="/users" component={UsersPage} />
-      {/* Admin routes */}
-      <Route path="/admin/dashboard" component={AdminDashboard} />
-      <Route path="/admin/field-connections" component={FieldConnections} />
-      <Route path="/admin/theme-editor" component={ThemeEditor} />
-      <Route path="/admin/export-data" component={ExportData} />
-      <Route component={NotFound} />
-    </Switch>
-  );
-}
-
-function MainLayout({ children }: { children: React.ReactNode }) {
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [location] = useLocation();
-  const { isAuthenticated } = useAuth();
   
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!isAuthenticated && location !== "/auth" && location !== "/mobile-attendance") {
-      // Use window.location to do a hard redirect to /auth if not authenticated
-      window.location.href = "/auth";
-    }
-  }, [isAuthenticated, location]);
+  // Check authentication for protected routes
+  const token = localStorage.getItem("token");
+  if (!token && !isAuthPage) {
+    // Redirect to auth page if no token
+    window.location.href = "/auth";
+    return null;
+  }
   
-  // Close mobile sidebar when location changes
-  useEffect(() => {
-    setIsMobileSidebarOpen(false);
-  }, [location]);
-
-  return (
-    <div className="flex h-screen overflow-hidden bg-[#F7FAFC]">
-      <Sidebar />
-      <MobileSidebar 
-        isOpen={isMobileSidebarOpen} 
-        onClose={() => setIsMobileSidebarOpen(false)} 
-      />
-      
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header onMenuClick={() => setIsMobileSidebarOpen(true)} />
-        <main className="flex-1 overflow-y-auto bg-[#F7FAFC] p-4 sm:p-6 lg:p-8">
-          {children}
-        </main>
-      </div>
-    </div>
-  );
-}
-
-function App() {
-  const [location] = useLocation();
-  const isAuthPage = location === "/auth";
-  const isMobileAttendance = location === "/mobile-attendance";
-
+  // Main App layout with sidebar
   return (
     <CompanyProvider>
-      <>
-        {isAuthPage || isMobileAttendance ? (
-          <main className="min-h-screen">
-            <AppRoutes />
+      <div className="flex h-screen overflow-hidden bg-[#F7FAFC]">
+        <Sidebar />
+        <MobileSidebar 
+          isOpen={isMobileSidebarOpen} 
+          onClose={() => setIsMobileSidebarOpen(false)} 
+        />
+        
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header onMenuClick={() => setIsMobileSidebarOpen(true)} />
+          <main className="flex-1 overflow-y-auto bg-[#F7FAFC] p-4 sm:p-6 lg:p-8">
+            <Switch>
+              <Route path="/dashboard" component={Dashboard} />
+              <Route path="/employees" component={EmployeeList} />
+              <Route path="/employees/add" component={AddEmployee} />
+              <Route path="/employees/:id" component={EmployeeDetails} />
+              <Route path="/employees/edit/:id" component={EditEmployee} />
+              <Route path="/attendance" component={AttendanceList} />
+              <Route path="/attendance/record" component={RecordAttendance} />
+              <Route path="/location-test" component={LocationTestPage} />
+              <Route path="/projects" component={ProjectsPage} />
+              <Route path="/projects/add" component={AddProjectPage} />
+              <Route path="/projects/edit/:id" component={EditProjectPage} />
+              <Route path="/ship-duties" component={ShipDutyList} />
+              <Route path="/ship-duties/add" component={AddShipDuty} />
+              <Route path="/ship-duties/edit/:id" component={EditShipDuty} />
+              <Route path="/bills" component={BillList} />
+              <Route path="/bills/generate" component={GenerateBill} />
+              <Route path="/expenditures" component={ExpenditureList} />
+              <Route path="/expenditures/add" component={AddExpenditure} />
+              <Route path="/expenditures/edit/:id" component={EditExpenditure} />
+              <Route path="/incomes" component={IncomeList} />
+              <Route path="/incomes/add" component={AddIncome} />
+              <Route path="/incomes/edit/:id" component={EditIncome} />
+              <Route path="/payroll" component={PayrollList} />
+              <Route path="/payroll/process" component={ProcessPayroll} />
+              <Route path="/reports" component={Reports} />
+              <Route path="/reports/templates" component={Reports} />
+              <Route path="/reports/templates/create" component={TemplateEditor} />
+              <Route path="/reports/templates/edit/:id" component={TemplateEditor} />
+              <Route path="/settings" component={Settings} />
+              <Route path="/users" component={UsersPage} />
+              {/* Admin routes */}
+              <Route path="/admin/dashboard" component={AdminDashboard} />
+              <Route path="/admin/field-connections" component={FieldConnections} />
+              <Route path="/admin/theme-editor" component={ThemeEditor} />
+              <Route path="/admin/export-data" component={ExportData} />
+              <Route component={NotFound} />
+            </Switch>
           </main>
-        ) : (
-          <MainLayout>
-            <AppRoutes />
-          </MainLayout>
-        )}
+        </div>
         <Toaster />
-      </>
+      </div>
     </CompanyProvider>
   );
 }
