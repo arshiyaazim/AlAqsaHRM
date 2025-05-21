@@ -59,6 +59,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Serve static files from the uploads directory
   const uploadsDir = path.join(process.cwd(), 'uploads');
   app.use('/uploads', express.static(uploadsDir));
+  
   // Error handler middleware
   const handleError = (err: any, res: Response) => {
     console.error(err);
