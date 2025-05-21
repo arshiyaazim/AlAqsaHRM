@@ -1,0 +1,35 @@
+Please update my app with the following features and improvements:
+
+1. **Make 'Employee ID' Field Autocomplete:**
+   - Add a dropdown with 10 suggestions when typing in the 'Employee ID' field.
+   - Make this field typeable/writeable on all pages.
+   - However, on specific pages (Payroll Generation, Attendance, Ship Duty, Cash Receive/Payment, Loan & Advance), 
+	disallow saving new Employee IDs if they don't already exist. For wrong entry show error message when click on save/update/add.
+
+2. **Google Maps API Integration:**
+   - I will provide a valid Google Maps API key. Ensure it's properly integrated across all relevant files.
+   - Refactor the code if necessary to use this API key securely and effectively.
+	API key is: 'AIzaSyCBs_ooC2c3rqybHsnYA34ADSmuZ4VLm1o'
+
+3. **Authentication:**
+   - Rebuild the Login/Signup system.
+   - Ensure role-based login works: admin, HR, and viewer.
+   - Create 3 default users with IDs, emails, and passwords (minimum 6 characters).
+	and write these in .env file. after app deployment I will change all.
+   - On successful login, redirect smoothly to the Dashboard without breaking any app feature.
+
+4. **Environment and Config:**
+   - Recheck and fix `.env`, `.env.example`, and `.config` files for correctness and best practices.
+   - Ensure secure and readable variable use in code.
+
+5. **Deployment Instructions:**
+   - Include `README.txt` with:
+     - App features and usage
+     - Steps to build `.exe` file (if needed)
+     - Deployment guide for Hostinger VPS/web hosting
+     - Confirm and fix any `yaml` files used (e.g., for GitHub Actions or CI/CD)
+
+6. **Mobile Responsiveness:**
+   - Ensure the entire application is mobile-friendly and responsive using proper layout and styling (preferably TailwindCSS or Bootstrap).
+
+Please apply all these changes and ensure the app works as intended.
