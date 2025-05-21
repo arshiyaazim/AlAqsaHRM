@@ -59,7 +59,16 @@ function App() {
     if (!token) {
       return <Redirect to="/auth" />;
     } else {
+      // User is authenticated, redirect to dashboard
       return <Redirect to="/dashboard" />;
+    }
+  }
+  
+  // Handle special routing for dashboard path to ensure all roles access it
+  if (location === "/dashboard") {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return <Redirect to="/auth" />;
     }
   }
   
