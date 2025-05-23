@@ -155,10 +155,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setIsAuthenticated(true);
         return userData;
       } catch (error) {
-        // Only update state if value is changing to avoid re-renders
-        if (isAuthenticated) {
-          setIsAuthenticated(false);
-        }
+        // Set authentication state directly
+        setIsAuthenticated(false);
         return null;
       }
     },
