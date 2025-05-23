@@ -132,8 +132,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     queryKey: ["/api/auth/me"],
     queryFn: async () => {
       try {
+        // Check for token in localStorage to avoid unnecessary API calls
+        const token = localStorage.getItem('token');
+        if (!token) {
+          setIsAuthenticated(false);
+          return null;
+        }
+        
         const response = await apiRequest("GET", "/api/auth/me");
         if (response.status === 401) {
+          // Clear token if invalid
+          localStorage.removeItem('token');
           setIsAuthenticated(false);
           return null;
         }
@@ -141,10 +150,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           throw new Error("Failed to fetch user data");
         }
         const userData = await response.json();
-        setIsAuthenticated(true);
+        
+        // Only update state if value is changing to avoid re-renders
+        if (!isAuthenticated) {
+          setIsAuthenticated(true);
+        }
         return userData;
       } catch (error) {
-        setIsAuthenticated(false);
+        // Only update state if value is changing to avoid re-renders
+        if (isAuthenticated) {
+          setIsAuthenticated(false);
+        }
         return null;
       }
     },

@@ -94,12 +94,31 @@ const AuthPage = () => {
       return;
     }
     
+    // Prevent duplicate submissions - important for browser autofill
+    if (auth.loginMutation.isPending) {
+      return;
+    }
+    
     try {
-      await auth.loginMutation.mutateAsync(loginData);
+      // Display loading toast
       toast({
-        title: 'Login Successful',
-        description: 'Welcome back!',
+        title: 'Logging in...',
+        description: 'Please wait while we authenticate you.',
       });
+      
+      // Slight delay to ensure the form values are properly filled
+      // This helps with browser autofill issues
+      setTimeout(async () => {
+        try {
+          await auth.loginMutation.mutateAsync(loginData);
+          toast({
+            title: 'Login Successful',
+            description: 'Welcome back!',
+          });
+        } catch (error) {
+          console.error('Login error:', error);
+        }
+      }, 100);
     } catch (error) {
       console.error('Login error:', error);
       // Toast is handled in the mutation error handler
