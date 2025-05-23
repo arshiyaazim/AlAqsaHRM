@@ -6,6 +6,8 @@ import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import MobileSidebar from "@/components/layout/mobile-sidebar";
 import Dashboard from "@/pages/dashboard";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import EmployeeList from "@/pages/employees/index";
 import AddEmployee from "@/pages/employees/add";
 import EmployeeDetails from "@/pages/employees/[id]";
@@ -53,18 +55,20 @@ function App() {
     setIsMobileSidebarOpen(false);
   }, [location]);
   
-  // App wrapped in providers
+  // App wrapped in providers - fixed provider nesting to prevent circular dependencies
   return (
-    <AuthProvider>
-      <CompanyProvider>
-        <AppContent 
-          location={location} 
-          isMobileSidebarOpen={isMobileSidebarOpen}
-          setIsMobileSidebarOpen={setIsMobileSidebarOpen}
-        />
-        <Toaster />
-      </CompanyProvider>
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <CompanyProvider>
+          <AppContent 
+            location={location} 
+            isMobileSidebarOpen={isMobileSidebarOpen}
+            setIsMobileSidebarOpen={setIsMobileSidebarOpen}
+          />
+          <Toaster />
+        </CompanyProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 
