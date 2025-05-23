@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import React, { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback } from "react";
 import { useMutation, useQuery, UseMutationResult } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -151,10 +151,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
         const userData = await response.json();
         
-        // Only update state if value is changing to avoid re-renders
-        if (!isAuthenticated) {
-          setIsAuthenticated(true);
-        }
+        // Set authentication state once without condition
+        setIsAuthenticated(true);
         return userData;
       } catch (error) {
         // Only update state if value is changing to avoid re-renders
@@ -172,12 +170,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const loginMutation = useLoginMutation();
   const registerMutation = useRegisterMutation();
   const logoutMutation = useLogoutMutation();
-
-  // We don't need this effect since we're already setting isAuthenticated
-  // in the query function and avoiding circular dependencies
-
-  // Handle auth errors
+  
+  // Handle auth errors but with a reference check to prevent infinite updates
   useEffect(() => {
+    // Only show auth error toast when we have an error
     if (error) {
       toast({
         title: "Authentication Error",
