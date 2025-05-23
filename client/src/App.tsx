@@ -82,32 +82,29 @@ function AppContent({
   isMobileSidebarOpen: boolean;
   setIsMobileSidebarOpen: (isOpen: boolean) => void;
 }) {
-  // Handle special routing for root path
-  if (location === "/") {
-    // Check if user is logged in
-    const token = localStorage.getItem("token");
-    if (!token) {
-      return <Redirect to="/auth" />;
-    } else {
-      // User is authenticated, redirect to dashboard
-      return <Redirect to="/dashboard" />;
-    }
-  }
-  
-  // Handle special routing for dashboard path to ensure all roles access it
-  if (location === "/dashboard") {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      return <Redirect to="/auth" />;
-    }
-  }
-  
-  // Special routes without main layout
+  // Calculate route types once to avoid repeated calculations
+  const isRootPath = location === "/";
+  const isDashboardPath = location === "/dashboard";
   const isAuthPage = location === "/auth";
   const isMobileAttendance = location === "/mobile-attendance";
   
+  // Get token once for all checks
+  const token = localStorage.getItem("token");
+  const isAuthenticated = !!token;
+  
+  // Handle root path redirect
+  if (isRootPath) {
+    return isAuthenticated 
+      ? <Redirect to="/dashboard" />
+      : <Redirect to="/auth" />;
+  }
+  
   // Public Routes (no authentication or main layout)
   if (isAuthPage) {
+    // If already authenticated on auth page, redirect to dashboard
+    if (isAuthenticated) {
+      return <Redirect to="/dashboard" />;
+    }
     return <AuthPage />;
   }
   
@@ -128,12 +125,10 @@ function AppContent({
     );
   }
   
-  // Check authentication for protected routes
-  const token = localStorage.getItem("token");
-  if (!token && !isAuthPage) {
-    // Redirect to auth page if no token
-    window.location.href = "/auth";
-    return null;
+  // Check authentication for protected routes - use Redirect component
+  // instead of directly modifying window.location to prevent infinite loop
+  if (!isAuthenticated) {
+    return <Redirect to="/auth" />;
   }
   
   // Main App layout with sidebar
