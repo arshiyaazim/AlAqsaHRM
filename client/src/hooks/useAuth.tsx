@@ -122,8 +122,18 @@ const useLogoutMutation = () => {
       return response.json();
     },
     onSuccess: () => {
+      // Clear all localStorage data related to authentication
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      
+      // Clear cache
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       queryClient.setQueryData(["/api/auth/me"], null);
+      
+      // Redirect to login page with delay to avoid React state conflicts
+      setTimeout(() => {
+        window.location.href = '/auth';
+      }, 100);
     },
   });
 };

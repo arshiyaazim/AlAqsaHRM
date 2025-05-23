@@ -176,15 +176,15 @@ export default function CustomizeDashboard() {
         </div>
       </div>
 
-      <Tabs defaultValue={activeTab} className="space-y-8">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
         <TabsList className="w-full max-w-md">
-          <TabsTrigger value="widgets" className="flex-1" onClick={() => setActiveTab('widgets')}>
+          <TabsTrigger value="widgets" className="flex-1">
             Widgets
           </TabsTrigger>
-          <TabsTrigger value="layout" className="flex-1" onClick={() => setActiveTab('layout')}>
+          <TabsTrigger value="layout" className="flex-1">
             Layout Options
           </TabsTrigger>
-          <TabsTrigger value="permissions" className="flex-1" onClick={() => setActiveTab('permissions')}>
+          <TabsTrigger value="permissions" className="flex-1">
             Permissions
           </TabsTrigger>
         </TabsList>
