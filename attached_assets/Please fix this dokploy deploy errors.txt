@@ -1,0 +1,91 @@
+# 🛠️ CREATE CLEAN AL-AQSA HRM APP STRUCTURE
+
+
+# Technologies: Flask (Python) backend + React (TypeScript) frontend
+
+# ROOT FILES
+touch README.md .env .gitignore requirements.txt .nixpacks.toml
+touch wsgi.py app.py app_config.py app_init.py auth.py models.py manage.py
+
+# BACKEND FOLDERS
+mkdir -p instance migrations static/images templates uploads server shared
+touch instance/attendance.db
+touch static/images/logo.png  # placeholder logo
+
+# FRONTEND STRUCTURE (React)
+mkdir -p client/public client/src/components client/src/pages client/src/lib/utils
+
+# FRONTEND FILES
+touch client/package.json client/tsconfig.json client/vite.config.ts
+touch client/public/index.html client/public/favicon.ico
+touch client/src/main.tsx client/src/App.tsx
+touch client/src/components/Header.tsx client/src/components/Footer.tsx
+touch client/src/pages/Home.tsx client/src/pages/Login.tsx client/src/pages/location-test.tsx
+touch client/src/lib/utils/googleMaps.ts  # ✅ Fixes your missing file error
+
+
+🔧 EXAMPLE CONTENTS (Critical Files): edit with if needed-
+✅ .env
+
+PORT=8000
+DATABASE_URL=sqlite:///instance/attendance.db
+FLASK_APP=app.py
+FLASK_ENV=production
+SECRET_KEY=your-secure-key
+
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin123
+HR_USERNAME=hr002
+VIEWER_USERNAME=view003
+GOOGLE_MAPS_API_KEY=your-google-key
+
+SESSION_TIMEOUT=86400
+
+
+✅ requirements.txt
+
+Flask==2.3.2
+Flask-Cors==4.0.0
+gunicorn==21.2.0
+python-dotenv==1.0.1
+
+
+✅ .nixpacks.toml
+
+[phases.setup]
+nixPkgs = ["nodejs", "python39", "pip"]
+
+[phases.build]
+cmds = ["cd client && npm install && npm run build"]
+
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
+[start]
+cmd = "gunicorn --bind 0.0.0.0:8000 wsgi:app"
+
+
+✅ wsgi.py
+
+from app_init import app
+
+if __name__ == "__main__":
+    app.run()
+
+
+✅ Fix for Missing File: client/src/lib/utils/googleMaps.ts
+
+// googleMaps.ts
+export function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const toRad = (value: number) => (value * Math.PI) / 180;
+  const R = 6371e3; // Earth's radius in meters
+  const φ1 = toRad(lat1);
+  const φ2 = toRad(lat2);
+  const Δφ = toRad(lat2 - lat1);
+  const Δλ = toRad(lon2 - lon1);
+  const a = Math.sin(Δφ / 2) ** 2 +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
