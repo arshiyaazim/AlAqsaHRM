@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useRoute } from 'wouter';
+import { useLocation } from 'wouter';
 import useAuth from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2 } from 'lucide-react';
+import { Loader2, UserPlus, LogIn } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { PasswordInput } from '@/components/ui/password-input';
+import FormInputWithValidation from '@/components/ui/form-input-with-validation';
+import CharacterResponse from '@/components/ui/character-response';
 
 const AuthPage = () => {
   // Authentication hook
@@ -29,6 +29,50 @@ const AuthPage = () => {
     password: '',
     employeeId: '',
   });
+
+  // Form validity state
+  const [formState, setFormState] = useState({
+    loginValid: false,
+    registerValid: false,
+    registerProgress: 0,
+  });
+  
+  // Track form completion progress for registration
+  useEffect(() => {
+    let progress = 0;
+    const fields = [
+      registerData.firstName,
+      registerData.lastName,
+      registerData.email,
+      registerData.password,
+      registerData.employeeId,
+    ];
+    
+    // Calculate progress as percentage of filled fields
+    const filledFields = fields.filter(field => field.trim() !== '').length;
+    progress = Math.floor((filledFields / fields.length) * 100);
+    
+    // Check if all required fields are valid
+    const isValid = fields.every(field => field.trim() !== '');
+    
+    setFormState(prev => ({
+      ...prev,
+      registerValid: isValid,
+      registerProgress: progress,
+    }));
+  }, [registerData]);
+  
+  // Check login form validity
+  useEffect(() => {
+    const isValid = loginData.email.trim() !== '' && 
+                    loginData.password.trim() !== '' &&
+                    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginData.email);
+    
+    setFormState(prev => ({
+      ...prev,
+      loginValid: isValid,
+    }));
+  }, [loginData]);
   
   // If already logged in, redirect to dashboard
   useEffect(() => {
@@ -40,6 +84,15 @@ const AuthPage = () => {
   // Handle login form submission
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formState.loginValid) {
+      toast({
+        title: 'Form Incomplete',
+        description: 'Please fill in all the required fields correctly.',
+        variant: 'destructive',
+      });
+      return;
+    }
     
     try {
       await auth.loginMutation.mutateAsync(loginData);
@@ -57,6 +110,15 @@ const AuthPage = () => {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!formState.registerValid) {
+      toast({
+        title: 'Form Incomplete',
+        description: 'Please fill in all the required fields correctly.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     try {
       await auth.registerMutation.mutateAsync(registerData);
       toast({
@@ -67,6 +129,33 @@ const AuthPage = () => {
       console.error('Registration error:', error);
       // Toast is handled in the mutation error handler
     }
+  };
+  
+  // Progress message for registration
+  const getProgressMessage = () => {
+    const progress = formState.registerProgress;
+    
+    if (progress === 0) {
+      return "Let's get started! Fill in your details to create an account.";
+    } else if (progress < 40) {
+      return "Good start! Keep filling in your information.";
+    } else if (progress < 80) {
+      return "You're making great progress!";
+    } else if (progress < 100) {
+      return "Almost there! Just a few more fields to complete.";
+    } else {
+      return "Perfect! All set to create your account.";
+    }
+  };
+  
+  // Progress mood for character response
+  const getProgressMood = (): 'happy' | 'thinking' | 'neutral' | 'success' => {
+    const progress = formState.registerProgress;
+    
+    if (progress === 0) return 'neutral';
+    if (progress < 50) return 'thinking';
+    if (progress < 100) return 'happy';
+    return 'success';
   };
   
   // Loading state
@@ -101,38 +190,77 @@ const AuthPage = () => {
               <Card>
                 <form onSubmit={handleLogin}>
                   <CardHeader>
-                    <CardTitle>Account Login</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      <LogIn className="h-5 w-5" />
+                      Account Login
+                    </CardTitle>
                     <CardDescription>
                       Enter your credentials to access your account.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    <FormInputWithValidation
+                      label="Email"
+                      id="email"
+                      type="email"
+                      placeholder="your.email@example.com"
+                      value={loginData.email}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
+                        setLoginData({ ...loginData, email: e.target.value })}
+                      validationRules={{
+                        required: true,
+                        email: true
+                      }}
+                      feedbackMessages={{
+                        initial: "Enter your email address",
+                        valid: "Great! Your email looks good.",
+                        empty: "Email is required to log in.",
+                        typing: "Checking your email format..."
+                      }}
+                      required
+                    />
+                    
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input 
-                        id="email" 
-                        type="email" 
-                        placeholder="your.email@example.com"
-                        value={loginData.email}
-                        onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
-                        required
+                      <FormInputWithValidation
+                        label="Password"
+                        id="login-password-wrapper"
+                        type="password"
+                        value={loginData.password}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
+                          setLoginData({ ...loginData, password: e.target.value })}
+                        validationRules={{
+                          required: true,
+                          minLength: 6
+                        }}
+                        feedbackMessages={{
+                          initial: "Enter your password",
+                          valid: "Password looks secure!",
+                          empty: "Password is required to log in.",
+                          typing: "Checking password..."
+                        }}
+                        containerClassName="hidden"
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="password">Password</Label>
                       <PasswordInput
-                        id="password"
+                        id="login-password"
                         value={loginData.password}
                         onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                        placeholder="Enter your password"
                         required
                       />
+                      {loginData.password && loginData.password.length < 6 && (
+                        <CharacterResponse
+                          mood="warning"
+                          message="Password should be at least 6 characters long."
+                          size="sm"
+                        />
+                      )}
                     </div>
                   </CardContent>
-                  <CardFooter>
+                  <CardFooter className="flex flex-col gap-4">
                     <Button 
                       type="submit" 
                       className="w-full"
-                      disabled={auth.loginMutation.isPending}
+                      disabled={auth.loginMutation.isPending || !formState.loginValid}
                     >
                       {auth.loginMutation.isPending ? (
                         <>
@@ -143,6 +271,14 @@ const AuthPage = () => {
                         'Login'
                       )}
                     </Button>
+                    
+                    {!formState.loginValid && loginData.email && loginData.password && (
+                      <CharacterResponse
+                        mood="thinking"
+                        message="Please make sure your email and password are entered correctly."
+                        size="sm"
+                      />
+                    )}
                   </CardFooter>
                 </form>
               </Card>
@@ -153,66 +289,157 @@ const AuthPage = () => {
               <Card>
                 <form onSubmit={handleRegister}>
                   <CardHeader>
-                    <CardTitle>Create Account</CardTitle>
+                    <CardTitle className="flex items-center gap-2">
+                      <UserPlus className="h-5 w-5" />
+                      Create Account
+                    </CardTitle>
                     <CardDescription>
                       Register for a new account to access the system.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {/* Registration progress indicator */}
+                    <div className="w-full bg-muted rounded-full h-2.5 mb-2">
+                      <div 
+                        className="bg-primary h-2.5 rounded-full transition-all duration-500" 
+                        style={{ width: `${formState.registerProgress}%` }}
+                      ></div>
+                    </div>
+                    <CharacterResponse
+                      mood={getProgressMood()}
+                      message={getProgressMessage()}
+                      size="sm"
+                    />
+                    
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="firstName">First Name</Label>
-                        <Input 
-                          id="firstName" 
-                          value={registerData.firstName}
-                          onChange={(e) => setRegisterData({ ...registerData, firstName: e.target.value })}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="lastName">Last Name</Label>
-                        <Input 
-                          id="lastName" 
-                          value={registerData.lastName}
-                          onChange={(e) => setRegisterData({ ...registerData, lastName: e.target.value })}
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="registerEmail">Email</Label>
-                      <Input 
-                        id="registerEmail" 
-                        type="email"
-                        value={registerData.email}
-                        onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
+                      <FormInputWithValidation
+                        label="First Name"
+                        id="firstName"
+                        value={registerData.firstName}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
+                          setRegisterData({ ...registerData, firstName: e.target.value })}
+                        validationRules={{
+                          required: true,
+                          minLength: 2
+                        }}
+                        feedbackMessages={{
+                          initial: "Your first name",
+                          valid: "Nice to meet you!",
+                          empty: "First name is required.",
+                          typing: "Typing first name..."
+                        }}
+                        required
+                      />
+                      
+                      <FormInputWithValidation
+                        label="Last Name"
+                        id="lastName"
+                        value={registerData.lastName}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
+                          setRegisterData({ ...registerData, lastName: e.target.value })}
+                        validationRules={{
+                          required: true,
+                          minLength: 2
+                        }}
+                        feedbackMessages={{
+                          initial: "Your last name",
+                          valid: "Great last name!",
+                          empty: "Last name is required.",
+                          typing: "Typing last name..."
+                        }}
                         required
                       />
                     </div>
+                    
+                    <FormInputWithValidation
+                      label="Email"
+                      id="registerEmail"
+                      type="email"
+                      value={registerData.email}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
+                        setRegisterData({ ...registerData, email: e.target.value })}
+                      validationRules={{
+                        required: true,
+                        email: true
+                      }}
+                      feedbackMessages={{
+                        initial: "Your email address for login",
+                        valid: "Valid email format!",
+                        empty: "Email is required for registration.",
+                        typing: "Checking email format..."
+                      }}
+                      required
+                    />
+                    
+                    <FormInputWithValidation
+                      label="Employee ID"
+                      id="employeeId"
+                      value={registerData.employeeId}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
+                        setRegisterData({ ...registerData, employeeId: e.target.value })}
+                      validationRules={{
+                        required: true
+                      }}
+                      feedbackMessages={{
+                        initial: "Your employee ID number",
+                        valid: "Employee ID received!",
+                        empty: "Employee ID is required.",
+                        typing: "Entering employee ID..."
+                      }}
+                      required
+                    />
+                    
                     <div className="space-y-2">
-                      <Label htmlFor="employeeId">Employee ID</Label>
-                      <Input 
-                        id="employeeId" 
-                        value={registerData.employeeId}
-                        onChange={(e) => setRegisterData({ ...registerData, employeeId: e.target.value })}
-                        required
+                      <FormInputWithValidation
+                        label="Password"
+                        id="register-password-wrapper"
+                        type="password"
+                        value={registerData.password}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
+                          setRegisterData({ ...registerData, password: e.target.value })}
+                        validationRules={{
+                          required: true,
+                          minLength: 8
+                        }}
+                        feedbackMessages={{
+                          initial: "Create a secure password",
+                          valid: "Strong password!",
+                          empty: "Password is required.",
+                          typing: "Checking password strength..."
+                        }}
+                        containerClassName="hidden"
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="registerPassword">Password</Label>
                       <PasswordInput
                         id="registerPassword"
                         value={registerData.password}
                         onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
+                        placeholder="Create a secure password"
                         required
                       />
+                      {registerData.password && (
+                        <div className="mt-2">
+                          {registerData.password.length < 8 ? (
+                            <CharacterResponse
+                              mood="warning"
+                              message="Password should be at least 8 characters long for security."
+                              size="sm"
+                            />
+                          ) : (
+                            <CharacterResponse
+                              mood="success"
+                              message="Great! Your password meets security requirements."
+                              size="sm"
+                            />
+                          )}
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                   <CardFooter>
                     <Button 
                       type="submit" 
                       className="w-full"
-                      disabled={auth.registerMutation.isPending}
+                      disabled={auth.registerMutation.isPending || !formState.registerValid}
                     >
                       {auth.registerMutation.isPending ? (
                         <>
