@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-import { AlertTriangle as ExclamationTriangleIcon, MapPin as MapPinIcon, RefreshCcw as RefreshCcwIcon } from "lucide-react";
-import { loadGoogleMapsApi, getCurrentPosition } from '@/lib/utils/googleMaps';
-import { useToast } from "@/hooks/use-toast";
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, MapPin, Clock, Check, X } from 'lucide-react';
+import { getCurrentPosition } from '@/lib/utils/googleMaps';
+import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
+
+interface LocationTrackerProps {
+  employeeId?: number;
+  onLocationCaptured?: (location: string, type: 'in' | 'out') => void;
+}
 
 interface LocationData {
   latitude: number;
@@ -15,45 +19,26 @@ interface LocationData {
   timestamp: number;
 }
 
-interface LocationTrackerProps {
-  onLocationCaptured?: (location: LocationData) => void;
-  required?: boolean;
-  buttonText?: string;
-}
-
-const LocationTracker: React.FC<LocationTrackerProps> = ({
-  onLocationCaptured,
-  required = true,
-  buttonText = "Capture Location"
+const LocationTracker: React.FC<LocationTrackerProps> = ({ 
+  employeeId, 
+  onLocationCaptured 
 }) => {
-  const [location, setLocation] = useState<LocationData | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [mapsLoaded, setMapsLoaded] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [lastLocation, setLastLocation] = useState<LocationData | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [action, setAction] = useState<'in' | 'out' | null>(null);
   const { toast } = useToast();
 
-  // Load Google Maps API on component mount
-  useEffect(() => {
-    const initMaps = async () => {
-      try {
-        await loadGoogleMapsApi();
-        setMapsLoaded(true);
-      } catch (error: any) {
-        console.error('Failed to load Google Maps API:', error);
-        setError(`Maps service unavailable: ${error.message || 'Unknown error'}`);
-      }
-    };
+  // Function to get current location
+  const captureLocation = async (type: 'in' | 'out') => {
+    setIsLoading(true);
+    setAction(type);
+    setErrorMessage(null);
 
-    initMaps();
-  }, []);
-
-  const captureLocation = async () => {
-    setLoading(true);
-    setError(null);
-    
     try {
       const position = await getCurrentPosition();
       
+      // Create location data
       const locationData: LocationData = {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
@@ -61,115 +46,133 @@ const LocationTracker: React.FC<LocationTrackerProps> = ({
         timestamp: position.timestamp
       };
       
-      setLocation(locationData);
+      setLastLocation(locationData);
       
+      // Format as string for database (Latitude,Longitude)
+      const locationString = `${position.coords.latitude},${position.coords.longitude}`;
+      
+      // If callback provided, send the location
       if (onLocationCaptured) {
-        onLocationCaptured(locationData);
+        onLocationCaptured(locationString, type);
       }
       
+      // If employee ID provided, also record it to the API
+      if (employeeId) {
+        try {
+          const response = await apiRequest('POST', '/api/attendance/record', {
+            employeeId,
+            type,
+            location: locationString,
+            timestamp: new Date().toISOString()
+          });
+          
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to record attendance');
+          }
+          
+          toast({
+            title: `${type === 'in' ? 'Check In' : 'Check Out'} Successful`,
+            description: `Your ${type === 'in' ? 'arrival' : 'departure'} has been recorded.`,
+            variant: 'default',
+          });
+        } catch (apiError) {
+          console.error('API error:', apiError);
+          toast({
+            title: 'Unable to Save',
+            description: `Location captured but could not be saved. Please try again later.`,
+            variant: 'destructive',
+          });
+        }
+      }
+    } catch (error) {
+      setErrorMessage((error as Error).message || 'Failed to capture location');
       toast({
-        title: "Location captured",
-        description: "Your current location has been successfully recorded.",
-      });
-    } catch (error: any) {
-      console.error('Error getting location:', error);
-      setError(error.message || 'Unknown error getting location');
-      
-      toast({
-        title: "Location error",
-        description: error.message || "Failed to capture your location. Please check permissions.",
-        variant: "destructive",
+        title: 'Location Error',
+        description: (error as Error).message || 'Failed to capture your location',
+        variant: 'destructive',
       });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
+  // Format coordinates for display
+  const formatCoords = (lat: number, lng: number) => {
+    return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+  };
+
   return (
-    <Card className="w-full">
+    <Card className="w-full max-w-md mx-auto">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <MapPinIcon className="h-5 w-5 text-primary" />
-          Location Tracker
+          <MapPin className="h-5 w-5 text-primary" />
+          Attendance Location
         </CardTitle>
+        <CardDescription>
+          Record your location for attendance tracking
+        </CardDescription>
       </CardHeader>
-      
-      <CardContent>
-        {error && (
-          <Alert variant="destructive" className="mb-4">
-            <ExclamationTriangleIcon className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
+      <CardContent className="space-y-4">
+        <div className="flex justify-between gap-2">
+          <Button
+            variant="default"
+            className="flex-1"
+            onClick={() => captureLocation('in')}
+            disabled={isLoading}
+          >
+            {isLoading && action === 'in' ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Check className="mr-2 h-4 w-4" />
+            )}
+            Check In
+          </Button>
+          
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={() => captureLocation('out')}
+            disabled={isLoading}
+          >
+            {isLoading && action === 'out' ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <X className="mr-2 h-4 w-4" />
+            )}
+            Check Out
+          </Button>
+        </div>
+        
+        {errorMessage && (
+          <div className="text-destructive text-sm p-2 bg-destructive/10 rounded-md">
+            {errorMessage}
+          </div>
         )}
         
-        {location ? (
-          <div className="space-y-2">
+        {lastLocation && (
+          <div className="text-sm space-y-2 mt-4 p-3 bg-muted rounded-md">
             <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Latitude:</span>
-              <span>{location.latitude.toFixed(6)}</span>
+              <span className="font-medium">Location:</span>
+              <span>{formatCoords(lastLocation.latitude, lastLocation.longitude)}</span>
             </div>
-            
             <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Longitude:</span>
-              <span>{location.longitude.toFixed(6)}</span>
+              <span className="font-medium">Accuracy:</span>
+              <span>{lastLocation.accuracy.toFixed(1)} meters</span>
             </div>
-            
             <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Accuracy:</span>
-              <Badge variant={location.accuracy < 30 ? "default" : "secondary"}>
-                {location.accuracy.toFixed(1)} meters
+              <span className="font-medium">Time:</span>
+              <span>{new Date(lastLocation.timestamp).toLocaleTimeString()}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="font-medium">Status:</span>
+              <Badge variant={action === 'in' ? 'default' : 'secondary'}>
+                {action === 'in' ? 'Checked In' : 'Checked Out'}
               </Badge>
             </div>
-            
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Captured:</span>
-              <span className="text-sm text-muted-foreground">
-                {new Date(location.timestamp).toLocaleTimeString()}
-              </span>
-            </div>
-          </div>
-        ) : loading ? (
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-full" />
-          </div>
-        ) : (
-          <div className="py-4 text-center text-muted-foreground">
-            {required ? (
-              <p>Location tracking is required for attendance verification.</p>
-            ) : (
-              <p>Capture your current location for verification.</p>
-            )}
           </div>
         )}
       </CardContent>
-      
-      <CardFooter>
-        <Button 
-          onClick={captureLocation} 
-          disabled={loading || (!mapsLoaded && !error)} 
-          className="w-full"
-        >
-          {loading ? (
-            <>
-              <RefreshCcwIcon className="mr-2 h-4 w-4 animate-spin" />
-              Capturing...
-            </>
-          ) : location ? (
-            <>
-              <RefreshCcwIcon className="mr-2 h-4 w-4" />
-              Update Location
-            </>
-          ) : (
-            <>
-              <MapPinIcon className="mr-2 h-4 w-4" />
-              {buttonText}
-            </>
-          )}
-        </Button>
-      </CardFooter>
     </Card>
   );
 };

@@ -1,400 +1,264 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { useCompanySettings } from "@/hooks/useCompanySettings";
+import React, { useState, useEffect } from 'react';
+import { useLocation, useRoute } from 'wouter';
+import useAuth from '@/hooks/useAuth';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { PasswordInput } from '@/components/ui/password-input';
 
-// Login form schema
-const loginSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email address" }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
-});
-
-// Register form schema
-const registerSchema = z.object({
-  firstName: z.string().min(2, { message: "First name must be at least 2 characters" }),
-  lastName: z.string().min(2, { message: "Last name must be at least 2 characters" }),
-  email: z.string().email({ message: "Please enter a valid email address" }),
-  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
-  confirmPassword: z.string().min(6, { message: "Password must be at least 6 characters" }),
-  employeeId: z.string().min(1, { message: "Employee ID is required" }),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords do not match",
-  path: ["confirmPassword"],
-});
-
-type LoginFormValues = z.infer<typeof loginSchema>;
-type RegisterFormValues = z.infer<typeof registerSchema>;
-
-export default function AuthPage() {
-  const [activeTab, setActiveTab] = useState<string>("login");
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [isRegistering, setIsRegistering] = useState(false);
-  const [_, setLocation] = useLocation();
+const AuthPage = () => {
+  // Authentication hook
+  const auth = useAuth();
   const { toast } = useToast();
-  const { settings } = useCompanySettings();
-
-  // Login form
-  const loginForm = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
+  const [location, navigate] = useLocation();
+  
+  // Form state
+  const [loginData, setLoginData] = useState({
+    email: '',
+    password: '',
   });
-
-  // Register form
-  const registerForm = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerSchema),
-    defaultValues: {
-      firstName: "",
-      lastName: "",
-      email: "",
-      password: "",
-      confirmPassword: "",
-      employeeId: "",
-    },
+  
+  const [registerData, setRegisterData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    employeeId: '',
   });
-
-  // Form submission handlers
-  const onLoginSubmit = async (data: LoginFormValues) => {
-    setIsLoggingIn(true);
+  
+  // If already logged in, redirect to dashboard
+  useEffect(() => {
+    if (auth.isAuthenticated && auth.user) {
+      navigate('/');
+    }
+  }, [auth.isAuthenticated, auth.user, navigate]);
+  
+  // Handle login form submission
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
-      
-      // Get response data first
-      const responseData = await response.json();
-      console.log("Login response:", responseData);
-      
-      if (!response.ok) {
-        throw new Error(responseData.message || "Login failed");
-      }
-      
-      console.log("Login successful, response:", responseData);
-      
-      // Store token in localStorage
-      if (responseData.token) {
-        localStorage.setItem("token", responseData.token);
-        console.log("Token stored in localStorage");
-        
-        // Store user data if available
-        if (responseData.user) {
-          localStorage.setItem("user", JSON.stringify(responseData.user));
-        }
-      } else {
-        console.error("No token received from server");
-      }
-      
+      await auth.loginMutation.mutateAsync(loginData);
       toast({
-        title: "Login successful",
-        description: "Welcome back!",
+        title: 'Login Successful',
+        description: 'Welcome back!',
       });
-      // Use window.location.href for hard redirect instead of wouter's setLocation
-      window.location.href = "/dashboard";
     } catch (error) {
-      console.error("Login error:", error);
-      toast({
-        title: "Login failed",
-        description: error instanceof Error ? error.message : "Please check your credentials and try again",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoggingIn(false);
+      console.error('Login error:', error);
+      // Toast is handled in the mutation error handler
     }
   };
-
-  const onRegisterSubmit = async (data: RegisterFormValues) => {
-    setIsRegistering(true);
+  
+  // Handle register form submission
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
     try {
-      // Remove confirmPassword as it's not needed for API
-      const { confirmPassword, ...registerData } = data;
-      
-      const response = await apiRequest("POST", "/api/auth/register", registerData);
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Registration failed");
-      }
-      
+      await auth.registerMutation.mutateAsync(registerData);
       toast({
-        title: "Registration successful",
-        description: "Your request is pending. We will send a confirmation email after your request is approved.",
+        title: 'Registration Successful',
+        description: 'Your account has been created.',
       });
-      
-      // Show success dialog instead of redirecting
-      setActiveTab("registration-pending");
     } catch (error) {
-      toast({
-        title: "Registration failed",
-        description: error instanceof Error ? error.message : "There was a problem creating your account",
-        variant: "destructive",
-      });
-    } finally {
-      setIsRegistering(false);
+      console.error('Registration error:', error);
+      // Toast is handled in the mutation error handler
     }
   };
-
+  
+  // Loading state
+  if (auth.isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
   return (
-    <div className="min-h-screen flex flex-col md:flex-row">
-      {/* Left side - Auth forms */}
-      <div className="flex-1 flex items-center justify-center p-6 bg-white">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold text-center">
-              {settings.companyName}
-            </CardTitle>
-            <CardDescription className="text-center">
-              {settings.companyTagline || "Login or create a new account to get started"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="register">Register</TabsTrigger>
-              </TabsList>
-
-              {/* Login Form */}
-              <TabsContent value="login">
-                <Form {...loginForm}>
-                  <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
-                    <FormField
-                      control={loginForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input placeholder="your.email@example.com" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={loginForm.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Password</FormLabel>
-                          <FormControl>
-                            <Input type="password" placeholder="••••••••" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+    <div className="flex min-h-screen bg-background">
+      {/* Left Side - Authentication Form */}
+      <div className="flex flex-col justify-center items-center w-full lg:w-1/2 p-8">
+        <div className="max-w-md w-full">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold">Al-Aqsa HRM</h1>
+            <p className="text-muted-foreground mt-2">
+              Log in to access the Field Attendance Tracker
+            </p>
+          </div>
+          
+          <Tabs defaultValue="login" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="login">Login</TabsTrigger>
+              <TabsTrigger value="register">Register</TabsTrigger>
+            </TabsList>
+            
+            {/* Login Form */}
+            <TabsContent value="login">
+              <Card>
+                <form onSubmit={handleLogin}>
+                  <CardHeader>
+                    <CardTitle>Account Login</CardTitle>
+                    <CardDescription>
+                      Enter your credentials to access your account.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input 
+                        id="email" 
+                        type="email" 
+                        placeholder="your.email@example.com"
+                        value={loginData.email}
+                        onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="password">Password</Label>
+                      <PasswordInput
+                        id="password"
+                        value={loginData.password}
+                        onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </CardContent>
+                  <CardFooter>
                     <Button 
                       type="submit" 
-                      className="w-full mt-6" 
-                      disabled={isLoggingIn}
+                      className="w-full"
+                      disabled={auth.loginMutation.isPending}
                     >
-                      {isLoggingIn ? (
+                      {auth.loginMutation.isPending ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           Logging in...
                         </>
                       ) : (
-                        "Login"
+                        'Login'
                       )}
                     </Button>
-                  </form>
-                </Form>
-              </TabsContent>
-
-              {/* Register Form */}
-              <TabsContent value="register">
-                <Form {...registerForm}>
-                  <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
+                  </CardFooter>
+                </form>
+              </Card>
+            </TabsContent>
+            
+            {/* Register Form */}
+            <TabsContent value="register">
+              <Card>
+                <form onSubmit={handleRegister}>
+                  <CardHeader>
+                    <CardTitle>Create Account</CardTitle>
+                    <CardDescription>
+                      Register for a new account to access the system.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={registerForm.control}
-                        name="firstName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>First Name</FormLabel>
-                            <FormControl>
-                              <Input placeholder="John" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={registerForm.control}
-                        name="lastName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Last Name</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Doe" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
+                      <div className="space-y-2">
+                        <Label htmlFor="firstName">First Name</Label>
+                        <Input 
+                          id="firstName" 
+                          value={registerData.firstName}
+                          onChange={(e) => setRegisterData({ ...registerData, firstName: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="lastName">Last Name</Label>
+                        <Input 
+                          id="lastName" 
+                          value={registerData.lastName}
+                          onChange={(e) => setRegisterData({ ...registerData, lastName: e.target.value })}
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="registerEmail">Email</Label>
+                      <Input 
+                        id="registerEmail" 
+                        type="email"
+                        value={registerData.email}
+                        onChange={(e) => setRegisterData({ ...registerData, email: e.target.value })}
+                        required
                       />
                     </div>
-                    <FormField
-                      control={registerForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input placeholder="your.email@example.com" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={registerForm.control}
-                      name="employeeId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Employee ID</FormLabel>
-                          <FormControl>
-                            <Input placeholder="EMP-001" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={registerForm.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Password</FormLabel>
-                          <FormControl>
-                            <Input type="password" placeholder="••••••••" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={registerForm.control}
-                      name="confirmPassword"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Confirm Password</FormLabel>
-                          <FormControl>
-                            <Input type="password" placeholder="••••••••" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <div className="space-y-2">
+                      <Label htmlFor="employeeId">Employee ID</Label>
+                      <Input 
+                        id="employeeId" 
+                        value={registerData.employeeId}
+                        onChange={(e) => setRegisterData({ ...registerData, employeeId: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="registerPassword">Password</Label>
+                      <PasswordInput
+                        id="registerPassword"
+                        value={registerData.password}
+                        onChange={(e) => setRegisterData({ ...registerData, password: e.target.value })}
+                        required
+                      />
+                    </div>
+                  </CardContent>
+                  <CardFooter>
                     <Button 
                       type="submit" 
-                      className="w-full mt-6" 
-                      disabled={isRegistering}
+                      className="w-full"
+                      disabled={auth.registerMutation.isPending}
                     >
-                      {isRegistering ? (
+                      {auth.registerMutation.isPending ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           Creating Account...
                         </>
                       ) : (
-                        "Create Account"
+                        'Register'
                       )}
                     </Button>
-                  </form>
-                </Form>
-              </TabsContent>
-              
-              {/* Registration Pending Screen */}
-              <TabsContent value="registration-pending" className="text-center">
-                <div className="flex flex-col items-center justify-center space-y-4 py-6">
-                  <div className="rounded-full bg-primary/10 p-3 text-primary">
-                    <svg 
-                      xmlns="http://www.w3.org/2000/svg" 
-                      width="24" 
-                      height="24" 
-                      viewBox="0 0 24 24" 
-                      fill="none" 
-                      stroke="currentColor" 
-                      strokeWidth="2" 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      className="w-10 h-10"
-                    >
-                      <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path>
-                      <path d="m9 12 2 2 4-4"></path>
-                    </svg>
-                  </div>
-                  <h3 className="text-xl font-semibold">Registration Pending</h3>
-                  <p className="text-muted-foreground max-w-md">
-                    Your account registration has been submitted successfully. An administrator will review your request.
-                  </p>
-                  <p className="text-muted-foreground">
-                    You will receive an email notification once your account is approved.
-                  </p>
-                  <Button 
-                    variant="outline" 
-                    className="mt-4"
-                    onClick={() => setActiveTab("login")}
-                  >
-                    Return to Login
-                  </Button>
-                </div>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-          <CardFooter className="flex justify-center text-sm text-muted-foreground">
-            {activeTab === "login" ? (
-              <p>Don't have an account? <Button variant="link" className="p-0" onClick={() => setActiveTab("register")}>Sign up</Button></p>
-            ) : activeTab === "register" ? (
-              <p>Already have an account? <Button variant="link" className="p-0" onClick={() => setActiveTab("login")}>Log in</Button></p>
-            ) : (
-              <p></p> /* Empty for registration-pending tab */
-            )}
-          </CardFooter>
-        </Card>
+                  </CardFooter>
+                </form>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
-
-      {/* Right side - Hero section */}
-      <div className="flex-1 bg-primary p-6 hidden md:flex flex-col justify-center items-center text-white">
-        <div className="max-w-md text-center">
-          <h1 className="text-3xl font-bold mb-6">{settings.companyName}</h1>
-          <p className="mb-8">
-            A comprehensive solution for managing daily labor workforce, tracking attendance, calculating wages, and streamlining HR operations.
-          </p>
-          <div className="grid grid-cols-2 gap-4 text-left">
-            <div className="bg-primary-foreground/10 p-4 rounded-lg">
-              <h3 className="font-semibold mb-2">Employee Management</h3>
-              <p className="text-sm opacity-80">Manage all employee information in one centralized database</p>
+      
+      {/* Right Side - Hero Section */}
+      <div className="hidden lg:flex lg:w-1/2 bg-primary text-primary-foreground">
+        <div className="flex flex-col justify-center p-12 max-w-lg mx-auto">
+          <h1 className="text-4xl font-bold mb-6">
+            Field Attendance Tracker
+          </h1>
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-xl font-semibold mb-2">GPS Location Tracking</h3>
+              <p>Accurately track field employee locations in real-time with our GPS-enabled system.</p>
             </div>
-            <div className="bg-primary-foreground/10 p-4 rounded-lg">
-              <h3 className="font-semibold mb-2">Attendance Tracking</h3>
-              <p className="text-sm opacity-80">Easily record and monitor daily attendance of workers</p>
+            <div>
+              <h3 className="text-xl font-semibold mb-2">Time Management</h3>
+              <p>Effortlessly record check-in and check-out times for better workforce management.</p>
             </div>
-            <div className="bg-primary-foreground/10 p-4 rounded-lg">
-              <h3 className="font-semibold mb-2">Payroll Processing</h3>
-              <p className="text-sm opacity-80">Automatically calculate wages based on attendance and rates</p>
+            <div>
+              <h3 className="text-xl font-semibold mb-2">Comprehensive Reporting</h3>
+              <p>Generate detailed reports on attendance, hours, and project assignments.</p>
             </div>
-            <div className="bg-primary-foreground/10 p-4 rounded-lg">
-              <h3 className="font-semibold mb-2">Financial Reporting</h3>
-              <p className="text-sm opacity-80">Generate comprehensive reports on labor costs and expenses</p>
+            <div>
+              <h3 className="text-xl font-semibold mb-2">Mobile Friendly</h3>
+              <p>Access the system from any device, optimized for both desktop and mobile use.</p>
             </div>
           </div>
         </div>
       </div>
     </div>
   );
-}
+};
+
+export default AuthPage;

@@ -36,6 +36,7 @@ import EditShipDuty from "@/pages/ship-duties/edit/[id]";
 import BillList from "@/pages/bills/index";
 import GenerateBill from "@/pages/bills/generate";
 import { CompanyProvider } from "@/hooks/useCompanySettings";
+import { AuthProvider } from "@/hooks/useAuth";
 // Admin pages
 import AdminDashboard from "@/pages/admin/dashboard";
 import FieldConnections from "@/pages/admin/field-connections";
@@ -52,6 +53,31 @@ function App() {
     setIsMobileSidebarOpen(false);
   }, [location]);
   
+  // App wrapped in providers
+  return (
+    <AuthProvider>
+      <CompanyProvider>
+        <AppContent 
+          location={location} 
+          isMobileSidebarOpen={isMobileSidebarOpen}
+          setIsMobileSidebarOpen={setIsMobileSidebarOpen}
+        />
+        <Toaster />
+      </CompanyProvider>
+    </AuthProvider>
+  );
+}
+
+// Content component to handle routing and layout
+function AppContent({
+  location,
+  isMobileSidebarOpen,
+  setIsMobileSidebarOpen
+}: {
+  location: string;
+  isMobileSidebarOpen: boolean;
+  setIsMobileSidebarOpen: (isOpen: boolean) => void;
+}) {
   // Handle special routing for root path
   if (location === "/") {
     // Check if user is logged in
@@ -78,16 +104,12 @@ function App() {
   
   // Public Routes (no authentication or main layout)
   if (isAuthPage) {
-    return (
-      <CompanyProvider>
-        <AuthPage />
-      </CompanyProvider>
-    );
+    return <AuthPage />;
   }
   
   if (isMobileAttendance) {
     return (
-      <CompanyProvider>
+      <>
         <style>{`
           /* Hide any non-application elements when in mobile attendance mode */
           #runtime-error-popup, .replit-ui-theme-root {
@@ -98,7 +120,7 @@ function App() {
           }
         `}</style>
         <MobileAttendance />
-      </CompanyProvider>
+      </>
     );
   }
   
@@ -112,60 +134,57 @@ function App() {
   
   // Main App layout with sidebar
   return (
-    <CompanyProvider>
-      <div className="flex h-screen overflow-hidden bg-[#F7FAFC]">
-        <Sidebar />
-        <MobileSidebar 
-          isOpen={isMobileSidebarOpen} 
-          onClose={() => setIsMobileSidebarOpen(false)} 
-        />
-        
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <Header onMenuClick={() => setIsMobileSidebarOpen(true)} />
-          <main className="flex-1 overflow-y-auto bg-[#F7FAFC] p-4 sm:p-6 lg:p-8">
-            <Switch>
-              <Route path="/dashboard" component={Dashboard} />
-              <Route path="/employees" component={EmployeeList} />
-              <Route path="/employees/add" component={AddEmployee} />
-              <Route path="/employees/:id" component={EmployeeDetails} />
-              <Route path="/employees/edit/:id" component={EditEmployee} />
-              <Route path="/attendance" component={AttendanceList} />
-              <Route path="/attendance/record" component={RecordAttendance} />
-              <Route path="/location-test" component={LocationTestPage} />
-              <Route path="/projects" component={ProjectsPage} />
-              <Route path="/projects/add" component={AddProjectPage} />
-              <Route path="/projects/edit/:id" component={EditProjectPage} />
-              <Route path="/ship-duties" component={ShipDutyList} />
-              <Route path="/ship-duties/add" component={AddShipDuty} />
-              <Route path="/ship-duties/edit/:id" component={EditShipDuty} />
-              <Route path="/bills" component={BillList} />
-              <Route path="/bills/generate" component={GenerateBill} />
-              <Route path="/expenditures" component={ExpenditureList} />
-              <Route path="/expenditures/add" component={AddExpenditure} />
-              <Route path="/expenditures/edit/:id" component={EditExpenditure} />
-              <Route path="/incomes" component={IncomeList} />
-              <Route path="/incomes/add" component={AddIncome} />
-              <Route path="/incomes/edit/:id" component={EditIncome} />
-              <Route path="/payroll" component={PayrollList} />
-              <Route path="/payroll/process" component={ProcessPayroll} />
-              <Route path="/reports" component={Reports} />
-              <Route path="/reports/templates" component={Reports} />
-              <Route path="/reports/templates/create" component={TemplateEditor} />
-              <Route path="/reports/templates/edit/:id" component={TemplateEditor} />
-              <Route path="/settings" component={Settings} />
-              <Route path="/users" component={UsersPage} />
-              {/* Admin routes */}
-              <Route path="/admin/dashboard" component={AdminDashboard} />
-              <Route path="/admin/field-connections" component={FieldConnections} />
-              <Route path="/admin/theme-editor" component={ThemeEditor} />
-              <Route path="/admin/export-data" component={ExportData} />
-              <Route component={NotFound} />
-            </Switch>
-          </main>
-        </div>
-        <Toaster />
+    <div className="flex h-screen overflow-hidden bg-[#F7FAFC]">
+      <Sidebar />
+      <MobileSidebar 
+        isOpen={isMobileSidebarOpen} 
+        onClose={() => setIsMobileSidebarOpen(false)} 
+      />
+      
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header onMenuClick={() => setIsMobileSidebarOpen(true)} />
+        <main className="flex-1 overflow-y-auto bg-[#F7FAFC] p-4 sm:p-6 lg:p-8">
+          <Switch>
+            <Route path="/dashboard" component={Dashboard} />
+            <Route path="/employees" component={EmployeeList} />
+            <Route path="/employees/add" component={AddEmployee} />
+            <Route path="/employees/:id" component={EmployeeDetails} />
+            <Route path="/employees/edit/:id" component={EditEmployee} />
+            <Route path="/attendance" component={AttendanceList} />
+            <Route path="/attendance/record" component={RecordAttendance} />
+            <Route path="/location-test" component={LocationTestPage} />
+            <Route path="/projects" component={ProjectsPage} />
+            <Route path="/projects/add" component={AddProjectPage} />
+            <Route path="/projects/edit/:id" component={EditProjectPage} />
+            <Route path="/ship-duties" component={ShipDutyList} />
+            <Route path="/ship-duties/add" component={AddShipDuty} />
+            <Route path="/ship-duties/edit/:id" component={EditShipDuty} />
+            <Route path="/bills" component={BillList} />
+            <Route path="/bills/generate" component={GenerateBill} />
+            <Route path="/expenditures" component={ExpenditureList} />
+            <Route path="/expenditures/add" component={AddExpenditure} />
+            <Route path="/expenditures/edit/:id" component={EditExpenditure} />
+            <Route path="/incomes" component={IncomeList} />
+            <Route path="/incomes/add" component={AddIncome} />
+            <Route path="/incomes/edit/:id" component={EditIncome} />
+            <Route path="/payroll" component={PayrollList} />
+            <Route path="/payroll/process" component={ProcessPayroll} />
+            <Route path="/reports" component={Reports} />
+            <Route path="/reports/templates" component={Reports} />
+            <Route path="/reports/templates/create" component={TemplateEditor} />
+            <Route path="/reports/templates/edit/:id" component={TemplateEditor} />
+            <Route path="/settings" component={Settings} />
+            <Route path="/users" component={UsersPage} />
+            {/* Admin routes */}
+            <Route path="/admin/dashboard" component={AdminDashboard} />
+            <Route path="/admin/field-connections" component={FieldConnections} />
+            <Route path="/admin/theme-editor" component={ThemeEditor} />
+            <Route path="/admin/export-data" component={ExportData} />
+            <Route component={NotFound} />
+          </Switch>
+        </main>
       </div>
-    </CompanyProvider>
+    </div>
   );
 }
 
