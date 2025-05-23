@@ -59,11 +59,18 @@ const useLoginMutation = () => {
       return data;
     },
     onSuccess: (data) => {
+      // Store complete user data in localStorage for role-based access
+      if (data.user) {
+        localStorage.setItem('user', JSON.stringify(data.user));
+      } else if (data) {
+        localStorage.setItem('user', JSON.stringify(data));
+      }
+
       queryClient.setQueryData(["/api/auth/me"], data.user || data);
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       
       // Redirect to dashboard after successful login
-      window.location.href = '/dashboard';
+      window.location.href = '/';
     },
   });
 };
@@ -87,11 +94,18 @@ const useRegisterMutation = () => {
       return data;
     },
     onSuccess: (data) => {
+      // Store complete user data in localStorage for role-based access
+      if (data.user) {
+        localStorage.setItem('user', JSON.stringify(data.user));
+      } else if (data) {
+        localStorage.setItem('user', JSON.stringify(data));
+      }
+      
       queryClient.setQueryData(["/api/auth/me"], data.user || data);
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       
       // Redirect to dashboard after successful registration
-      window.location.href = '/dashboard';
+      window.location.href = '/';
     },
   });
 };
@@ -123,7 +137,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const { toast } = useToast?.() ?? { toast: () => {} };
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Fetch current user data
+  // Fetch current user data with auth status management
   const {
     data: user,
     isLoading,
@@ -135,7 +149,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         // Check for token in localStorage to avoid unnecessary API calls
         const token = localStorage.getItem('token');
         if (!token) {
-          setIsAuthenticated(false);
+          // Don't call setState during render - will trigger in useEffect below
           return null;
         }
         
@@ -143,26 +157,33 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         if (response.status === 401) {
           // Clear token if invalid
           localStorage.removeItem('token');
-          setIsAuthenticated(false);
+          // Don't call setState during render - will trigger in useEffect below
           return null;
         }
         if (!response.ok) {
           throw new Error("Failed to fetch user data");
         }
-        const userData = await response.json();
         
-        // Set authentication state once without condition
-        setIsAuthenticated(true);
+        const userData = await response.json();
         return userData;
       } catch (error) {
-        // Set authentication state directly
-        setIsAuthenticated(false);
+        // Don't call setState during render
         return null;
       }
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
     retry: false,
   });
+  
+  // Handle authentication state updates in a separate effect
+  useEffect(() => {
+    // Update authentication state based on user data
+    if (user) {
+      setIsAuthenticated(true);
+    } else {
+      setIsAuthenticated(false);
+    }
+  }, [user]);
 
   // Hook instances
   const loginMutation = useLoginMutation();
