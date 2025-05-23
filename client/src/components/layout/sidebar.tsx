@@ -40,6 +40,7 @@ const allNavigationItems = [
   { name: "Settings", href: "/settings", icon: Settings, roles: ["admin"] },
   // Admin-only pages
   { name: "Admin Dashboard", href: "/admin/dashboard", icon: ShieldCheck, roles: ["admin"] },
+  { name: "Customize Dashboard", href: "/admin/customize-dashboard", icon: Settings, roles: ["admin"] },
   { name: "Field Connections", href: "/admin/field-connections", icon: ArrowLeftRight, roles: ["admin"] },
   { name: "Theme Editor", href: "/admin/theme-editor", icon: Palette, roles: ["admin"] },
   { name: "Export Data", href: "/admin/export-data", icon: FileDown, roles: ["admin"] },

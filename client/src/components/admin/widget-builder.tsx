@@ -40,7 +40,7 @@ interface WidgetBuilderProps {
   }[];
 }
 
-export const WidgetBuilder: React.FC<WidgetBuilderProps> = ({ 
+const WidgetBuilder: React.FC<WidgetBuilderProps> = ({ 
   widgets, 
   onSave, 
   availableDataSources 
@@ -58,8 +58,8 @@ export const WidgetBuilder: React.FC<WidgetBuilderProps> = ({
       title: 'Statistic Card', 
       settings: { 
         dataSource: '', 
-        displayMode: 'value',
-        size: 'small',
+        displayMode: 'value' as 'value',
+        size: 'small' as 'small',
         color: '#4C51BF',
       } 
     },
@@ -68,8 +68,8 @@ export const WidgetBuilder: React.FC<WidgetBuilderProps> = ({
       title: 'Chart', 
       settings: { 
         dataSource: '', 
-        chartType: 'bar',
-        size: 'medium',
+        chartType: 'bar' as 'bar',
+        size: 'medium' as 'medium',
       } 
     },
     { 
@@ -77,7 +77,7 @@ export const WidgetBuilder: React.FC<WidgetBuilderProps> = ({
       title: 'Data Table', 
       settings: { 
         dataSource: '', 
-        size: 'large',
+        size: 'large' as 'large',
       } 
     },
   ];

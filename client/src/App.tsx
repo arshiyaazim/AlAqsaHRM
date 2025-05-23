@@ -180,6 +180,11 @@ function AppContent({
             <Route path="/admin/field-connections" component={FieldConnections} />
             <Route path="/admin/theme-editor" component={ThemeEditor} />
             <Route path="/admin/export-data" component={ExportData} />
+            <Route path="/admin/customize-dashboard" component={() => {
+              // Dynamically import to avoid circular dependencies
+              const CustomizeDashboard = require('./pages/admin/customize-dashboard').default;
+              return <CustomizeDashboard />;
+            }} />
             <Route component={NotFound} />
           </Switch>
         </main>
