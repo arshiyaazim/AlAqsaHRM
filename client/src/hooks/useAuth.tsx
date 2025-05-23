@@ -49,10 +49,21 @@ const useLoginMutation = () => {
         const errorData = await response.json();
         throw new Error(errorData.message || "Login failed");
       }
-      return response.json();
+      const data = await response.json();
+      
+      // Store the token in localStorage for future requests
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
+      
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.setQueryData(["/api/auth/me"], data.user || data);
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      
+      // Redirect to dashboard after successful login
+      window.location.href = '/dashboard';
     },
   });
 };
@@ -66,10 +77,21 @@ const useRegisterMutation = () => {
         const errorData = await response.json();
         throw new Error(errorData.message || "Registration failed");
       }
-      return response.json();
+      const data = await response.json();
+      
+      // Store the token in localStorage if provided
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
+      
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.setQueryData(["/api/auth/me"], data.user || data);
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      
+      // Redirect to dashboard after successful registration
+      window.location.href = '/dashboard';
     },
   });
 };
@@ -135,10 +157,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const registerMutation = useRegisterMutation();
   const logoutMutation = useLogoutMutation();
 
-  // Update authentication state on data change
-  useEffect(() => {
-    setIsAuthenticated(!!user);
-  }, [user]);
+  // We don't need this effect since we're already setting isAuthenticated
+  // in the query function and avoiding circular dependencies
 
   // Handle auth errors
   useEffect(() => {

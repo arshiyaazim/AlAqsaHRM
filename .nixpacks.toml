@@ -1,11 +1,11 @@
 [phases.setup]
-nixPkgs = ["nodejs", "python39", "pip"]
+nixPkgs = ["nodejs", "python311", "python311Packages.pip", "sqlite"]
 
 [phases.build]
-cmds = ["cd client && npm install && npm run build"]
+cmds = [
+  "npm install",
+  "python -m pip install -r requirements.txt"
+]
 
-[phases.install]
-cmds = ["pip install -r requirements.txt"]
-
-[start]
-cmd = "gunicorn --bind 0.0.0.0:8000 wsgi:app"
+[phases.start]
+cmd = "gunicorn --bind 0.0.0.0:$PORT wsgi:app"
