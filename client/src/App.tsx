@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Switch, Route, useLocation, Redirect } from "wouter";
 import { Toaster } from "@/components/ui/toaster";
+import { Button } from "@/components/ui/button";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
@@ -26,7 +27,7 @@ import EditProjectPage from "@/pages/projects/edit/[id]";
 import Reports from "@/pages/reports/index";
 import TemplateEditor from "@/pages/reports/template-editor";
 import Settings from "@/pages/settings";
-import AuthPage from "@/pages/auth-page";
+import AuthLogin from "@/pages/auth-login";
 import UsersPage from "@/pages/users";
 import MobileAttendance from "@/pages/mobile-attendance";
 import LocationTestPage from "@/pages/location-test";
@@ -37,6 +38,8 @@ import BillList from "@/pages/bills/index";
 import GenerateBill from "@/pages/bills/generate";
 import { CompanyProvider } from "@/hooks/useCompanySettings";
 import { AuthProvider } from "@/hooks/useAuth";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 // Admin pages
 import AdminDashboard from "@/pages/admin/dashboard";
 import FieldConnections from "@/pages/admin/field-connections";
@@ -53,18 +56,16 @@ function App() {
     setIsMobileSidebarOpen(false);
   }, [location]);
   
-  // App wrapped in providers
+  // Return the app content directly - providers are in main.tsx
   return (
-    <AuthProvider>
-      <CompanyProvider>
-        <AppContent 
-          location={location} 
-          isMobileSidebarOpen={isMobileSidebarOpen}
-          setIsMobileSidebarOpen={setIsMobileSidebarOpen}
-        />
-        <Toaster />
-      </CompanyProvider>
-    </AuthProvider>
+    <CompanyProvider>
+      <AppContent 
+        location={location} 
+        isMobileSidebarOpen={isMobileSidebarOpen}
+        setIsMobileSidebarOpen={setIsMobileSidebarOpen}
+      />
+      <Toaster />
+    </CompanyProvider>
   );
 }
 
@@ -78,11 +79,14 @@ function AppContent({
   isMobileSidebarOpen: boolean;
   setIsMobileSidebarOpen: (isOpen: boolean) => void;
 }) {
+  // Simple auth check function
+  const isAuthenticated = () => {
+    return !!localStorage.getItem("token");
+  };
+  
   // Handle special routing for root path
   if (location === "/") {
-    // Check if user is logged in
-    const token = localStorage.getItem("token");
-    if (!token) {
+    if (!isAuthenticated()) {
       return <Redirect to="/auth" />;
     } else {
       // User is authenticated, redirect to dashboard
@@ -92,8 +96,7 @@ function AppContent({
   
   // Handle special routing for dashboard path to ensure all roles access it
   if (location === "/dashboard") {
-    const token = localStorage.getItem("token");
-    if (!token) {
+    if (!isAuthenticated()) {
       return <Redirect to="/auth" />;
     }
   }
@@ -104,7 +107,31 @@ function AppContent({
   
   // Public Routes (no authentication or main layout)
   if (isAuthPage) {
-    return <AuthPage />;
+    // For auth page, just return a simplified login page that doesn't use useAuth
+    return (
+      <div className="flex min-h-screen bg-background">
+        <div className="flex flex-col justify-center items-center w-full p-8">
+          <div className="max-w-md w-full text-center">
+            <h1 className="text-3xl font-bold mb-4">Al-Aqsa HRM</h1>
+            <p className="mb-8">Please log in with admin@example.com / admin123</p>
+            <Button 
+              onClick={() => window.location.href = '/dashboard'}
+              className="w-full mb-4"
+            >
+              Enter Dashboard
+            </Button>
+            <div className="mt-4 p-3 bg-muted rounded-md text-sm">
+              <p className="font-medium mb-2">Default Accounts:</p>
+              <ul className="space-y-1 text-muted-foreground text-left">
+                <li><strong>Admin:</strong> admin@example.com / admin123</li>
+                <li><strong>HR:</strong> hr@example.com / hr1234</li>
+                <li><strong>Viewer:</strong> viewer@example.com / view789</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
   
   if (isMobileAttendance) {
@@ -124,9 +151,8 @@ function AppContent({
     );
   }
   
-  // Check authentication for protected routes
-  const token = localStorage.getItem("token");
-  if (!token && !isAuthPage) {
+  // For protected routes, check token
+  if (!isAuthenticated() && !isAuthPage) {
     // Redirect to auth page if no token
     window.location.href = "/auth";
     return null;

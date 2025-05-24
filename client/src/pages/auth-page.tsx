@@ -53,12 +53,16 @@ const AuthPage: React.FC = () => {
       // Set token in localStorage (if your API returns one)
       if (result && result.token) {
         localStorage.setItem('token', result.token);
+        console.log('Token saved, redirecting to dashboard...');
+        
+        // Force reload to ensure proper context initialization
+        window.location.href = '/dashboard';
+      } else {
+        // Fallback direct navigation
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 300);
       }
-      
-      // Redirect to dashboard after successful login
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 500);
     } catch (error) {
       console.error('Login error:', error);
       // Toast is handled in the mutation error handler
@@ -81,12 +85,16 @@ const AuthPage: React.FC = () => {
       // Set token in localStorage (if your API returns one)
       if (result && result.token) {
         localStorage.setItem('token', result.token);
+        console.log('Registration successful, redirecting to dashboard...');
+        
+        // Force reload to ensure proper context initialization
+        window.location.href = '/dashboard';
+      } else {
+        // Fallback direct navigation
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 300);
       }
-      
-      // Redirect to dashboard after successful registration
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 500);
     } catch (error) {
       console.error('Registration error:', error);
       // Toast is handled in the mutation error handler
