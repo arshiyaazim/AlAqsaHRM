@@ -7,6 +7,7 @@ import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import MobileSidebar from "@/components/layout/mobile-sidebar";
 import Dashboard from "@/pages/dashboard";
+import SimpleDashboard from "@/pages/simple-dashboard";
 import EmployeeList from "@/pages/employees/index";
 import AddEmployee from "@/pages/employees/add";
 import EmployeeDetails from "@/pages/employees/[id]";
@@ -107,31 +108,7 @@ function AppContent({
   
   // Public Routes (no authentication or main layout)
   if (isAuthPage) {
-    // For auth page, just return a simplified login page that doesn't use useAuth
-    return (
-      <div className="flex min-h-screen bg-background">
-        <div className="flex flex-col justify-center items-center w-full p-8">
-          <div className="max-w-md w-full text-center">
-            <h1 className="text-3xl font-bold mb-4">Al-Aqsa HRM</h1>
-            <p className="mb-8">Please log in with admin@example.com / admin123</p>
-            <Button 
-              onClick={() => window.location.href = '/dashboard'}
-              className="w-full mb-4"
-            >
-              Enter Dashboard
-            </Button>
-            <div className="mt-4 p-3 bg-muted rounded-md text-sm">
-              <p className="font-medium mb-2">Default Accounts:</p>
-              <ul className="space-y-1 text-muted-foreground text-left">
-                <li><strong>Admin:</strong> admin@example.com / admin123</li>
-                <li><strong>HR:</strong> hr@example.com / hr1234</li>
-                <li><strong>Viewer:</strong> viewer@example.com / view789</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <AuthLogin />;
   }
   
   if (isMobileAttendance) {
@@ -171,7 +148,7 @@ function AppContent({
         <Header onMenuClick={() => setIsMobileSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto bg-[#F7FAFC] p-4 sm:p-6 lg:p-8">
           <Switch>
-            <Route path="/dashboard" component={Dashboard} />
+            <Route path="/dashboard" component={SimpleDashboard} />
             <Route path="/employees" component={EmployeeList} />
             <Route path="/employees/add" component={AddEmployee} />
             <Route path="/employees/:id" component={EmployeeDetails} />
