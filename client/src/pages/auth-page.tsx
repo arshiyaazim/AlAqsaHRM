@@ -10,7 +10,7 @@ import { Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { PasswordInput } from '@/components/ui/password-input';
 
-const AuthPage = () => {
+const AuthPage: React.FC = () => {
   // Authentication hook
   const auth = useAuth();
   const { toast } = useToast();
@@ -33,7 +33,7 @@ const AuthPage = () => {
   // If already logged in, redirect to dashboard
   useEffect(() => {
     if (auth.isAuthenticated && auth.user) {
-      navigate('/');
+      navigate('/dashboard');
     }
   }, [auth.isAuthenticated, auth.user, navigate]);
   
@@ -42,11 +42,23 @@ const AuthPage = () => {
     e.preventDefault();
     
     try {
-      await auth.loginMutation.mutateAsync(loginData);
+      const result = await auth.loginMutation.mutateAsync(loginData);
+      
+      // Show success message
       toast({
         title: 'Login Successful',
         description: 'Welcome back!',
       });
+      
+      // Set token in localStorage (if your API returns one)
+      if (result && result.token) {
+        localStorage.setItem('token', result.token);
+      }
+      
+      // Redirect to dashboard after successful login
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 500);
     } catch (error) {
       console.error('Login error:', error);
       // Toast is handled in the mutation error handler
@@ -58,11 +70,23 @@ const AuthPage = () => {
     e.preventDefault();
     
     try {
-      await auth.registerMutation.mutateAsync(registerData);
+      const result = await auth.registerMutation.mutateAsync(registerData);
+      
+      // Show success message
       toast({
         title: 'Registration Successful',
         description: 'Your account has been created.',
       });
+      
+      // Set token in localStorage (if your API returns one)
+      if (result && result.token) {
+        localStorage.setItem('token', result.token);
+      }
+      
+      // Redirect to dashboard after successful registration
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 500);
     } catch (error) {
       console.error('Registration error:', error);
       // Toast is handled in the mutation error handler
@@ -146,6 +170,16 @@ const AuthPage = () => {
                   </CardFooter>
                 </form>
               </Card>
+              
+              {/* Default credentials */}
+              <div className="mt-4 p-3 bg-muted rounded-md text-sm">
+                <p className="font-medium mb-2">Default Accounts:</p>
+                <ul className="space-y-1 text-muted-foreground">
+                  <li><strong>Admin:</strong> admin@example.com / admin123</li>
+                  <li><strong>HR:</strong> hr@example.com / hr1234</li>
+                  <li><strong>Viewer:</strong> viewer@example.com / view789</li>
+                </ul>
+              </div>
             </TabsContent>
             
             {/* Register Form */}
