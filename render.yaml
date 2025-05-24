@@ -1,96 +1,41 @@
-# Render Configuration for AlAqsaHRM - Updated 2025-05-10
 services:
-- type: web
-  name: AlAqsaHRM
-  runtime: python
-  repo: https://github.com/arshiyaazim/AlAqsaHRM
-  plan: free
-  envVars:
-  - key: EMAIL_FOR_RESET
-    sync: false
-  - key: ADMIN_PASSWORD
-    sync: false
-  - key: ADMIN_USERNAME
-    sync: false
-  - key: DATABASE_URL
-    sync: false
-  - key: SECRET_KEY
-    sync: false
-  - key: FLASK_ENV
-    value: production
-  - key: SESSION_SECRET
-    generateValue: true
-  - key: JWT_SECRET
-    generateValue: true
-  region: oregon
-  buildCommand: >
-    pip install -r requirements.txt && 
-    if [ ! -d "exports" ]; then mkdir exports; fi && 
-    if [ ! -d "logs" ]; then mkdir logs; fi
-  preDeployCommand: >
-    echo "Starting pre-deployment process" &&
-    chmod +x init_database.py &&
-    python init_database.py &&
-    echo "Fixing admin login tables" &&
-    python fix_login.py &&
-    echo "Setting up admin user" &&
-    python -c "
-    import os, sys, logging
-    try:
-        # Setup basic logging
-        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-        
-        # Check for persistent disk and ensure it's properly configured
-        render_disk = '/var/data'
-        if os.path.exists(render_disk):
-            logging.info(f'Persistent disk found at {render_disk}')
-            # Ensure database will use the persistent disk
-            db_path = os.path.join(render_disk, 'db')
-            if not os.path.exists('instance'):
-                logging.info('Creating symlink for instance directory')
-                os.symlink(db_path, 'instance')
-        else:
-            logging.info('No persistent disk found, using standard directories')
-            
-        # Verify admin user exists
-        logging.info('Verifying admin user exists')
-        from app import app, get_db, generate_password_hash
-        with app.app_context():
-            db = get_db()
-            # Check if users table exists
-            table_exists = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").fetchone()
-            if not table_exists:
-                logging.error('Users table does not exist. Database initialization may have failed.')
-                sys.exit(1)
-                
-            # Check if admin user exists
-            admin_count = db.execute('SELECT COUNT(*) as count FROM users WHERE role = "admin"').fetchone()['count']
-            if admin_count == 0:
-                admin_username = os.environ.get('ADMIN_USERNAME', 'admin')
-                admin_password = os.environ.get('ADMIN_PASSWORD', 'admin')
-                db.execute(
-                    'INSERT INTO users (username, password, role, email) VALUES (?, ?, ?, ?)',
-                    (admin_username, generate_password_hash(admin_password), 'admin', os.environ.get('EMAIL_FOR_RESET', 'admin@example.com'))
-                )
-                db.commit()
-                logging.info(f'Created admin user: {admin_username}')
-            else:
-                logging.info(f'Admin users found: {admin_count}')
-        
-        print('Pre-deployment completed successfully')
-    except Exception as e:
-        logging.error(f'Error in pre-deployment: {str(e)}')
-        import traceback
-        traceback.print_exc()
-        sys.exit(1)  # Fail deployment if critical setup fails
-    "
-  startCommand: gunicorn wsgi:application --bind 0.0.0.0:$PORT --log-file -
-  healthCheckPath: /health
-  healthCheckTimeout: 15
-  envVarsFile: .env.render
-  autoDeploy: true
-  disk:
-    name: data
-    mountPath: /var/data
-    sizeGB: 1
-version: "1"
+  - type: web
+    name: alaqsa-hrm
+    env: python
+    buildCommand: "cd client && npm install && npm run build && cd .. && pip install -r requirements.txt"
+    startCommand: "gunicorn wsgi:app"
+    envVars:
+      - key: FLASK_APP
+        value: app.py
+      - key: FLASK_ENV
+        value: production
+      - key: PORT
+        value: 8000
+      - key: SECRET_KEY
+        fromGroup: production-secrets
+      - key: DATABASE_URL
+        fromGroup: production-secrets
+      - key: GOOGLE_MAPS_API_KEY
+        fromGroup: production-secrets
+      - key: COMPANY_NAME
+        value: Al-Aqsa Security
+      - key: COMPANY_TAGLINE
+        value: HR & Payroll Management System
+      - key: SESSION_COOKIE_SECURE
+        value: true
+      - key: SESSION_COOKIE_HTTPONLY
+        value: true
+      - key: SESSION_COOKIE_SAMESITE
+        value: Lax
+      - key: SESSION_TIMEOUT
+        value: 86400
+
+envVarGroups:
+  - name: production-secrets
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false
