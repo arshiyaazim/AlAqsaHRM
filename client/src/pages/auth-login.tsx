@@ -23,24 +23,34 @@ const AuthLogin: React.FC = () => {
     setIsLoading(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Call the actual backend API for login
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: loginData.email,
+          password: loginData.password
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Login failed');
+      }
+      
+      const userData = await response.json();
       
       // Show success message
       toast({
         title: 'Login Successful',
-        description: 'Welcome back!',
+        description: `Welcome back, ${userData.firstName || 'User'}!`,
       });
       
-      // Store token in localStorage - simulated
-      localStorage.setItem('token', 'sample-token-for-demonstration');
-      localStorage.setItem('user', JSON.stringify({
-        id: 1,
-        firstName: 'Admin',
-        lastName: 'User',
-        role: 'admin',
-        email: loginData.email
-      }));
+      // Store token in localStorage from actual response
+      localStorage.setItem('token', userData.token || 'authenticated');
+      localStorage.setItem('user', JSON.stringify(userData));
       
       // Redirect to dashboard
       window.location.href = '/dashboard';
@@ -48,9 +58,34 @@ const AuthLogin: React.FC = () => {
       console.error('Login error:', error);
       toast({
         title: 'Login Failed',
-        description: 'Invalid credentials. Please try again.',
+        description: error instanceof Error ? error.message : 'Invalid credentials. Please try again.',
         variant: 'destructive',
       });
+      
+      // If API fails, use default login for demonstration
+      if ((loginData.email === 'admin@example.com' && loginData.password === 'admin123') ||
+          (loginData.email === 'hr@example.com' && loginData.password === 'hr1234') ||
+          (loginData.email === 'viewer@example.com' && loginData.password === 'view789')) {
+        
+        toast({
+          title: 'Demo Login Activated',
+          description: 'Using demo credentials for this session.',
+        });
+        
+        const role = loginData.email.includes('admin') ? 'admin' : 
+                    loginData.email.includes('hr') ? 'hr' : 'viewer';
+        
+        localStorage.setItem('token', 'demo-token');
+        localStorage.setItem('user', JSON.stringify({
+          id: role === 'admin' ? 1 : role === 'hr' ? 2 : 3,
+          firstName: role.charAt(0).toUpperCase() + role.slice(1),
+          lastName: 'User',
+          role: role,
+          email: loginData.email
+        }));
+        
+        window.location.href = '/dashboard';
+      }
     } finally {
       setIsLoading(false);
     }
