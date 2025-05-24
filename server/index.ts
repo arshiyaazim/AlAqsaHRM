@@ -38,12 +38,19 @@ app.use((req, res, next) => {
   next();
 });
 
-// Create default users function
+// ✅ Health check route
+app.get("/health", (_req: Request, res: Response) => {
+  res.status(200).json({
+    status: "ok",
+    env: process.env.NODE_ENV || "not set",
+    time: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
+});
 
 async function createDefaultUsers() {
   console.log('Checking and creating default users...');
-  
-  // Default users based on environment variables
+
   const defaultUsers = [
     {
       firstName: 'Admin',
@@ -70,20 +77,16 @@ async function createDefaultUsers() {
       employeeId: 'VIEW003'
     }
   ];
-  
+
   for (const user of defaultUsers) {
     try {
-      // Check if user exists
       const existingUser = await storage.getUserByEmail(user.email);
       if (existingUser) {
         console.log(`User ${user.email} already exists with role ${existingUser.role}`);
         continue;
       }
-      
-      // Hash password before creating user
+
       const hashedPassword = await bcrypt.hash(user.password, 10);
-      
-      // Create user
       const newUser = await storage.createUser({
         firstName: user.firstName,
         lastName: user.lastName,
@@ -94,7 +97,7 @@ async function createDefaultUsers() {
         isActive: true,
         permissions: {}
       });
-      
+
       console.log(`Created default user: ${newUser.email} with role: ${newUser.role}`);
     } catch (error) {
       console.error(`Failed to create user ${user.email}:`, error);
@@ -103,9 +106,8 @@ async function createDefaultUsers() {
 }
 
 (async () => {
-  // Create default users before starting the server
   await createDefaultUsers();
-  
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -116,21 +118,17 @@ async function createDefaultUsers() {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  // Add health check endpoint
+  // Optional: Keep default root endpoint
   app.get("/", (_req, res) => {
     res.status(200).json({ status: "healthy" });
   });
 
-  // Use port 5000 for Replit Autoscale compatibility
   const port = process.env.PORT || 5000;
   server.listen({
     port,
