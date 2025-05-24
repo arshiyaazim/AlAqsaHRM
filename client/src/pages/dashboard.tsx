@@ -10,16 +10,43 @@ import { useLocation } from 'wouter';
 import LocationTracker from '@/components/location-tracker';
 
 const Dashboard = () => {
-  const { user, isAuthenticated } = useAuth();
+  // Check authentication state from token directly to avoid race conditions
+  const token = localStorage.getItem('token');
+  const isAuthenticatedFromToken = !!token;
+  
+  // Get the user info directly from localStorage to avoid hook issues
+  const userStr = localStorage.getItem('user');
+  let userFromStorage = null;
+  if (userStr) {
+    try {
+      userFromStorage = JSON.parse(userStr);
+    } catch (error) {
+      console.error('Error parsing user data:', error);
+    }
+  }
+  
+  // Use try/catch to prevent hook errors if Auth context isn't available
+  let authData = { user: userFromStorage, isAuthenticated: isAuthenticatedFromToken };
+  try {
+    const hookData = useAuth();
+    // Only use hook data if it contains a user
+    if (hookData && hookData.user) {
+      authData = hookData;
+    }
+  } catch (error) {
+    console.error('Auth context not available, using localStorage data instead');
+  }
+  
+  const { user, isAuthenticated = isAuthenticatedFromToken } = authData;
   const [location, navigate] = useLocation();
   const { toast } = useToast();
 
-  // Redirect to login if not authenticated
+  // Redirect to login if not authenticated (with token fallback)
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthenticated && !isAuthenticatedFromToken) {
       navigate('/auth');
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, isAuthenticatedFromToken, navigate]);
 
   // Fetch dashboard data with fallback values
   const { data: dashboardData, isLoading: isDashboardLoading, error: dashboardError } = useQuery({

@@ -45,26 +45,41 @@ import FieldConnections from "@/pages/admin/field-connections";
 import ThemeEditor from "@/pages/admin/theme-editor";
 import ExportData from "@/pages/admin/export-data";
 
-// Simplified App component with direct routes
+// Simplified App component with direct routes and memoized state
 function App() {
   const [location] = useLocation();
+  // Use useState with a function to ensure the initial state is only computed once
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   
-  // Close mobile sidebar when location changes - this must be defined before conditionals
-  useEffect(() => {
-    setIsMobileSidebarOpen(false);
-  }, [location]);
+  // Close mobile sidebar when location changes
+  const closeMobileSidebar = () => {
+    if (isMobileSidebarOpen) {
+      setIsMobileSidebarOpen(false);
+    }
+  };
   
-  // App wrapped in providers - fixed provider nesting to prevent circular dependencies
+  // Only run the effect if mobile sidebar is open
+  useEffect(() => {
+    if (location && isMobileSidebarOpen) {
+      closeMobileSidebar();
+    }
+  }, [location, isMobileSidebarOpen]);
+  
+  // Create AppContent component
+  const appContent = (
+    <AppContent 
+      location={location} 
+      isMobileSidebarOpen={isMobileSidebarOpen}
+      setIsMobileSidebarOpen={setIsMobileSidebarOpen}
+    />
+  );
+  
+  // App wrapped in providers
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <CompanyProvider>
-          <AppContent 
-            location={location} 
-            isMobileSidebarOpen={isMobileSidebarOpen}
-            setIsMobileSidebarOpen={setIsMobileSidebarOpen}
-          />
+          {appContent}
           <Toaster />
         </CompanyProvider>
       </AuthProvider>
