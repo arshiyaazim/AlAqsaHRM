@@ -1,11 +1,11 @@
 [phases.setup]
-nixPkgs = ["nodejs", "python39", "pip"]
-
-[phases.build]
-cmds = ["cd client && npm install && npm run build"]
+nixPkgs = ["nodejs_18", "openssl"]
 
 [phases.install]
-cmds = ["pip install -r requirements.txt"]
+cmds = ["npm install"]
+
+[phases.build]
+cmds = ["npm run build"]
 
 [start]
-cmd = "gunicorn --bind 0.0.0.0:8000 wsgi:app"
+cmd = "node dist/index.js"
