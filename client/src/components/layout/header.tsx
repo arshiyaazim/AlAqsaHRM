@@ -77,29 +77,54 @@ export default function Header({ onMenuClick }: HeaderProps) {
       try {
         const userData = JSON.parse(userStr);
         if (userData) {
+          const fullName = userData.fullName || 
+                         (userData.firstName && userData.lastName ? 
+                          `${userData.firstName} ${userData.lastName}` : 
+                          userData.email || 'User');
+          
           setUserInfo({
-            name: userData.fullName || userData.firstName + ' ' + userData.lastName || userData.email || 'User'
+            name: fullName
           });
+          
+          console.log('User data loaded:', { fullName });
         }
       } catch (error) {
         console.error('Error parsing user data from localStorage:', error);
       }
     } else {
-      // Fallback to token if no user data
-      const token = localStorage.getItem('token');
-      if (token) {
+      // Try to get user data from API
+      const fetchUserData = async () => {
         try {
-          // Decode JWT token to get user info
-          const tokenPayload = JSON.parse(atob(token.split('.')[1]));
-          if (tokenPayload) {
+          const token = localStorage.getItem('token');
+          if (!token) return;
+          
+          const response = await fetch('/api/auth/me', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (response.ok) {
+            const userData = await response.json();
+            
+            const fullName = userData.fullName || 
+                           (userData.firstName && userData.lastName ? 
+                            `${userData.firstName} ${userData.lastName}` : 
+                            userData.email || 'User');
+            
             setUserInfo({
-              name: tokenPayload.fullName || tokenPayload.email || 'User'
+              name: fullName
             });
+            
+            // Store in localStorage for future use
+            localStorage.setItem('user', JSON.stringify(userData));
           }
         } catch (error) {
-          console.error('Error decoding JWT token:', error);
+          console.error('Error fetching user data:', error);
         }
-      }
+      };
+      
+      fetchUserData();
     }
     
     // Try to get saved profile photo URL

@@ -178,11 +178,71 @@ function AppContent({
             <Route path="/reports/templates/edit/:id" component={TemplateEditor} />
             <Route path="/settings" component={Settings} />
             <Route path="/users" component={UsersPage} />
-            {/* Admin routes */}
-            <Route path="/admin/dashboard" component={AdminDashboard} />
-            <Route path="/admin/field-connections" component={FieldConnections} />
-            <Route path="/admin/theme-editor" component={ThemeEditor} />
-            <Route path="/admin/export-data" component={ExportData} />
+            {/* Admin routes - Wrapped in admin role check */}
+            <Route path="/admin/dashboard">
+              {() => {
+                const userRole = (() => {
+                  try {
+                    const userStr = localStorage.getItem('user');
+                    if (!userStr) return undefined;
+                    const userData = JSON.parse(userStr);
+                    return userData?.role;
+                  } catch (error) {
+                    return undefined;
+                  }
+                })();
+                
+                return userRole === 'admin' ? <AdminDashboard /> : <Redirect to="/dashboard" />;
+              }}
+            </Route>
+            <Route path="/admin/field-connections">
+              {() => {
+                const userRole = (() => {
+                  try {
+                    const userStr = localStorage.getItem('user');
+                    if (!userStr) return undefined;
+                    const userData = JSON.parse(userStr);
+                    return userData?.role;
+                  } catch (error) {
+                    return undefined;
+                  }
+                })();
+                
+                return userRole === 'admin' ? <FieldConnections /> : <Redirect to="/dashboard" />;
+              }}
+            </Route>
+            <Route path="/admin/theme-editor">
+              {() => {
+                const userRole = (() => {
+                  try {
+                    const userStr = localStorage.getItem('user');
+                    if (!userStr) return undefined;
+                    const userData = JSON.parse(userStr);
+                    return userData?.role;
+                  } catch (error) {
+                    return undefined;
+                  }
+                })();
+                
+                return userRole === 'admin' ? <ThemeEditor /> : <Redirect to="/dashboard" />;
+              }}
+            </Route>
+            <Route path="/admin/export-data">
+              {() => {
+                const userRole = (() => {
+                  try {
+                    const userStr = localStorage.getItem('user');
+                    if (!userStr) return undefined;
+                    const userData = JSON.parse(userStr);
+                    return userData?.role;
+                  } catch (error) {
+                    return undefined;
+                  }
+                })();
+                
+                return userRole === 'admin' ? <ExportData /> : <Redirect to="/dashboard" />;
+              }}
+            </Route>
             <Route component={NotFound} />
           </Switch>
         </main>

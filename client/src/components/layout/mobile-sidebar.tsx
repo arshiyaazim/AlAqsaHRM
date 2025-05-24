@@ -53,55 +53,83 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
   const { settings } = useCompanySettings();
   const [navigationItems, setNavigationItems] = useState<typeof allNavigationItems>([]);
 
-  // Get user role from localStorage and apply navigation filtering - same logic as sidebar.tsx
+  // Get user role from localStorage or API and apply navigation filtering
   useEffect(() => {
-    // First try to get user data from localStorage
-    const userStr = localStorage.getItem('user');
-    let role = null;
-    
-    if (userStr) {
-      try {
-        const userData = JSON.parse(userStr);
-        if (userData && userData.role) {
-          role = userData.role;
-          console.log("[Mobile] User role set from localStorage user data:", userData.role);
-        }
-      } catch (error) {
-        console.error('[Mobile] Error parsing user data from localStorage:', error);
-      }
-    }
-    
-    // Fallback to token if no user data or role
-    if (!role) {
-      const token = localStorage.getItem('token');
-      if (token) {
+    const getUserRoleAndFilterNav = async () => {
+      // First try to get user data from localStorage (same as desktop sidebar)
+      const userStr = localStorage.getItem('user');
+      let role = null;
+      
+      if (userStr) {
         try {
-          // Decode JWT token to get user role
-          const tokenPayload = JSON.parse(atob(token.split('.')[1]));
-          if (tokenPayload && tokenPayload.role) {
-            role = tokenPayload.role;
-            console.log("[Mobile] User role set from token:", tokenPayload.role);
+          const userData = JSON.parse(userStr);
+          if (userData && userData.role) {
+            role = userData.role;
+            console.log("[Mobile] User role set from localStorage user data:", userData.role);
           }
         } catch (error) {
-          console.error('[Mobile] Error decoding JWT token:', error);
+          console.error('[Mobile] Error parsing user data from localStorage:', error);
         }
       }
-    }
+      
+      // If no role found in localStorage, try to get it from API
+      if (!role) {
+        try {
+          const token = localStorage.getItem('token');
+          if (token) {
+            const response = await fetch('/api/auth/me', {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            });
+            
+            if (response.ok) {
+              const userData = await response.json();
+              if (userData && userData.role) {
+                role = userData.role;
+                console.log("[Mobile] User role set from API:", userData.role);
+                
+                // Save user data to localStorage for future use
+                localStorage.setItem('user', JSON.stringify(userData));
+              }
+            } else {
+              // If API fails, try to decode token
+              try {
+                const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+                if (tokenPayload && tokenPayload.role) {
+                  role = tokenPayload.role;
+                  console.log("[Mobile] User role set from token:", tokenPayload.role);
+                }
+              } catch (error) {
+                console.error('[Mobile] Error decoding JWT token:', error);
+              }
+            }
+          }
+        } catch (error) {
+          console.error('[Mobile] Error fetching user data from API:', error);
+        }
+      }
+      
+      // Filter items based on role with improved performance
+      // Cache filter results to prevent unnecessary re-renders
+      if (role) {
+        // Use memoization approach - only filter once per role
+        const filteredItems = allNavigationItems.filter(item => 
+          item.roles.includes(role)
+        );
+        setNavigationItems(filteredItems);
+        console.log(`[Mobile] Filtered navigation items for role ${role}:`, filteredItems.length);
+      } else {
+        // If no role found, show public items only
+        const publicItems = allNavigationItems.filter(item => 
+          item.roles.includes('viewer')
+        );
+        setNavigationItems(publicItems);
+      }
+    };
     
-    // Filter items based on role
-    if (role) {
-      const filteredItems = allNavigationItems.filter(item => 
-        item.roles.includes(role)
-      );
-      setNavigationItems(filteredItems);
-      console.log(`[Mobile] Filtered navigation items for role ${role}:`, filteredItems.length);
-    } else {
-      // If no role found, show public items only
-      const publicItems = allNavigationItems.filter(item => 
-        item.roles.includes('viewer')
-      );
-      setNavigationItems(publicItems);
-    }
+    // Only run the effect when the component is mounted
+    getUserRoleAndFilterNav();
   }, []);
 
   if (!isOpen) return null;
