@@ -756,80 +756,8 @@ export class DatabaseStorage implements IStorage {
   
   // Dashboard stats operations
   async getDashboardStats(): Promise<DashboardStats | undefined> {
-    try {
-      const [stats] = await db.select().from(dashboardStats);
-      
-      if (!stats) {
-        // Generate default stats if none exist
-        const today = new Date().toISOString().split('T')[0];
-        
-        // Get counts
-        const employeeCount = await this.getEmployeeCount();
-        const projectCount = await this.getActiveProjectCount();
-        
-        // Create default stats
-        const defaultStats: InsertDashboardStats = {
-          date: today,
-          totalEmployees: employeeCount,
-          presentEmployees: 0,
-          absentEmployees: 0,
-          lateEmployees: 0,
-          activeProjects: projectCount, 
-          totalPayroll: "0"
-        };
-        
-        // Save default stats
-        const [newStats] = await db
-          .insert(dashboardStats)
-          .values(defaultStats)
-          .returning();
-          
-        return newStats;
-      }
-      
-      return stats;
-    } catch (error) {
-      console.error('Error getting dashboard stats:', error);
-      
-      // Return a default stats object to prevent errors
-      return {
-        id: 0,
-        date: new Date().toISOString().split('T')[0],
-        totalEmployees: 0,
-        presentEmployees: 0,
-        absentEmployees: 0,
-        lateEmployees: 0,
-        activeProjects: 0,
-        totalPayroll: "0"
-      };
-    }
-  }
-  
-  // Get employee count for dashboard stats
-  async getEmployeeCount(): Promise<number> {
-    try {
-      const result = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(employees);
-      return result[0]?.count || 0;
-    } catch (error) {
-      console.error('Error counting employees:', error);
-      return 0;
-    }
-  }
-  
-  // Get active project count for dashboard stats
-  async getActiveProjectCount(): Promise<number> {
-    try {
-      const result = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(projects)
-        .where(eq(projects.isActive, true));
-      return result[0]?.count || 0;
-    } catch (error) {
-      console.error('Error counting active projects:', error);
-      return 0;
-    }
+    const [stats] = await db.select().from(dashboardStats);
+    return stats;
   }
   
   async createOrUpdateDashboardStats(statsData: InsertDashboardStats): Promise<DashboardStats> {

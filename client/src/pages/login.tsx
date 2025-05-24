@@ -65,21 +65,15 @@ export default function AuthPage() {
     },
   });
 
-  // Handle login form submission with autofill support
+  // Handle login form submission
   const onLoginSubmit = (data: LoginFormValues) => {
-    // Prevent duplicate submissions while mutation is pending
-    if (loginMutation.isPending) return;
-    
     loginMutation.mutate(data, {
       onSuccess: () => {
         toast({
           title: 'Login successful',
           description: 'Welcome to HR & Payroll Management System',
         });
-        // Use setTimeout to avoid React state update conflicts
-        setTimeout(() => {
-          setLocation('/');
-        }, 100);
+        setLocation('/');
       },
       onError: (error) => {
         toast({

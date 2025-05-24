@@ -166,28 +166,6 @@ export const insertDashboardStatsSchema = createInsertSchema(dashboardStats).omi
   id: true,
 });
 
-// Dashboard Widget Configuration
-export const dashboardWidgets = pgTable("dashboard_widgets", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
-  name: text("name").notNull(),
-  type: text("type").notNull(), // chart, stats, table, etc.
-  config: jsonb("config").default("{}"), // Widget configuration
-  position: jsonb("position").default("{}"), // x, y, width, height
-  isVisible: boolean("is_visible").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const insertDashboardWidgetSchema = createInsertSchema(dashboardWidgets).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-export type DashboardWidget = typeof dashboardWidgets.$inferSelect;
-export type InsertDashboardWidget = z.infer<typeof insertDashboardWidgetSchema>;
-
 // Define the types
 export type Employee = typeof employees.$inferSelect;
 export type InsertEmployee = z.infer<typeof insertEmployeeSchema>;

@@ -10,98 +10,45 @@ import { useLocation } from 'wouter';
 import LocationTracker from '@/components/location-tracker';
 
 const Dashboard = () => {
-  // Check authentication state from token directly to avoid race conditions
-  const token = localStorage.getItem('token');
-  const isAuthenticatedFromToken = !!token;
-  
-  // Get the user info directly from localStorage to avoid hook issues
-  const userStr = localStorage.getItem('user');
-  let userFromStorage = null;
-  if (userStr) {
-    try {
-      userFromStorage = JSON.parse(userStr);
-    } catch (error) {
-      console.error('Error parsing user data:', error);
-    }
-  }
-  
-  // Use try/catch to prevent hook errors if Auth context isn't available
-  let authData = { user: userFromStorage, isAuthenticated: isAuthenticatedFromToken };
-  try {
-    const hookData = useAuth();
-    // Only use hook data if it contains a user
-    if (hookData && hookData.user) {
-      authData = hookData;
-    }
-  } catch (error) {
-    console.error('Auth context not available, using localStorage data instead');
-  }
-  
-  const { user, isAuthenticated = isAuthenticatedFromToken } = authData;
+  const { user, isAuthenticated } = useAuth();
   const [location, navigate] = useLocation();
   const { toast } = useToast();
 
-  // Redirect to login if not authenticated (with token fallback)
+  // Redirect to login if not authenticated
   useEffect(() => {
-    if (!isAuthenticated && !isAuthenticatedFromToken) {
+    if (!isAuthenticated) {
       navigate('/auth');
     }
-  }, [isAuthenticated, isAuthenticatedFromToken, navigate]);
+  }, [isAuthenticated, navigate]);
 
-  // Fetch dashboard data with fallback values
+  // Fetch dashboard data
   const { data: dashboardData, isLoading: isDashboardLoading, error: dashboardError } = useQuery({
     queryKey: ['/api/dashboard'],
     queryFn: async () => {
-      try {
-        const response = await fetch('/api/dashboard', {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          },
-        });
-        
-        if (!response.ok) {
-          console.log('Dashboard API response not OK, status:', response.status);
-          // Return default data for all error cases
+      const response = await fetch('/api/dashboard', {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      
+      if (!response.ok) {
+        // If unauthorized, return default data
+        if (response.status === 401) {
           return {
-            id: 1,
-            date: new Date().toISOString().split('T')[0],
-            totalEmployees: 0,
-            activeEmployees: 0,
-            todayAttendance: 0,
             employee_count: 0,
-            today_attendance: 0
+            today_attendance: 0,
+            user: null
           };
         }
         
-        const data = await response.json();
-        console.log('Dashboard data received:', data);
-        return data;
-      } catch (error) {
-        console.error('Dashboard fetch error:', error);
-        // Return default data for any exception
-        return {
-          id: 1,
-          date: new Date().toISOString().split('T')[0],
-          totalEmployees: 0,
-          activeEmployees: 0,
-          todayAttendance: 0,
-          employee_count: 0,
-          today_attendance: 0
-        };
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to load dashboard data');
       }
+      
+      return response.json();
     },
-    enabled: !!isAuthenticated,
-    // Provide default/fallback data
-    placeholderData: {
-      id: 1,
-      date: new Date().toISOString().split('T')[0],
-      totalEmployees: 0,
-      activeEmployees: 0,
-      todayAttendance: 0,
-      employee_count: 0,
-      today_attendance: 0
-    }
+    enabled: isAuthenticated,
   });
 
   // Fetch company information

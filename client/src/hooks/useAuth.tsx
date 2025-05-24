@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, ReactNode, useMemo, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useMutation, useQuery, UseMutationResult } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -49,28 +49,10 @@ const useLoginMutation = () => {
         const errorData = await response.json();
         throw new Error(errorData.message || "Login failed");
       }
-      const data = await response.json();
-      
-      // Store the token in localStorage for future requests
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-      }
-      
-      return data;
+      return response.json();
     },
-    onSuccess: (data) => {
-      // Store complete user data in localStorage for role-based access
-      if (data.user) {
-        localStorage.setItem('user', JSON.stringify(data.user));
-      } else if (data) {
-        localStorage.setItem('user', JSON.stringify(data));
-      }
-
-      queryClient.setQueryData(["/api/auth/me"], data.user || data);
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-      
-      // Redirect to dashboard after successful login
-      window.location.href = '/';
     },
   });
 };
@@ -84,28 +66,10 @@ const useRegisterMutation = () => {
         const errorData = await response.json();
         throw new Error(errorData.message || "Registration failed");
       }
-      const data = await response.json();
-      
-      // Store the token in localStorage if provided
-      if (data.token) {
-        localStorage.setItem('token', data.token);
-      }
-      
-      return data;
+      return response.json();
     },
-    onSuccess: (data) => {
-      // Store complete user data in localStorage for role-based access
-      if (data.user) {
-        localStorage.setItem('user', JSON.stringify(data.user));
-      } else if (data) {
-        localStorage.setItem('user', JSON.stringify(data));
-      }
-      
-      queryClient.setQueryData(["/api/auth/me"], data.user || data);
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-      
-      // Redirect to dashboard after successful registration
-      window.location.href = '/';
     },
   });
 };
@@ -122,18 +86,8 @@ const useLogoutMutation = () => {
       return response.json();
     },
     onSuccess: () => {
-      // Clear all localStorage data related to authentication
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      
-      // Clear cache
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
       queryClient.setQueryData(["/api/auth/me"], null);
-      
-      // Redirect to login page with delay to avoid React state conflicts
-      setTimeout(() => {
-        window.location.href = '/auth';
-      }, 100);
     },
   });
 };
@@ -147,7 +101,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const { toast } = useToast?.() ?? { toast: () => {} };
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Fetch current user data with auth status management
+  // Fetch current user data
   const {
     data: user,
     isLoading,
@@ -156,53 +110,38 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     queryKey: ["/api/auth/me"],
     queryFn: async () => {
       try {
-        // Check for token in localStorage to avoid unnecessary API calls
-        const token = localStorage.getItem('token');
-        if (!token) {
-          // Don't call setState during render - will trigger in useEffect below
-          return null;
-        }
-        
         const response = await apiRequest("GET", "/api/auth/me");
         if (response.status === 401) {
-          // Clear token if invalid
-          localStorage.removeItem('token');
-          // Don't call setState during render - will trigger in useEffect below
+          setIsAuthenticated(false);
           return null;
         }
         if (!response.ok) {
           throw new Error("Failed to fetch user data");
         }
-        
         const userData = await response.json();
+        setIsAuthenticated(true);
         return userData;
       } catch (error) {
-        // Don't call setState during render
+        setIsAuthenticated(false);
         return null;
       }
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
     retry: false,
   });
-  
-  // Handle authentication state updates in a separate effect
-  useEffect(() => {
-    // Update authentication state based on user data
-    if (user) {
-      setIsAuthenticated(true);
-    } else {
-      setIsAuthenticated(false);
-    }
-  }, [user]);
 
   // Hook instances
   const loginMutation = useLoginMutation();
   const registerMutation = useRegisterMutation();
   const logoutMutation = useLogoutMutation();
-  
-  // Handle auth errors but with a reference check to prevent infinite updates
+
+  // Update authentication state on data change
   useEffect(() => {
-    // Only show auth error toast when we have an error
+    setIsAuthenticated(!!user);
+  }, [user]);
+
+  // Handle auth errors
+  useEffect(() => {
     if (error) {
       toast({
         title: "Authentication Error",

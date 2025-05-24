@@ -40,7 +40,6 @@ const allNavigationItems = [
   { name: "Settings", href: "/settings", icon: Settings, roles: ["admin"] },
   // Admin-only pages
   { name: "Admin Dashboard", href: "/admin/dashboard", icon: ShieldCheck, roles: ["admin"] },
-  { name: "Customize Dashboard", href: "/admin/customize-dashboard", icon: Settings, roles: ["admin"] },
   { name: "Field Connections", href: "/admin/field-connections", icon: ArrowLeftRight, roles: ["admin"] },
   { name: "Theme Editor", href: "/admin/theme-editor", icon: Palette, roles: ["admin"] },
   { name: "Export Data", href: "/admin/export-data", icon: FileDown, roles: ["admin"] },
@@ -52,56 +51,58 @@ export default function Sidebar() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [navigationItems, setNavigationItems] = useState<typeof allNavigationItems>([]);
   
-  // Get user role from localStorage and apply navigation filtering only once
+  // Get user role from localStorage and apply navigation filtering
   useEffect(() => {
-    const getUserRoleAndFilterNav = () => {
-      // First try to get user data from localStorage
-      const userStr = localStorage.getItem('user');
-      let role = null;
-      
-      if (userStr) {
+    // First try to get user data from localStorage
+    const userStr = localStorage.getItem('user');
+    let role = null;
+    
+    if (userStr) {
+      try {
+        const userData = JSON.parse(userStr);
+        if (userData && userData.role) {
+          role = userData.role;
+          console.log("User role set from localStorage user data:", userData.role);
+        }
+      } catch (error) {
+        console.error('Error parsing user data from localStorage:', error);
+      }
+    }
+    
+    // Fallback to token if no user data or role
+    if (!role) {
+      const token = localStorage.getItem('token');
+      if (token) {
         try {
-          const userData = JSON.parse(userStr);
-          if (userData && userData.role) {
-            role = userData.role;
+          // Decode JWT token to get user role
+          const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+          if (tokenPayload && tokenPayload.role) {
+            role = tokenPayload.role;
+            console.log("User role set from token:", tokenPayload.role);
           }
         } catch (error) {
-          console.error('Error parsing user data from localStorage:', error);
+          console.error('Error decoding JWT token:', error);
         }
       }
-      
-      // Fallback to token if no user data or role
-      if (!role) {
-        const token = localStorage.getItem('token');
-        if (token) {
-          try {
-            // Decode JWT token to get user role
-            const tokenPayload = JSON.parse(atob(token.split('.')[1]));
-            if (tokenPayload && tokenPayload.role) {
-              role = tokenPayload.role;
-            }
-          } catch (error) {
-            console.error('Error decoding JWT token:', error);
-          }
-        }
-      }
-      
-      // Default to 'viewer' if no role found
-      role = role || 'viewer';
-      
-      // Return both the role and filtered items
-      return {
-        role,
-        items: role === 'admin' 
-          ? allNavigationItems  // Admin sees all items
-          : allNavigationItems.filter(item => item.roles.includes(role))
-      };
-    };
+    }
     
-    // Execute once at component mount
-    const { role, items } = getUserRoleAndFilterNav();
+    // Set user role and filter navigation items
     setUserRole(role);
-    setNavigationItems(items);
+    
+    // Filter items based on role
+    if (role) {
+      const filteredItems = allNavigationItems.filter(item => 
+        item.roles.includes(role)
+      );
+      setNavigationItems(filteredItems);
+      console.log(`Filtered navigation items for role ${role}:`, filteredItems);
+    } else {
+      // If no role found, show public items only
+      const publicItems = allNavigationItems.filter(item => 
+        item.roles.includes('viewer')
+      );
+      setNavigationItems(publicItems);
+    }
   }, []);
 
   // Group navigation items by category

@@ -6,8 +6,6 @@ import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 import MobileSidebar from "@/components/layout/mobile-sidebar";
 import Dashboard from "@/pages/dashboard";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { queryClient } from "@/lib/queryClient";
 import EmployeeList from "@/pages/employees/index";
 import AddEmployee from "@/pages/employees/add";
 import EmployeeDetails from "@/pages/employees/[id]";
@@ -45,45 +43,28 @@ import FieldConnections from "@/pages/admin/field-connections";
 import ThemeEditor from "@/pages/admin/theme-editor";
 import ExportData from "@/pages/admin/export-data";
 
-// Simplified App component with direct routes and memoized state
+// Simplified App component with direct routes
 function App() {
   const [location] = useLocation();
-  // Use useState with a function to ensure the initial state is only computed once
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   
-  // Close mobile sidebar when location changes
-  const closeMobileSidebar = () => {
-    if (isMobileSidebarOpen) {
-      setIsMobileSidebarOpen(false);
-    }
-  };
-  
-  // Only run the effect if mobile sidebar is open
+  // Close mobile sidebar when location changes - this must be defined before conditionals
   useEffect(() => {
-    if (location && isMobileSidebarOpen) {
-      closeMobileSidebar();
-    }
-  }, [location, isMobileSidebarOpen]);
-  
-  // Create AppContent component
-  const appContent = (
-    <AppContent 
-      location={location} 
-      isMobileSidebarOpen={isMobileSidebarOpen}
-      setIsMobileSidebarOpen={setIsMobileSidebarOpen}
-    />
-  );
+    setIsMobileSidebarOpen(false);
+  }, [location]);
   
   // App wrapped in providers
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <CompanyProvider>
-          {appContent}
-          <Toaster />
-        </CompanyProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <AuthProvider>
+      <CompanyProvider>
+        <AppContent 
+          location={location} 
+          isMobileSidebarOpen={isMobileSidebarOpen}
+          setIsMobileSidebarOpen={setIsMobileSidebarOpen}
+        />
+        <Toaster />
+      </CompanyProvider>
+    </AuthProvider>
   );
 }
 
@@ -97,29 +78,32 @@ function AppContent({
   isMobileSidebarOpen: boolean;
   setIsMobileSidebarOpen: (isOpen: boolean) => void;
 }) {
-  // Calculate route types once to avoid repeated calculations
-  const isRootPath = location === "/";
-  const isDashboardPath = location === "/dashboard";
+  // Handle special routing for root path
+  if (location === "/") {
+    // Check if user is logged in
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return <Redirect to="/auth" />;
+    } else {
+      // User is authenticated, redirect to dashboard
+      return <Redirect to="/dashboard" />;
+    }
+  }
+  
+  // Handle special routing for dashboard path to ensure all roles access it
+  if (location === "/dashboard") {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return <Redirect to="/auth" />;
+    }
+  }
+  
+  // Special routes without main layout
   const isAuthPage = location === "/auth";
   const isMobileAttendance = location === "/mobile-attendance";
   
-  // Get token once for all checks
-  const token = localStorage.getItem("token");
-  const isAuthenticated = !!token;
-  
-  // Handle root path redirect
-  if (isRootPath) {
-    return isAuthenticated 
-      ? <Redirect to="/dashboard" />
-      : <Redirect to="/auth" />;
-  }
-  
   // Public Routes (no authentication or main layout)
   if (isAuthPage) {
-    // If already authenticated on auth page, redirect to dashboard
-    if (isAuthenticated) {
-      return <Redirect to="/dashboard" />;
-    }
     return <AuthPage />;
   }
   
@@ -140,10 +124,12 @@ function AppContent({
     );
   }
   
-  // Check authentication for protected routes - use Redirect component
-  // instead of directly modifying window.location to prevent infinite loop
-  if (!isAuthenticated) {
-    return <Redirect to="/auth" />;
+  // Check authentication for protected routes
+  const token = localStorage.getItem("token");
+  if (!token && !isAuthPage) {
+    // Redirect to auth page if no token
+    window.location.href = "/auth";
+    return null;
   }
   
   // Main App layout with sidebar
@@ -194,11 +180,6 @@ function AppContent({
             <Route path="/admin/field-connections" component={FieldConnections} />
             <Route path="/admin/theme-editor" component={ThemeEditor} />
             <Route path="/admin/export-data" component={ExportData} />
-            <Route path="/admin/customize-dashboard" component={() => {
-              // Dynamically import to avoid circular dependencies
-              const CustomizeDashboard = require('./pages/admin/customize-dashboard').default;
-              return <CustomizeDashboard />;
-            }} />
             <Route component={NotFound} />
           </Switch>
         </main>

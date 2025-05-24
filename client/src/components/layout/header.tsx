@@ -69,53 +69,40 @@ export default function Header({ onMenuClick }: HeaderProps) {
     }
   };
   
-  // Get user info from localStorage only once at component mount
+  // Get user info from API or localStorage
   useEffect(() => {
-    const getUserInfo = () => {
-      // First try to get user data from localStorage
-      const userStr = localStorage.getItem('user');
-      let userName = 'User';
-      
-      if (userStr) {
+    // First try to get user data from localStorage
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const userData = JSON.parse(userStr);
+        if (userData) {
+          setUserInfo({
+            name: userData.fullName || userData.firstName + ' ' + userData.lastName || userData.email || 'User'
+          });
+        }
+      } catch (error) {
+        console.error('Error parsing user data from localStorage:', error);
+      }
+    } else {
+      // Fallback to token if no user data
+      const token = localStorage.getItem('token');
+      if (token) {
         try {
-          const userData = JSON.parse(userStr);
-          if (userData) {
-            // Safely construct the name with proper fallbacks
-            if (userData.fullName) {
-              userName = userData.fullName;
-            } else if (userData.firstName && userData.lastName) {
-              userName = `${userData.firstName} ${userData.lastName}`;
-            } else if (userData.email) {
-              userName = userData.email;
-            }
+          // Decode JWT token to get user info
+          const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+          if (tokenPayload) {
+            setUserInfo({
+              name: tokenPayload.fullName || tokenPayload.email || 'User'
+            });
           }
         } catch (error) {
-          console.error('Error parsing user data from localStorage:', error);
-        }
-      } else {
-        // Fallback to token if no user data
-        const token = localStorage.getItem('token');
-        if (token) {
-          try {
-            // Decode JWT token to get user info
-            const tokenPayload = JSON.parse(atob(token.split('.')[1]));
-            if (tokenPayload) {
-              userName = tokenPayload.fullName || tokenPayload.email || 'User';
-            }
-          } catch (error) {
-            console.error('Error decoding JWT token:', error);
-          }
+          console.error('Error decoding JWT token:', error);
         }
       }
-      
-      return { name: userName };
-    };
+    }
     
-    // Get user info once
-    const userInfo = getUserInfo();
-    setUserInfo(userInfo);
-    
-    // Get saved profile photo URL once
+    // Try to get saved profile photo URL
     const savedProfilePhoto = localStorage.getItem('profilePhotoUrl');
     if (savedProfilePhoto) {
       setProfilePhotoUrl(savedProfilePhoto);

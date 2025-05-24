@@ -26,7 +26,6 @@ import { upload, handleFileUploadErrors } from "./utils/fileUpload";
 import path from "path";
 import fs from "fs";
 import { exec } from "child_process";
-import adminRoutes from "./api/admin";
 
 // Helper to generate the next employee ID in format EMP-1001, EMP-1002, etc.
 async function getNextEmployeeId(storage: any): Promise<number> {
@@ -421,48 +420,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Register admin routes
-  app.use("/api/admin", authenticateJWT, authorize(["admin"]), adminRoutes);
-  
   // Dashboard stats routes
-  app.get("/api/dashboard", authenticateJWT, async (req: Request, res: Response) => {
+  app.get("/api/dashboard", async (req: Request, res: Response) => {
     try {
-      // Always create default stats if none exist
       const stats = await storage.getDashboardStats();
-      
-      // Updated to always return data
-      if (stats) {
-        res.json(stats);
-      } else {
-        // Create default stats on the fly as a fallback
-        const defaultStats = {
-          id: 0,
-          date: new Date().toISOString().split('T')[0],
-          totalEmployees: 0,
-          presentEmployees: 0,
-          absentEmployees: 0,
-          lateEmployees: 0,
-          activeProjects: 0,
-          totalPayroll: "0"
-        };
-        
-        // Save these default stats for future use
-        const newStats = await storage.createOrUpdateDashboardStats(defaultStats);
-        res.json(newStats || defaultStats);
+      if (!stats) {
+        return res.status(404).json({ message: "Dashboard stats not found" });
       }
+      res.json(stats);
     } catch (err) {
-      console.error("Dashboard stats error:", err);
-      // Even on error, return a valid response to prevent frontend errors
-      res.json({
-        id: 0,
-        date: new Date().toISOString().split('T')[0],
-        totalEmployees: 0,
-        presentEmployees: 0,
-        absentEmployees: 0,
-        lateEmployees: 0,
-        activeProjects: 0,
-        totalPayroll: "0"
-      });
+      handleError(err, res);
     }
   });
 
